@@ -345,6 +345,8 @@
   display: block;
   border-radius: 16px;
   overscroll-behavior: contain;
+  touch-action: none;
+  -webkit-touch-callout: none;
   user-select: none;
 }
 

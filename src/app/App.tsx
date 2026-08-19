@@ -515,7 +515,8 @@ export function App() {
               showSpan={state.visualization.showSpan}
             />
             <p className="viewport-help">
-              矢印先端の丸をドラッグするとベクトルを変更できます。ほかのベクトルとほぼ平行になると吸着します。
+              矢印先端の丸をドラッグするとベクトルを変更できます。座標面の内側では1本指で移動、2本指で拡大・縮小できます。
+              ページをスクロールするときは座標面の外側をスワイプしてください。
             </p>
           </section>
 
