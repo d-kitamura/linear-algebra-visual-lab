@@ -34,7 +34,7 @@ describe('アプリ初期状態', () => {
 
     expect(initialization.initialState).toEqual(DEFAULT_2D_SHARE_STATE);
     expect(initialization.source).toBe('fallback');
-    expect(initialization.errorMessage).toContain('共有URLを復元できなかった');
+    expect(initialization.errorMessage).toContain('共有URLを復元できませんでした');
   });
 
   it('未実装の3D共有状態では既定例と明示的な案内を返す', () => {

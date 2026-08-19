@@ -32,3 +32,8 @@ export function splitVectorName(name: string): VectorNameParts {
 
   return { base: name };
 }
+
+export function formatVectorSpokenName(name: string): string {
+  const { base, subscript } = splitVectorName(name);
+  return subscript ? `${base} 添え字 ${subscript}` : base;
+}

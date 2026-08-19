@@ -2,7 +2,7 @@
 
 線形代数を学ぶ学生が、2D/3D のベクトル、一次独立・一次従属、ベクトルが張る空間をブラウザ上で視覚的・対話的に理解するための教材アプリです。
 
-フェーズ 2「2D の最小縦断版」とGitHub Pagesへの初回公開は完了しています。現在はフェーズ 3 の作業単位3.1として、0〜8本のベクトル集合を追加・削除する機能を実装し、利用者確認を待っています。公開版は [Linear Algebra Visual Lab](https://d-kitamura.github.io/linear-algebra-visual-lab/) です。実装は小さな単位に分け、各段階で実際の動作を確認してから次へ進めます。Codex はローカルファイルのみを変更し、コミットとプッシュはプロジェクト所有者が行います。
+フェーズ 2「2D の最小縦断版」、GitHub Pagesへの初回公開、フェーズ 3.1「ベクトル集合の編集機能」は完了しています。現在は3.2・3.3として、入力案内とアクセシビリティの仕上げ、2D教材シナリオの統合確認を実装し、利用者確認を待っています。公開版は [Linear Algebra Visual Lab](https://d-kitamura.github.io/linear-algebra-visual-lab/) です。実装は小さな単位に分け、各段階で実際の動作を確認してから次へ進めます。Codex はローカルファイルのみを変更し、コミットとプッシュはプロジェクト所有者が行います。
 
 ## 文書の役割
 
@@ -12,6 +12,7 @@
 - [`docs/PROJECT_STATUS.md`](./docs/PROJECT_STATUS.md): 現在地、検証結果、再開時に必要な実装コンテキスト、次に行う小さな作業
 - [`docs/DECISIONS.md`](./docs/DECISIONS.md): 技術・教材設計上の意思決定と保留事項
 - [`docs/GITHUB_PAGES.md`](./docs/GITHUB_PAGES.md): GitHub Actions、pnpm、GitHub Pagesによる公開の仕組みと利用者の操作手順
+- [`docs/TEACHING_SCENARIOS.md`](./docs/TEACHING_SCENARIOS.md): 2Dの代表例、本番共有URL、授業内の確認手順、3Dへ再利用する境界
 - [`math-writing-rules.txt`](./math-writing-rules.txt): 学生向け画面で使う数学用語・数式表記の基準
 
 ## 開発の進め方

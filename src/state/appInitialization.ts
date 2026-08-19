@@ -22,7 +22,7 @@ export function createAppInitialization(href: string): AppInitialization {
     return {
       initialState: DEFAULT_2D_SHARE_STATE,
       source: 'fallback',
-      errorMessage: `共有URLを復元できなかったため、既定例を表示しています。${result.error.message}`,
+      errorMessage: `共有URLを復元できませんでした。既定例を表示しています。理由：${result.error.message}`,
     };
   }
 
@@ -30,7 +30,7 @@ export function createAppInitialization(href: string): AppInitialization {
     return {
       initialState: DEFAULT_2D_SHARE_STATE,
       source: 'fallback',
-      errorMessage: '3次元の共有状態は現在の2D画面では開けないため、既定例を表示しています。',
+      errorMessage: 'このURLには3次元の状態が含まれています。現在の2D画面では開けないため、既定例を表示しています。',
     };
   }
 

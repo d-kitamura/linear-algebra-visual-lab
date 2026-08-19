@@ -25,7 +25,7 @@ import {
   updateSpanSelection,
   removeVector as removeVectorFromState,
 } from '../state';
-import { splitVectorName } from '../ui';
+import { formatVectorSpokenName, splitVectorName } from '../ui';
 import {
   VectorPlane2D,
   createAutoFitViewport,
@@ -60,6 +60,10 @@ type ShareFeedback = {
   readonly message: string;
 } | null;
 
+interface CoordinateInputIssue {
+  readonly inputId: string;
+}
+
 export function App() {
   const [initialization] = useState(() => createAppInitialization(window.location.href));
   const initialState = initialization.initialState;
@@ -79,12 +83,11 @@ export function App() {
   const shareDialogRef = useRef<HTMLDialogElement>(null);
   const shareUrlFieldRef = useRef<HTMLTextAreaElement>(null);
   const addVectorButtonRef = useRef<HTMLButtonElement>(null);
-  const hasInvalidCoordinateDraft = useMemo(
-    () => Object.values(coordinateDrafts).some((drafts) =>
-      drafts.some((draft) => !parseCoordinateInput(draft).ok),
-    ),
-    [coordinateDrafts],
+  const coordinateInputIssues = useMemo(
+    () => collectCoordinateInputIssues(state.vectors, coordinateDrafts),
+    [state.vectors, coordinateDrafts],
   );
+  const hasInvalidCoordinateDraft = coordinateInputIssues.length > 0;
   const analysis = useMemo(
     () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
     [state],
@@ -246,6 +249,22 @@ export function App() {
     }
   }
 
+  function handleFocusFirstCoordinateIssue(): void {
+    const firstIssue = coordinateInputIssues[0];
+    if (!firstIssue) {
+      return;
+    }
+
+    setActiveInspectorTab('edit');
+    window.requestAnimationFrame(() => {
+      const input = document.getElementById(firstIssue.inputId);
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
   async function handleCopyShareUrl(): Promise<void> {
     try {
       if (!navigator.clipboard) {
@@ -351,6 +370,7 @@ export function App() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#lab-workspace">教材の操作領域へ移動</a>
       <header className="site-header">
         <a
           className="brand"
@@ -391,28 +411,58 @@ export function App() {
               </button>
             </div>
             {hasInvalidCoordinateDraft ? (
-              <p className="lab-action-help" id="share-export-disabled-help">
-                共有する前に、未確定の成分を訂正してください。
-              </p>
+              <div
+                className="lab-action-help"
+              >
+                <p
+                  id="share-export-disabled-help"
+                  role="status"
+                  aria-live="polite"
+                >
+                  未確定の成分が{coordinateInputIssues.length}か所あります。
+                  訂正するまで、座標面と判定には各欄の直前の有効値を使い、エクスポートを停止します。
+                </p>
+                <button type="button" onClick={handleFocusFirstCoordinateIssue}>
+                  入力欄を確認
+                </button>
+              </div>
             ) : null}
           </div>
         </section>
 
         {loadErrorMessage ? (
-          <div className="page-alert" role="alert">
-            <p>{loadErrorMessage}</p>
-            <button type="button" onClick={() => setLoadErrorMessage(null)}>閉じる</button>
+          <div className="page-alert" role="alert" aria-labelledby="load-error-title">
+            <div>
+              <strong id="load-error-title">共有URLを開けませんでした</strong>
+              <p>{loadErrorMessage}</p>
+            </div>
+            <button
+              type="button"
+              aria-label="共有URLの読込エラーを閉じる"
+              onClick={() => setLoadErrorMessage(null)}
+            >
+              閉じる
+            </button>
           </div>
         ) : null}
 
         {exportErrorMessage ? (
-          <div className="page-alert" role="alert">
-            <p>{exportErrorMessage}</p>
-            <button type="button" onClick={() => setExportErrorMessage(null)}>閉じる</button>
+          <div className="page-alert" role="alert" aria-labelledby="export-error-title">
+            <div>
+              <strong id="export-error-title">共有URLを生成できませんでした</strong>
+              <p>{exportErrorMessage}</p>
+            </div>
+            <button
+              type="button"
+              aria-label="共有URLの生成エラーを閉じる"
+              onClick={() => setExportErrorMessage(null)}
+            >
+              閉じる
+            </button>
           </div>
         ) : null}
 
-        <div className="lab-workspace">
+        <div className="lab-workspace" id="lab-workspace" tabIndex={-1}>
           <section className="plot-card" aria-labelledby="plot-title">
             <div className="card-heading">
               <div>
@@ -548,7 +598,12 @@ export function App() {
                 </div>
               </div>
               {state.vectors.length >= MAX_SHARE_VECTORS ? (
-                <p className="vector-limit-help" id="vector-limit-help">
+                <p
+                  className="vector-limit-help"
+                  id="vector-limit-help"
+                  role="status"
+                  aria-live="polite"
+                >
                   共有状態の上限である{MAX_SHARE_VECTORS}本に達しています。
                 </p>
               ) : null}
@@ -562,7 +617,9 @@ export function App() {
                   const drafts = coordinateDrafts[vector.id] ?? vector.coordinates.map(String);
                   const results = drafts.map(parseCoordinateInput);
                   const firstError = results.find((result) => !result.ok);
+                  const errorCount = results.filter((result) => !result.ok).length;
                   const errorId = `${vector.id}-coordinate-error`;
+                  const spokenVectorName = formatVectorSpokenName(vector.name);
 
                   return (
                     <div className="vector-editor" key={vector.id}>
@@ -582,11 +639,12 @@ export function App() {
                           const result = results[coordinateIndex];
                           const isInvalid = !result.ok;
                           const inputId = `${vector.id}-coordinate-${coordinateIndex}`;
+                          const inputErrorId = `${inputId}-error`;
 
                           return (
                             <label className="coordinate-field" key={inputId} htmlFor={inputId}>
                               <span className="visually-hidden">
-                                {`${vector.name} の${coordinateNames[coordinateIndex]}`}
+                                {`${spokenVectorName} の${coordinateNames[coordinateIndex]}`}
                               </span>
                               <input
                                 id={inputId}
@@ -596,11 +654,16 @@ export function App() {
                                 spellCheck={false}
                                 value={draft}
                                 aria-invalid={isInvalid}
-                                aria-describedby={isInvalid ? errorId : undefined}
+                                aria-describedby={isInvalid ? inputErrorId : undefined}
                                 onChange={(event) =>
                                   handleCoordinateChange(vector.id, coordinateIndex, event.target.value)
                                 }
                               />
+                              {!result.ok ? (
+                                <span className="visually-hidden" id={inputErrorId}>
+                                  {result.message} 座標面と判定には直前の有効値を使います。
+                                </span>
+                              ) : null}
                             </label>
                           );
                         })}
@@ -610,7 +673,7 @@ export function App() {
                           <input
                             type="checkbox"
                             checked={state.spanSelection.includes(vector.id)}
-                            aria-label={`${vector.name} を生成する空間の対象に含める`}
+                            aria-label={`${spokenVectorName} を生成する空間の対象に含める`}
                             onChange={(event) =>
                               handleSpanSelection(vector.id, event.target.checked)
                             }
@@ -622,7 +685,7 @@ export function App() {
                         <button
                           className="remove-vector-button"
                           type="button"
-                          aria-label={`${vector.name} を削除`}
+                          aria-label={`${spokenVectorName} を削除`}
                           onClick={() => handleRemoveVector(vector.id)}
                         >
                           削除
@@ -631,10 +694,9 @@ export function App() {
                       <p
                         className={`coordinate-feedback ${firstError ? 'has-error' : ''}`}
                         id={errorId}
-                        role={firstError ? 'alert' : undefined}
                       >
                         {firstError && !firstError.ok
-                          ? `${firstError.message} 表示には直前の有効値を使います。`
+                          ? `${errorCount}か所が未確定です。${firstError.message} 座標面と判定には直前の有効値を使います。`
                           : '入力は表示と判定へすぐに反映されます。'}
                       </p>
                     </div>
@@ -766,13 +828,14 @@ export function App() {
         className="share-dialog"
         ref={shareDialogRef}
         aria-labelledby="share-dialog-title"
+        aria-describedby="share-dialog-description"
         onClick={handleShareDialogClick}
         onClose={() => setShareFeedback(null)}
       >
         <div className="share-dialog-content">
           <p className="panel-kicker">Export current state</p>
           <h2 id="share-dialog-title">共有URLをエクスポート</h2>
-          <p className="share-dialog-description">
+          <p className="share-dialog-description" id="share-dialog-description">
             このURLを開くと、ベクトル、spanの選択、幾何表示が復元されます。
             表示範囲はベクトル全体が見えるように自動調整されます。
           </p>
@@ -784,11 +847,13 @@ export function App() {
               readOnly
               value={shareUrl}
               spellCheck={false}
+              aria-describedby="share-dialog-description share-dialog-feedback"
               onFocus={(event) => event.currentTarget.select()}
             />
           </label>
           <p
             className={`share-feedback ${shareFeedback?.kind === 'error' ? 'has-error' : ''}`}
+            id="share-dialog-feedback"
             role={shareFeedback?.kind === 'error' ? 'alert' : 'status'}
             aria-live="polite"
           >
@@ -815,7 +880,7 @@ function MathVectorName({ name }: { readonly name: string }) {
   const { base, subscript } = splitVectorName(name);
 
   return (
-    <span className="math-symbol math-vector" aria-label={name}>
+    <span className="math-symbol math-vector" aria-label={formatVectorSpokenName(name)}>
       <span className="math-vector-base" aria-hidden="true">{base}</span>
       {subscript ? (
         <sub className="math-vector-subscript" aria-hidden="true">{subscript}</sub>
@@ -835,7 +900,7 @@ function MathOperator({ name }: { readonly name: string }) {
 function MatrixDefinition({ vectors }: { readonly vectors: readonly VectorValue[] }) {
   const rowCount = vectors[0]?.coordinates.length ?? 0;
   const ariaDescription = vectors
-    .map((vector) => `${vector.name} を第${vectors.indexOf(vector) + 1}列`)
+    .map((vector) => `${formatVectorSpokenName(vector.name)} を第${vectors.indexOf(vector) + 1}列`)
     .join('、');
   const ariaLabel = vectors.length === 0
     ? '行列 A は列を持たない空行列です。'
@@ -877,7 +942,7 @@ function MatrixDefinition({ vectors }: { readonly vectors: readonly VectorValue[
 }
 
 function VectorSetDefinition({ vectors }: { readonly vectors: readonly VectorValue[] }) {
-  const names = vectors.map((vector) => vector.name).join('、');
+  const names = vectors.map((vector) => formatVectorSpokenName(vector.name)).join('、');
 
   return (
     <p
@@ -899,7 +964,7 @@ function VectorSetDefinition({ vectors }: { readonly vectors: readonly VectorVal
 }
 
 function SelectedMatrixDefinition({ vectors }: { readonly vectors: readonly VectorValue[] }) {
-  const names = vectors.map((vector) => vector.name).join('、');
+  const names = vectors.map((vector) => formatVectorSpokenName(vector.name)).join('、');
 
   return (
     <p
@@ -975,6 +1040,22 @@ function describeAllVectorRelation(
 function createCoordinateDrafts(vectors: readonly VectorValue[]): CoordinateDrafts {
   return Object.fromEntries(
     vectors.map((vector) => [vector.id, vector.coordinates.map(String)]),
+  );
+}
+
+function collectCoordinateInputIssues(
+  vectors: readonly VectorValue[],
+  drafts: CoordinateDrafts,
+): readonly CoordinateInputIssue[] {
+  return vectors.flatMap((vector) =>
+    (drafts[vector.id] ?? vector.coordinates.map(String)).flatMap((draft, coordinateIndex) => {
+      const result = parseCoordinateInput(draft);
+      return result.ok
+        ? []
+        : [{
+            inputId: `${vector.id}-coordinate-${coordinateIndex}`,
+          }];
+    }),
   );
 }
 

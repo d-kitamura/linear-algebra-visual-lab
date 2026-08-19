@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { splitVectorName } from '../../src/ui';
+import { formatVectorSpokenName, splitVectorName } from '../../src/ui';
 
 describe('mathematical vector-name notation', () => {
   it('separates Unicode subscript digits from the vector symbol', () => {
@@ -13,5 +13,11 @@ describe('mathematical vector-name notation', () => {
 
   it('keeps an unsubscripted vector name intact', () => {
     expect(splitVectorName('u')).toEqual({ base: 'u' });
+  });
+
+  it('provides an explicit spoken form for a numeric subscript', () => {
+    expect(formatVectorSpokenName('v₁')).toBe('v 添え字 1');
+    expect(formatVectorSpokenName('a_12')).toBe('a 添え字 12');
+    expect(formatVectorSpokenName('u')).toBe('u');
   });
 });

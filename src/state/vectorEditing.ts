@@ -27,7 +27,7 @@ export function parseCoordinateInput(input: string): CoordinateInputResult {
     return {
       ok: false,
       code: 'NOT_A_NUMBER',
-      message: '10進数を入力してください。',
+      message: '整数、小数、または指数表記で入力してください。',
     };
   }
 
