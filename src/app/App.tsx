@@ -88,6 +88,10 @@ export function App() {
   const selectedViewport = viewMode === 'auto' ? autoViewport : (manualViewport ?? autoViewport);
   const viewport = dragViewport ?? selectedViewport;
   const isIndependent = analysis.isLinearlyIndependent;
+  const allVectorRelation = describeAllVectorRelation(
+    analysis.vectorCount,
+    analysis.isLinearlyIndependent,
+  );
   const spanShape = describeSpanShape(spanAnalysis.rank);
   const viewportLabel = viewMode === 'auto'
     ? `自動表示 ±${formatViewportNumber((viewport.maxX - viewport.minX) / 2)}`
@@ -176,6 +180,7 @@ export function App() {
     setParallelSnapTargetId(null);
     setActiveInspectorTab('edit');
     setExportErrorMessage(null);
+    setShareUrl('');
     setShareFeedback(null);
     shareDialogRef.current?.close();
   }
@@ -630,12 +635,8 @@ export function App() {
               <p className="panel-kicker">All vectors</p>
               <MatrixDefinition vectors={state.vectors} />
               <p className="result-symbol" aria-hidden="true">{isIndependent ? '∥' : '≈'}</p>
-              <h2>{isIndependent ? '全ベクトルは一次独立です' : '全ベクトルは一次従属です'}</h2>
-              <p className="result-explanation">
-                {isIndependent
-                  ? 'どのベクトルも、他のベクトルの一次結合では表せません。'
-                  : '少なくとも1本のベクトルが、他のベクトルの一次結合で表せます。'}
-              </p>
+              <h2>{allVectorRelation.heading}</h2>
+              <p className="result-explanation">{allVectorRelation.explanation}</p>
 
               <dl className="metric-grid">
                 <div>
@@ -755,11 +756,14 @@ function MatrixDefinition({ vectors }: { readonly vectors: readonly VectorValue[
   const ariaDescription = vectors
     .map((vector) => `${vector.name} を第${vectors.indexOf(vector) + 1}列`)
     .join('、');
+  const ariaLabel = vectors.length === 0
+    ? '行列 A は列を持たない空行列です。'
+    : `行列 A は、${ariaDescription}に並べた行列です。`;
 
   return (
     <div
       className="matrix-definition"
-      aria-label={`行列 A は、${ariaDescription}に並べた行列です。`}
+      aria-label={ariaLabel}
     >
       <MathMatrixName />
       <span className="math-equals" aria-hidden="true">=</span>
@@ -863,6 +867,28 @@ function describeSpanShape(rank: number): {
     explanation: '2本の一次独立な方向によって、平面上のすべてのベクトルを作れます。',
     summary: '2次元座標平面全体',
   };
+}
+
+function describeAllVectorRelation(
+  vectorCount: number,
+  isIndependent: boolean,
+): { readonly heading: string; readonly explanation: string } {
+  if (vectorCount === 0) {
+    return {
+      heading: '空集合は一次独立です',
+      explanation: 'ベクトルを含まないため、一次関係は自明なものだけです。',
+    };
+  }
+
+  return isIndependent
+    ? {
+        heading: '全ベクトルは一次独立です',
+        explanation: 'どのベクトルも、他のベクトルの一次結合では表せません。',
+      }
+    : {
+        heading: '全ベクトルは一次従属です',
+        explanation: '少なくとも1本のベクトルが、他のベクトルの一次結合で表せます。',
+      };
 }
 
 function createCoordinateDrafts(vectors: readonly VectorValue[]): CoordinateDrafts {
