@@ -340,6 +340,9 @@
 }
 
 .vector-plane {
+  --span-neutral-strong: #5d686f;
+  --span-neutral: #7b858b;
+  --span-neutral-soft: #e7e9e8;
   width: 100%;
   height: auto;
   display: block;
@@ -411,7 +414,7 @@
 }
 
 .span-plane-fill {
-  fill: color-mix(in srgb, var(--accent) 12%, #fffdf7);
+  fill: color-mix(in srgb, var(--span-neutral-soft) 72%, #fffdf7);
 }
 
 .span-plane-pattern {
@@ -419,35 +422,35 @@
 }
 
 .span-plane-hatch {
-  stroke: color-mix(in srgb, var(--accent-strong) 38%, transparent);
+  stroke: color-mix(in srgb, var(--span-neutral) 38%, transparent);
   stroke-width: 5;
 }
 
 .span-line {
-  stroke: color-mix(in srgb, var(--accent-strong) 76%, #3d355f);
+  stroke: var(--span-neutral-strong);
   stroke-width: 14;
   stroke-linecap: round;
   stroke-dasharray: 24 12;
-  opacity: 0.72;
+  opacity: 0.64;
 }
 
 .span-origin circle {
-  fill: color-mix(in srgb, var(--accent) 22%, #fffdf7);
-  stroke: var(--accent-strong);
+  fill: color-mix(in srgb, var(--span-neutral-soft) 75%, #fffdf7);
+  stroke: var(--span-neutral-strong);
   stroke-width: 4;
   stroke-dasharray: 6 4;
 }
 
 .span-origin path {
   fill: none;
-  stroke: var(--accent-strong);
+  stroke: var(--span-neutral-strong);
   stroke-width: 3;
   stroke-linecap: round;
 }
 
 .span-geometry-label rect {
-  fill: color-mix(in srgb, #fffdf7 92%, var(--accent));
-  stroke: color-mix(in srgb, var(--accent) 45%, var(--line));
+  fill: color-mix(in srgb, #fffdf7 94%, var(--span-neutral-soft));
+  stroke: color-mix(in srgb, var(--span-neutral) 45%, var(--line));
 }
 
 .span-geometry-label {
@@ -455,7 +458,7 @@
 }
 
 .span-geometry-label text {
-  fill: #4d456d;
+  fill: #3f4a50;
   font-family: Inter, "Noto Sans JP", "Yu Gothic", sans-serif;
   font-size: 13px;
   font-weight: 800;
