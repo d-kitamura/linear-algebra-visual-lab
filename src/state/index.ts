@@ -1,3 +1,1 @@
-/** アプリの既定・初期・現在状態と更新処理を配置する。 */
-export {};
-
+export { DEFAULT_2D_SHARE_STATE } from './defaultState';
