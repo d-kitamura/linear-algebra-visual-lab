@@ -1,0 +1,47 @@
+:root {
+  font-family:
+    Inter, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  color: #1d2932;
+  background: #f4f1e9;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --ink: #1d2932;
+  --muted: #627078;
+  --paper: #fffdf7;
+  --line: rgba(29, 41, 50, 0.15);
+  --accent: #ef6a4b;
+  --accent-strong: #bd442c;
+  --accent-soft: #ffac92;
+  --display-font: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
+  --mono-font: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 14% 22%, rgba(239, 106, 75, 0.1), transparent 25%),
+    linear-gradient(135deg, #f9f6ee 0%, #f1eee5 100%);
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  color: var(--paper);
+  background: var(--accent-strong);
+}
+
