@@ -308,3 +308,49 @@ export function createArrowHeadPoints(
 export function pointsToSvg(points: readonly SvgPoint[]): string {
   return points.map(([x, y]) => `${x},${y}`).join(' ');
 }
+
+export function createLineSegmentThroughViewport(
+  direction: readonly [x: number, y: number],
+  viewport: PlaneViewport = DEFAULT_PLANE_VIEWPORT,
+): readonly [start: SvgPoint, end: SvgPoint] | null {
+  if (direction[0] === 0 && direction[1] === 0) {
+    return null;
+  }
+
+  let minimumParameter = Number.NEGATIVE_INFINITY;
+  let maximumParameter = Number.POSITIVE_INFINITY;
+
+  const axes = [
+    { component: direction[0], minimum: viewport.minX, maximum: viewport.maxX },
+    { component: direction[1], minimum: viewport.minY, maximum: viewport.maxY },
+  ];
+
+  for (const axis of axes) {
+    if (axis.component === 0) {
+      if (axis.minimum > 0 || axis.maximum < 0) {
+        return null;
+      }
+      continue;
+    }
+
+    const first = axis.minimum / axis.component;
+    const second = axis.maximum / axis.component;
+    minimumParameter = Math.max(minimumParameter, Math.min(first, second));
+    maximumParameter = Math.min(maximumParameter, Math.max(first, second));
+  }
+
+  if (minimumParameter > maximumParameter) {
+    return null;
+  }
+
+  return [
+    toSvgPoint([
+      minimumParameter * direction[0],
+      minimumParameter * direction[1],
+    ], viewport),
+    toSvgPoint([
+      maximumParameter * direction[0],
+      maximumParameter * direction[1],
+    ], viewport),
+  ];
+}

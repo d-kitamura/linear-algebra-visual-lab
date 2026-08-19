@@ -10,6 +10,7 @@ import {
   DEFAULT_PLANE_VIEWPORT,
   createAdaptiveTicks,
   createArrowHeadPoints,
+  createLineSegmentThroughViewport,
   formatTickValue,
   fromSvgPoint,
   panViewportBySvgDelta,
@@ -34,6 +35,9 @@ interface VectorPlane2DProps {
   ) => void;
   readonly onVectorDragEnd?: (vectorId: string) => void;
   readonly parallelSnapTargetId?: string | null;
+  readonly spanVectors?: readonly VectorValue[];
+  readonly spanDimension?: number;
+  readonly showSpan?: boolean;
 }
 
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
@@ -48,6 +52,9 @@ export function VectorPlane2D({
   onVectorChange,
   onVectorDragEnd,
   parallelSnapTargetId = null,
+  spanVectors = [],
+  spanDimension = 0,
+  showSpan = false,
 }: VectorPlane2DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportRef = useRef(viewport);
@@ -73,6 +80,26 @@ export function VectorPlane2D({
   const description = vectors
     .map((vector) => `${vector.name} は第1成分 ${vector.coordinates[0]}、第2成分 ${vector.coordinates[1]}`)
     .join('。');
+  const spanVectorIds = new Set(spanVectors.map((vector) => vector.id));
+  const spanDirection = spanVectors.find((vector) =>
+    vector.coordinates[0] !== 0 || vector.coordinates[1] !== 0,
+  )?.coordinates as readonly [number, number] | undefined;
+  const spanLine = showSpan && spanDimension === 1 && spanDirection
+    ? createLineSegmentThroughViewport(spanDirection, viewport)
+    : null;
+  const spanShapeLabel = spanDimension === 0
+    ? '原点'
+    : spanDimension === 1
+      ? '原点を通る直線'
+      : '2次元座標平面全体';
+  const spanGeometryLabel = `生成する空間：${spanShapeLabel}`;
+  const spanGeometryLabelWidth = Math.min(
+    plotRight - plotLeft - 24,
+    Math.max(160, Array.from(spanGeometryLabel).length * 14 + 28),
+  );
+  const spanDescription = showSpan
+    ? `選択した${spanVectors.length === 0 ? '空集合' : spanVectors.map((vector) => vector.name).join('、')}が生成する空間を、${spanShapeLabel}として表示しています。`
+    : '選択したベクトルが生成する空間の幾何表示はオフです。';
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -282,7 +309,7 @@ export function VectorPlane2D({
     >
       <title id="vector-plane-title">2次元数ベクトルの座標表示</title>
       <desc id="vector-plane-description">
-        {`原点から各列ベクトルの終点へ向かう矢印です。${description}。`}
+        {`原点から各列ベクトルの終点へ向かう矢印です。${description}。${spanDescription}`}
       </desc>
       <defs>
         <clipPath id="vector-plane-plot-clip">
@@ -294,6 +321,15 @@ export function VectorPlane2D({
             rx="8"
           />
         </clipPath>
+        <pattern
+          id="span-plane-pattern"
+          width="18"
+          height="18"
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(35)"
+        >
+          <line className="span-plane-hatch" x1="0" y1="0" x2="0" y2="18" />
+        </pattern>
       </defs>
 
       <rect
@@ -309,6 +345,48 @@ export function VectorPlane2D({
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
       />
+
+      {showSpan ? (
+        <g
+          className={`span-layer span-dimension-${spanDimension}`}
+          clipPath="url(#vector-plane-plot-clip)"
+          aria-hidden="true"
+        >
+          {spanDimension === 2 ? (
+            <>
+              <rect
+                className="span-plane-fill"
+                x={plotLeft}
+                y={plotTop}
+                width={plotRight - plotLeft}
+                height={plotBottom - plotTop}
+              />
+              <rect
+                className="span-plane-pattern"
+                x={plotLeft}
+                y={plotTop}
+                width={plotRight - plotLeft}
+                height={plotBottom - plotTop}
+              />
+            </>
+          ) : null}
+          {spanLine ? (
+            <line
+              className="span-line"
+              x1={spanLine[0][0]}
+              y1={spanLine[0][1]}
+              x2={spanLine[1][0]}
+              y2={spanLine[1][1]}
+            />
+          ) : null}
+          {spanDimension === 0 ? (
+            <g className="span-origin" transform={`translate(${origin[0]} ${origin[1]})`}>
+              <circle r="15" />
+              <path d="M -11 0 H 11 M 0 -11 V 11" />
+            </g>
+          ) : null}
+        </g>
+      ) : null}
 
       <g className="grid-lines" aria-hidden="true">
         {xScale.values.map((tick) => {
@@ -360,7 +438,21 @@ export function VectorPlane2D({
         ) : null}
       </g>
 
-      <g className="vector-arrows" clipPath="url(#vector-plane-plot-clip)">
+      {showSpan ? (
+        <g
+          className="span-geometry-label"
+          transform={`translate(${plotLeft + 12} ${plotTop + 12})`}
+          aria-hidden="true"
+        >
+          <rect width={spanGeometryLabelWidth} height="32" rx="8" />
+          <text x="14" y="21">{spanGeometryLabel}</text>
+        </g>
+      ) : null}
+
+      <g
+        className={`vector-arrows ${showSpan ? 'is-showing-span' : ''}`}
+        clipPath="url(#vector-plane-plot-clip)"
+      >
         {vectors.map((vector, index) => {
           const coordinates = vector.coordinates as readonly [number, number];
           const end = toSvgPoint(coordinates, viewport);
@@ -373,7 +465,7 @@ export function VectorPlane2D({
           return (
             <g
               key={vector.id}
-              className={`vector-arrow ${parallelSnapTargetId === vector.id ? 'is-snap-target' : ''}`}
+              className={`vector-arrow ${parallelSnapTargetId === vector.id ? 'is-snap-target' : ''} ${spanVectorIds.has(vector.id) ? 'is-span-selected' : ''}`}
             >
               <title>{`${vector.name} は第1成分 ${coordinates[0]}、第2成分 ${coordinates[1]} の列ベクトル`}</title>
               <line

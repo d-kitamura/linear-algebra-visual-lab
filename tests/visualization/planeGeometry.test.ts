@@ -3,6 +3,7 @@ import {
   DEFAULT_PLANE_VIEWPORT,
   createAdaptiveTicks,
   createAutoFitViewport,
+  createLineSegmentThroughViewport,
   createArrowHeadPoints,
   createIntegerTicks,
   formatTickValue,
@@ -132,6 +133,27 @@ describe('2D plane geometry', () => {
     const point = toSvgPoint([1.234, -2.346]);
 
     expect(vectorCoordinatesFromSvgPoint(point)).toEqual([1.23, -2.35]);
+  });
+
+  it('clips an origin line to the visible viewport', () => {
+    expect(createLineSegmentThroughViewport([1, 1])).toEqual([
+      [52, 588],
+      [588, 52],
+    ]);
+    expect(createLineSegmentThroughViewport([1, 0])).toEqual([
+      [52, 320],
+      [588, 320],
+    ]);
+  });
+
+  it('omits an origin line when a panned viewport does not intersect it', () => {
+    const panned = {
+      ...DEFAULT_PLANE_VIEWPORT,
+      minY: 1,
+      maxY: 11,
+    };
+
+    expect(createLineSegmentThroughViewport([1, 0], panned)).toBeNull();
   });
 
   it('creates a triangular arrow head and serializes its points', () => {

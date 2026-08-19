@@ -6,6 +6,7 @@ export {
   MIN_VIEWPORT_HALF_RANGE,
   createAdaptiveTicks,
   createAutoFitViewport,
+  createLineSegmentThroughViewport,
   createArrowHeadPoints,
   createIntegerTicks,
   formatTickValue,

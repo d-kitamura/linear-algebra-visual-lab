@@ -9,7 +9,7 @@ const initialState: ShareStateV1 = {
     { id: 'v2', name: 'v₂', coordinates: [-3, 2] },
   ],
   spanSelection: ['v1', 'v2'],
-  visualization: { showSpan: false },
+  visualization: { showSpan: true },
 };
 
 export const DEFAULT_2D_SHARE_STATE = validateShareState(initialState);

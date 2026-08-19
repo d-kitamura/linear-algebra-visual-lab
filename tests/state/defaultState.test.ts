@@ -20,5 +20,7 @@ describe('DEFAULT_2D_SHARE_STATE', () => {
       spanDimension: 2,
       isLinearlyIndependent: true,
     });
+    expect(DEFAULT_2D_SHARE_STATE.spanSelection).toEqual(['v1', 'v2']);
+    expect(DEFAULT_2D_SHARE_STATE.visualization.showSpan).toBe(true);
   });
 });

@@ -100,7 +100,8 @@
 
 .plot-card,
 .vector-list-card,
-.vector-editor-card {
+.vector-editor-card,
+.span-card {
   border: 1px solid var(--line);
   border-radius: 24px;
   background: color-mix(in srgb, var(--paper) 90%, transparent);
@@ -178,6 +179,7 @@
 .card-heading h2,
 .vector-list-card h2,
 .vector-editor-card h2,
+.span-card h2,
 .result-card h2 {
   margin: 0;
   font-family: var(--display-font);
@@ -209,6 +211,7 @@
 .grid-lines,
 .coordinate-axes,
 .tick-labels,
+.span-layer,
 .vector-arrows,
 .origin-point {
   pointer-events: none;
@@ -256,6 +259,57 @@
   fill: #303942;
 }
 
+.span-plane-fill {
+  fill: color-mix(in srgb, var(--accent) 12%, #fffdf7);
+}
+
+.span-plane-pattern {
+  fill: url(#span-plane-pattern);
+}
+
+.span-plane-hatch {
+  stroke: color-mix(in srgb, var(--accent-strong) 38%, transparent);
+  stroke-width: 5;
+}
+
+.span-line {
+  stroke: color-mix(in srgb, var(--accent-strong) 76%, #3d355f);
+  stroke-width: 14;
+  stroke-linecap: round;
+  stroke-dasharray: 24 12;
+  opacity: 0.72;
+}
+
+.span-origin circle {
+  fill: color-mix(in srgb, var(--accent) 22%, #fffdf7);
+  stroke: var(--accent-strong);
+  stroke-width: 4;
+  stroke-dasharray: 6 4;
+}
+
+.span-origin path {
+  fill: none;
+  stroke: var(--accent-strong);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.span-geometry-label rect {
+  fill: color-mix(in srgb, #fffdf7 92%, var(--accent));
+  stroke: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+.span-geometry-label {
+  pointer-events: none;
+}
+
+.span-geometry-label text {
+  fill: #4d456d;
+  font-family: Inter, "Noto Sans JP", "Yu Gothic", sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .vector-arrow line {
   stroke-width: 7;
   stroke-linecap: round;
@@ -291,6 +345,14 @@
 .vector-arrow.is-snap-target line {
   stroke-width: 10;
   stroke-dasharray: 18 8;
+}
+
+.vector-arrows.is-showing-span .vector-arrow {
+  transition: opacity 140ms ease;
+}
+
+.vector-arrows.is-showing-span .vector-arrow:not(.is-span-selected) {
+  opacity: 0.38;
 }
 
 @media (hover: hover) {
@@ -441,6 +503,34 @@
   padding-bottom: 0;
 }
 
+.span-selection-control {
+  grid-column: 2 / -1;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.span-selection-control input,
+.span-visibility-control input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent-strong);
+  cursor: pointer;
+}
+
+.span-selection-control:focus-within,
+.span-visibility-control:focus-within {
+  outline: 3px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
 .math-symbol,
 .math-operator,
 .math-equals,
@@ -571,6 +661,132 @@
 .coordinate-feedback.has-error {
   color: #9b2f2f;
   font-weight: 700;
+}
+
+.span-card {
+  padding: 24px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--accent) 9%, var(--paper)), var(--paper));
+}
+
+.span-card-heading {
+  display: grid;
+  gap: 16px;
+}
+
+.span-card h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+
+.span-visibility-control {
+  min-height: 44px;
+  padding: 8px 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 10px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  font-size: 0.75rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.span-set-definition,
+.span-matrix-definition {
+  margin: 16px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--ink);
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 1.08rem;
+}
+
+.span-matrix-definition {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.math-set-name {
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.span-shape-result {
+  margin-top: 18px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 8%, #fffdf8);
+}
+
+.span-shape-symbol {
+  min-width: 42px;
+  color: var(--accent-strong);
+  font-family: "Cambria Math", "STIX Two Math", serif;
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.span-shape-result strong {
+  display: block;
+  font-family: var(--display-font);
+  font-size: 1.03rem;
+}
+
+.span-shape-result p,
+.span-relation {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.65;
+}
+
+.span-relation {
+  margin-top: 14px;
+}
+
+.span-metric-grid {
+  margin: 16px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.span-metric-grid div {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.span-metric-grid dt {
+  color: var(--muted);
+  font-size: 0.64rem;
+  overflow-wrap: anywhere;
+}
+
+.span-metric-grid dd {
+  margin: 5px 0 0;
+  color: var(--ink);
+  font-family: var(--mono-font);
+  font-size: 1.18rem;
+  font-weight: 800;
 }
 
 .matrix-definition {

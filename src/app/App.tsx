@@ -5,7 +5,9 @@ import {
   DEFAULT_2D_SHARE_STATE,
   parallelSnapDistanceForViewWidth,
   parseCoordinateInput,
+  selectSpanVectors,
   snapDraggedVectorToParallel,
+  updateSpanSelection,
 } from '../state';
 import { splitVectorName } from '../ui';
 import {
@@ -36,10 +38,19 @@ export function App() {
     () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
     [state],
   );
+  const spanVectors = useMemo(
+    () => selectSpanVectors(state.vectors, state.spanSelection),
+    [state.vectors, state.spanSelection],
+  );
+  const spanAnalysis = useMemo(
+    () => analyzeVectorSet({ dimension: state.dim, vectors: spanVectors }),
+    [state.dim, spanVectors],
+  );
   const autoViewport = useMemo(() => createAutoFitViewport(state.vectors), [state.vectors]);
   const selectedViewport = viewMode === 'auto' ? autoViewport : (manualViewport ?? autoViewport);
   const viewport = dragViewport ?? selectedViewport;
   const isIndependent = analysis.isLinearlyIndependent;
+  const spanShape = describeSpanShape(spanAnalysis.rank);
   const viewportLabel = viewMode === 'auto'
     ? `自動表示 ±${formatViewportNumber((viewport.maxX - viewport.minX) / 2)}`
     : `手動表示・幅 ${formatViewportNumber(viewport.maxX - viewport.minX)}`;
@@ -97,6 +108,25 @@ export function App() {
   function handleVectorDragEnd(): void {
     setDragViewport(null);
     setParallelSnapTargetId(null);
+  }
+
+  function handleSpanSelection(vectorId: string, selected: boolean): void {
+    setState((current) => ({
+      ...current,
+      spanSelection: updateSpanSelection(
+        current.vectors,
+        current.spanSelection,
+        vectorId,
+        selected,
+      ),
+    }));
+  }
+
+  function handleShowSpan(showSpan: boolean): void {
+    setState((current) => ({
+      ...current,
+      visualization: { ...current.visualization, showSpan },
+    }));
   }
 
   function handleCoordinateChange(
@@ -157,7 +187,7 @@ export function App() {
           </div>
           <p>
             列ベクトルの成分を編集すると、座標平面と数学的な判定が連動します。
-            表示範囲は自動調整に加え、ホイール、ピンチ、背景ドラッグでも変更できます。
+            ベクトルを選ぶと、その集合が生成する空間を原点、直線、座標平面として比較できます。
           </p>
         </section>
 
@@ -209,6 +239,9 @@ export function App() {
               onVectorChange={handleVectorDrag}
               onVectorDragEnd={handleVectorDragEnd}
               parallelSnapTargetId={parallelSnapTargetId}
+              spanVectors={spanVectors}
+              spanDimension={spanAnalysis.rank}
+              showSpan={state.visualization.showSpan}
             />
             <p className="viewport-help">
               矢印先端の丸をドラッグするとベクトルを変更できます。ほかのベクトルとほぼ平行になると吸着します。
@@ -268,6 +301,19 @@ export function App() {
                           );
                         })}
                       </div>
+                      <label className="span-selection-control">
+                        <input
+                          type="checkbox"
+                          checked={state.spanSelection.includes(vector.id)}
+                          aria-label={`${vector.name} を生成する空間の対象に含める`}
+                          onChange={(event) =>
+                            handleSpanSelection(vector.id, event.target.checked)
+                          }
+                        />
+                        <span>
+                          <MathOperator name="span" /> の対象に含める
+                        </span>
+                      </label>
                       <p
                         className={`coordinate-feedback ${firstError ? 'has-error' : ''}`}
                         id={errorId}
@@ -283,11 +329,68 @@ export function App() {
               </div>
             </section>
 
+            <section className={`span-card is-rank-${spanAnalysis.rank}`} aria-labelledby="span-card-title">
+              <div className="span-card-heading">
+                <div>
+                  <p className="panel-kicker">Selected span</p>
+                  <h2 id="span-card-title">選択したベクトルが生成する空間</h2>
+                </div>
+                <label className="span-visibility-control">
+                  <input
+                    type="checkbox"
+                    checked={state.visualization.showSpan}
+                    onChange={(event) => handleShowSpan(event.target.checked)}
+                  />
+                  <span>座標平面に表示</span>
+                </label>
+              </div>
+
+              <VectorSetDefinition vectors={spanVectors} />
+              <SelectedMatrixDefinition vectors={spanVectors} />
+
+              <div className="span-shape-result">
+                <span className="span-shape-symbol" aria-hidden="true">
+                  {spanAnalysis.rank === 0 ? '⊙' : spanAnalysis.rank === 1 ? '━' : '▧'}
+                </span>
+                <div>
+                  <strong>{spanShape.heading}</strong>
+                  <p>{spanShape.explanation}</p>
+                </div>
+              </div>
+
+              <p className="span-relation">
+                {spanVectors.length === 0
+                  ? '空集合は一次独立で、生成する空間は零部分空間です。'
+                  : spanAnalysis.isLinearlyIndependent
+                    ? '選択したベクトルは一次独立です。'
+                    : '選択したベクトルは一次従属です。'}
+              </p>
+
+              <dl className="span-metric-grid">
+                <div>
+                  <dt>選択数</dt>
+                  <dd>{spanAnalysis.vectorCount}</dd>
+                </div>
+                <div>
+                  <dt>
+                    <MathOperator name="rank" />(<MathMatrixName name="B" />)
+                  </dt>
+                  <dd>{spanAnalysis.rank}</dd>
+                </div>
+                <div>
+                  <dt>
+                    <MathOperator name="dim" />(<MathOperator name="span" />(<span className="math-set-name">X</span>))
+                  </dt>
+                  <dd>{spanAnalysis.spanDimension}</dd>
+                </div>
+              </dl>
+            </section>
+
             <section className={`result-card ${isIndependent ? 'is-independent' : 'is-dependent'}`}>
-              <p className="panel-kicker">Analysis</p>
+              <p className="panel-kicker">All vectors</p>
               <MatrixDefinition vectors={state.vectors} />
               <p className="result-symbol" aria-hidden="true">{isIndependent ? '∥' : '≈'}</p>
-              <h2>{isIndependent ? '一次独立です' : '一次従属です'}</h2>
+              <h2>{isIndependent ? '全ベクトルは一次独立です' : '全ベクトルは一次従属です'}</h2>
               <p className="result-explanation">
                 {isIndependent
                   ? 'どのベクトルも、他のベクトルの一次結合では表せません。'
@@ -327,7 +430,7 @@ export function App() {
             </section>
 
             <p className="development-note">
-              この段階では数値入力と先端ドラッグの同期を確認します。生成する空間の幾何表示は後続の作業単位で追加します。
+              選択した集合が生成する空間と、表示中の全ベクトルの一次独立・一次従属を分けて表示しています。
             </p>
           </aside>
         </div>
@@ -353,8 +456,8 @@ function MathVectorName({ name }: { readonly name: string }) {
   );
 }
 
-function MathMatrixName() {
-  return <span className="math-symbol math-matrix">A</span>;
+function MathMatrixName({ name = 'A' }: { readonly name?: string }) {
+  return <span className="math-symbol math-matrix">{name}</span>;
 }
 
 function MathOperator({ name }: { readonly name: string }) {
@@ -400,6 +503,76 @@ function MatrixDefinition({ vectors }: { readonly vectors: readonly VectorValue[
       </span>
     </div>
   );
+}
+
+function VectorSetDefinition({ vectors }: { readonly vectors: readonly VectorValue[] }) {
+  const names = vectors.map((vector) => vector.name).join('、');
+
+  return (
+    <p
+      className="span-set-definition"
+      aria-label={vectors.length === 0 ? '集合 X は空集合です。' : `集合 X は ${names} からなる集合です。`}
+    >
+      <span className="math-set-name" aria-hidden="true">X</span>
+      <span className="math-equals" aria-hidden="true">=</span>
+      <span aria-hidden="true">{vectors.length === 0 ? '∅' : '{'}</span>
+      {vectors.map((vector, index) => (
+        <span key={vector.id} aria-hidden="true">
+          {index > 0 ? ', ' : ''}
+          <MathVectorName name={vector.name} />
+        </span>
+      ))}
+      {vectors.length > 0 ? <span aria-hidden="true">&#125;</span> : null}
+    </p>
+  );
+}
+
+function SelectedMatrixDefinition({ vectors }: { readonly vectors: readonly VectorValue[] }) {
+  const names = vectors.map((vector) => vector.name).join('、');
+
+  return (
+    <p
+      className="span-matrix-definition"
+      aria-label={vectors.length === 0
+        ? '行列 B は列を持たない空行列です。'
+        : `行列 B は ${names} を列に並べた行列です。`}
+    >
+      <MathMatrixName name="B" />
+      <span className="math-equals" aria-hidden="true">=</span>
+      <span aria-hidden="true">[</span>
+      {vectors.map((vector, index) => (
+        <span key={vector.id} aria-hidden="true">
+          {index > 0 ? ' ' : ''}
+          <MathVectorName name={vector.name} />
+        </span>
+      ))}
+      <span aria-hidden="true">]</span>
+    </p>
+  );
+}
+
+function describeSpanShape(rank: number): {
+  readonly heading: string;
+  readonly explanation: string;
+} {
+  if (rank === 0) {
+    return {
+      heading: '原点だけです',
+      explanation: '生成する空間は、零ベクトルだけからなる零部分空間です。',
+    };
+  }
+
+  if (rank === 1) {
+    return {
+      heading: '原点を通る直線です',
+      explanation: '選択した非零ベクトルの実数倍が、この直線全体を作ります。',
+    };
+  }
+
+  return {
+    heading: '2次元座標平面全体です',
+    explanation: '2本の一次独立な方向によって、平面上のすべてのベクトルを作れます。',
+  };
 }
 
 function createCoordinateDrafts(vectors: readonly VectorValue[]): CoordinateDrafts {
