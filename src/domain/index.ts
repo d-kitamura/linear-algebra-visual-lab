@@ -1,3 +1,14 @@
-/** 描画に依存しないベクトル空間の数学ロジックを配置する。 */
-export {};
+export {
+  DEFAULT_RELATIVE_TOLERANCE,
+  InvalidVectorSetError,
+  analyzeVectorSet,
+} from './vectorSet';
 
+export type {
+  RankOptions,
+  VectorDimension,
+  VectorSet,
+  VectorSetAnalysis,
+  VectorSetValidationCode,
+  VectorValue,
+} from './vectorSet';
