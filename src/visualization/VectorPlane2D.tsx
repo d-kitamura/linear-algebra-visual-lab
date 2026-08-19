@@ -40,6 +40,7 @@ interface VectorPlane2DProps {
   readonly showSpan?: boolean;
   readonly linearCombinationVisible?: boolean;
   readonly target?: readonly [number, number] | null;
+  readonly linearCombinationCoefficients?: readonly [number, number] | null;
   readonly targetSnapKind?: 'origin' | 'span-line' | null;
   readonly onTargetPlacement?: (coordinates: readonly [number, number]) => void;
   readonly onTargetDragStart?: () => void;
@@ -65,6 +66,7 @@ export function VectorPlane2D({
   showSpan = false,
   linearCombinationVisible = false,
   target = null,
+  linearCombinationCoefficients = null,
   targetSnapKind = null,
   onTargetPlacement,
   onTargetDragStart,
@@ -122,7 +124,7 @@ export function VectorPlane2D({
     : '選択したベクトルが生成する空間の幾何表示はオフです。';
   const targetDescription = linearCombinationVisible
     ? target
-      ? `ターゲット x は第1成分 ${target[0]}、第2成分 ${target[1]} です。`
+      ? `ターゲット x は第1成分 ${target[0]}、第2成分 ${target[1]} です。${linearCombinationCoefficients && spanVectors.length === 2 ? '2項の一次結合を原点からの2辺とする平行四辺形も表示しています。' : ''}`
       : '一次結合を調べるモードです。ターゲット x はまだ配置されていません。'
     : '一次結合を調べるモードはオフです。';
 
@@ -571,6 +573,23 @@ export function VectorPlane2D({
         </g>
       ) : null}
 
+      {linearCombinationVisible
+      && target
+      && linearCombinationCoefficients
+      && spanVectors.length === 2 ? (
+        <CombinationParallelogram
+          vectors={[spanVectors[0], spanVectors[1]]}
+          coefficients={linearCombinationCoefficients}
+          target={target}
+          colors={[
+            colorForVector(spanVectors[0], vectors, colors),
+            colorForVector(spanVectors[1], vectors, colors),
+          ]}
+          viewport={viewport}
+          origin={origin}
+        />
+      ) : null}
+
       <g
         className={`vector-arrows ${showSpan ? 'is-showing-span' : ''}`}
         clipPath="url(#vector-plane-plot-clip)"
@@ -662,6 +681,133 @@ export function VectorPlane2D({
         aria-hidden="true"
       />
     </svg>
+  );
+}
+
+function colorForVector(
+  vector: VectorValue,
+  vectors: readonly VectorValue[],
+  colors: readonly string[],
+): string {
+  const vectorIndex = vectors.findIndex((candidate) => candidate.id === vector.id);
+  return colors[(vectorIndex >= 0 ? vectorIndex : 0) % colors.length];
+}
+
+function CombinationParallelogram({
+  vectors,
+  coefficients,
+  target,
+  colors,
+  viewport,
+  origin,
+}: {
+  readonly vectors: readonly [VectorValue, VectorValue];
+  readonly coefficients: readonly [number, number];
+  readonly target: readonly [number, number];
+  readonly colors: readonly [string, string];
+  readonly viewport: PlaneViewport;
+  readonly origin: SvgPoint;
+}) {
+  const scaledCoordinates: readonly [SvgPoint, SvgPoint] = [
+    [
+      vectors[0].coordinates[0] * coefficients[0],
+      vectors[0].coordinates[1] * coefficients[0],
+    ],
+    [
+      vectors[1].coordinates[0] * coefficients[1],
+      vectors[1].coordinates[1] * coefficients[1],
+    ],
+  ];
+
+  if (!scaledCoordinates.flat().every(Number.isFinite)) {
+    return null;
+  }
+
+  const scaledEnds: readonly [SvgPoint, SvgPoint] = [
+    toSvgPoint(scaledCoordinates[0], viewport),
+    toSvgPoint(scaledCoordinates[1], viewport),
+  ];
+  const targetEnd = toSvgPoint(target, viewport);
+  const arrowHeads = scaledEnds.map((end) => createArrowHeadPoints(origin, end));
+
+  return (
+    <g className="combination-parallelogram" clipPath="url(#vector-plane-plot-clip)" aria-hidden="true">
+      <line
+        className="parallelogram-opposite-edge"
+        x1={scaledEnds[0][0]}
+        y1={scaledEnds[0][1]}
+        x2={targetEnd[0]}
+        y2={targetEnd[1]}
+      />
+      <line
+        className="parallelogram-opposite-edge"
+        x1={scaledEnds[1][0]}
+        y1={scaledEnds[1][1]}
+        x2={targetEnd[0]}
+        y2={targetEnd[1]}
+      />
+      {scaledEnds.map((end, index) => (
+        <g className="scaled-combination-term" key={vectors[index].id}>
+          <line
+            x1={origin[0]}
+            y1={origin[1]}
+            x2={end[0]}
+            y2={end[1]}
+            stroke={colors[index]}
+          />
+          {arrowHeads[index] ? (
+            <polygon points={pointsToSvg(arrowHeads[index]!)} fill={colors[index]} />
+          ) : (
+            <circle cx={origin[0]} cy={origin[1]} r="7" stroke={colors[index]} />
+          )}
+          <CombinationTermLabel
+            coefficientIndex={index + 1}
+            vectorName={vectors[index].name}
+            coordinates={scaledCoordinates[index]}
+            end={end}
+            color={colors[index]}
+          />
+        </g>
+      ))}
+      <circle className="parallelogram-target-corner" cx={targetEnd[0]} cy={targetEnd[1]} r="7" />
+    </g>
+  );
+}
+
+function CombinationTermLabel({
+  coefficientIndex,
+  vectorName,
+  coordinates,
+  end,
+  color,
+}: {
+  readonly coefficientIndex: number;
+  readonly vectorName: string;
+  readonly coordinates: SvgPoint;
+  readonly end: SvgPoint;
+  readonly color: string;
+}) {
+  const nameParts = splitVectorName(vectorName);
+
+  return (
+    <text
+      className="combination-term-label"
+      x={end[0] + (coordinates[0] >= 0 ? 12 : -12)}
+      y={end[1] + 18}
+      fill={color}
+      textAnchor={coordinates[0] >= 0 ? 'start' : 'end'}
+    >
+      <tspan className="svg-scalar-base">c</tspan>
+      <tspan className="svg-scalar-subscript" baselineShift="sub" fontSize="65%">
+        {coefficientIndex}
+      </tspan>
+      <tspan className="svg-vector-base">{nameParts.base}</tspan>
+      {nameParts.subscript ? (
+        <tspan className="svg-vector-subscript" baselineShift="sub" fontSize="65%">
+          {nameParts.subscript}
+        </tspan>
+      ) : null}
+    </text>
   );
 }
 

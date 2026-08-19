@@ -6,7 +6,12 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
-import { analyzeVectorSet, type VectorValue } from '../domain';
+import {
+  analyzeLinearCombination,
+  analyzeVectorSet,
+  type LinearCombinationAnalysis,
+  type VectorValue,
+} from '../domain';
 import {
   MAX_ABSOLUTE_COORDINATE,
   MAX_SHARE_VECTORS,
@@ -27,7 +32,12 @@ import {
   removeVector as removeVectorFromState,
   type TargetSnapKind,
 } from '../state';
-import { formatVectorSpokenName, splitVectorName } from '../ui';
+import {
+  describeLinearCombinationStatus,
+  formatMathNumber,
+  formatVectorSpokenName,
+  splitVectorName,
+} from '../ui';
 import {
   VectorPlane2D,
   createAutoFitViewport,
@@ -51,6 +61,7 @@ const coordinateNames = ['第1成分', '第2成分'] as const;
 const inspectorTabs = [
   { id: 'edit', label: 'ベクトル編集', shortLabel: '編集' },
   { id: 'span', label: '生成する空間', shortLabel: 'span' },
+  { id: 'combination', label: '一次結合', shortLabel: '一次結合' },
   { id: 'all', label: '全ベクトル', shortLabel: '全体' },
 ] as const;
 
@@ -82,7 +93,9 @@ export function App() {
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
   const [targetSnapKind, setTargetSnapKind] = useState<TargetSnapKind>(null);
-  const [activeInspectorTab, setActiveInspectorTab] = useState<InspectorTabId>('edit');
+  const [activeInspectorTab, setActiveInspectorTab] = useState<InspectorTabId>(
+    initialState.linearCombination.visible ? 'combination' : 'edit',
+  );
   const [loadErrorMessage, setLoadErrorMessage] = useState(initialization.errorMessage);
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState('');
@@ -121,6 +134,29 @@ export function App() {
     () => toTwoDimensionalTarget(state.linearCombination.target),
     [state.linearCombination.target],
   );
+  const linearCombinationAnalysis = useMemo(
+    () => targetCoordinates
+      ? analyzeLinearCombination(
+          { dimension: state.dim, vectors: spanVectors },
+          targetCoordinates,
+        )
+      : null,
+    [state.dim, spanVectors, targetCoordinates],
+  );
+  const linearCombinationCoefficients = useMemo(() => {
+    if (
+      spanVectors.length !== 2
+      || !linearCombinationAnalysis?.particularSolution
+      || linearCombinationAnalysis.particularSolution.length !== 2
+    ) {
+      return null;
+    }
+
+    return [
+      linearCombinationAnalysis.particularSolution[0],
+      linearCombinationAnalysis.particularSolution[1],
+    ] as const;
+  }, [linearCombinationAnalysis, spanVectors.length]);
   const autoViewport = useMemo(
     () => createAutoFitViewport(state.linearCombination.visible && targetCoordinates
       ? [...state.vectors, { coordinates: targetCoordinates }]
@@ -135,6 +171,9 @@ export function App() {
     analysis.isLinearlyIndependent,
   );
   const spanShape = describeSpanShape(spanAnalysis.rank);
+  const availableInspectorTabs = state.linearCombination.visible
+    ? inspectorTabs
+    : inspectorTabs.filter((tab) => tab.id !== 'combination');
   const viewportLabel = viewMode === 'auto'
     ? `自動表示 ±${formatViewportNumber((viewport.maxX - viewport.minX) / 2)}`
     : `手動表示・幅 ${formatViewportNumber(viewport.maxX - viewport.minX)}`;
@@ -204,6 +243,9 @@ export function App() {
       },
     }));
     setTargetSnapKind(null);
+    setActiveInspectorTab((current) => (
+      nextVisible ? 'combination' : current === 'combination' ? 'span' : current
+    ));
     if (!nextVisible) {
       setTargetCoordinateDrafts(createTargetCoordinateDrafts(state.linearCombination.target));
     }
@@ -353,7 +395,7 @@ export function App() {
     setDragViewport(null);
     setParallelSnapTargetId(null);
     setTargetSnapKind(null);
-    setActiveInspectorTab('edit');
+    setActiveInspectorTab(initialState.linearCombination.visible ? 'combination' : 'edit');
     setExportErrorMessage(null);
     setShareUrl('');
     setShareFeedback(null);
@@ -444,23 +486,23 @@ export function App() {
   function handleInspectorTabKeyDown(
     event: ReactKeyboardEvent<HTMLButtonElement>,
   ): void {
-    const currentIndex = inspectorTabs.findIndex((tab) => tab.id === activeInspectorTab);
+    const currentIndex = availableInspectorTabs.findIndex((tab) => tab.id === activeInspectorTab);
     let nextIndex = currentIndex;
 
     if (event.key === 'ArrowRight') {
-      nextIndex = (currentIndex + 1) % inspectorTabs.length;
+      nextIndex = (currentIndex + 1) % availableInspectorTabs.length;
     } else if (event.key === 'ArrowLeft') {
-      nextIndex = (currentIndex - 1 + inspectorTabs.length) % inspectorTabs.length;
+      nextIndex = (currentIndex - 1 + availableInspectorTabs.length) % availableInspectorTabs.length;
     } else if (event.key === 'Home') {
       nextIndex = 0;
     } else if (event.key === 'End') {
-      nextIndex = inspectorTabs.length - 1;
+      nextIndex = availableInspectorTabs.length - 1;
     } else {
       return;
     }
 
     event.preventDefault();
-    const nextTab = inspectorTabs[nextIndex];
+    const nextTab = availableInspectorTabs[nextIndex];
     setActiveInspectorTab(nextTab.id);
     document.getElementById(`inspector-tab-${nextTab.id}`)?.focus();
   }
@@ -664,6 +706,7 @@ export function App() {
               showSpan={state.visualization.showSpan}
               linearCombinationVisible={state.linearCombination.visible}
               target={targetCoordinates}
+              linearCombinationCoefficients={linearCombinationCoefficients}
               targetSnapKind={targetSnapKind}
               onTargetPlacement={handleTargetPlacement}
               onTargetDragStart={handleTargetDragStart}
@@ -708,7 +751,7 @@ export function App() {
             </section>
 
             <div className="inspector-tablist" role="tablist" aria-label="編集・解析の詳細">
-              {inspectorTabs.map((tab) => (
+              {availableInspectorTabs.map((tab) => (
                 <button
                   key={tab.id}
                   id={`inspector-tab-${tab.id}`}
@@ -927,6 +970,14 @@ export function App() {
               </dl>
             </section>
 
+            <LinearCombinationExplorer
+              visible={state.linearCombination.visible}
+              active={activeInspectorTab === 'combination'}
+              target={targetCoordinates}
+              vectors={spanVectors}
+              analysis={linearCombinationAnalysis}
+            />
+
             <section
               className={`result-card inspector-panel ${isIndependent ? 'is-independent' : 'is-dependent'}`}
               id="inspector-panel-all"
@@ -1058,7 +1109,7 @@ function TargetEditor({
         <h3 id="target-editor-title">ターゲット <MathVectorName name="x" /></h3>
         <p>
           座標面をクリックまたはタップして配置するか、成分を入力してください。
-          選択集合 <span className="math-set-name">X</span> が生成する空間への所属を次の段階で調べます。
+          選択集合 <span className="math-set-name">X</span> の一次結合で表せるかを右側の「一次結合」タブに表示します。
         </p>
       </div>
       <div className="target-editor-controls">
@@ -1118,6 +1169,280 @@ function TargetEditor({
             : 'ターゲットは未配置です。この状態も共有できます。'}
       </p>
     </section>
+  );
+}
+
+function LinearCombinationExplorer({
+  visible,
+  active,
+  target,
+  vectors,
+  analysis,
+}: {
+  readonly visible: boolean;
+  readonly active: boolean;
+  readonly target: readonly [number, number] | null;
+  readonly vectors: readonly VectorValue[];
+  readonly analysis: LinearCombinationAnalysis | null;
+}) {
+  const statusPresentation = analysis ? describeLinearCombinationStatus(analysis.status) : null;
+  const showsGeneralTargetFormula = Boolean(
+    analysis && vectors.length === 2 && analysis.rank === 2,
+  );
+
+  return (
+    <section
+      className={`linear-combination-card inspector-panel ${analysis ? `is-${analysis.status}` : 'is-empty'}`}
+      id="inspector-panel-combination"
+      role="tabpanel"
+      aria-labelledby="inspector-tab-combination linear-combination-title"
+      hidden={!visible || !active}
+    >
+      <p className="panel-kicker">Linear combination explorer</p>
+      <h2 id="linear-combination-title">一次結合でターゲットを表す</h2>
+      <p className="linear-combination-system" aria-label="行列 B、係数ベクトル c、ターゲット x による方程式 B c イコール x">
+        <MathMatrixName name="B" />
+        <MathVectorName name="c" />
+        <span className="math-equals" aria-hidden="true">=</span>
+        <MathVectorName name="x" />
+      </p>
+
+      {!target || !analysis || !statusPresentation ? (
+        <div className="linear-combination-empty">
+          <span aria-hidden="true">◇</span>
+          <div>
+            <strong>ターゲットを配置してください</strong>
+            <p>座標面をクリック・タップするか、2つの成分を入力すると結果を表示します。</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="linear-combination-result">
+            <span className="linear-combination-status-symbol" aria-hidden="true">
+              {statusPresentation.symbol}
+            </span>
+            <div>
+              <span className="linear-combination-status-term">{statusPresentation.term}</span>
+              <strong>{statusPresentation.heading}</strong>
+              <p>{statusPresentation.explanation}</p>
+            </div>
+          </div>
+
+          <div className="linear-combination-ranks" aria-label="係数行列と拡大係数行列のランク">
+            <span>
+              <MathOperator name="rank" />(<MathMatrixName name="B" />)
+              {' = '}{analysis.rank}
+            </span>
+            <span>
+              <MathOperator name="rank" />([<MathMatrixName name="B" /> | <MathVectorName name="x" />])
+              {' = '}{analysis.augmentedRank}
+            </span>
+          </div>
+
+          {analysis.status === 'none' ? (
+            <p className="linear-combination-obstruction">
+              2つのrankが異なるため連立一次方程式は不能です。
+              <MathVectorName name="x" /> は選択集合が生成する空間に含まれません。
+            </p>
+          ) : (
+            <div className="linear-combination-solutions">
+              <SolutionExample
+                heading={analysis.status === 'unique' ? '唯一解' : '係数の一例'}
+                coefficients={analysis.exampleSolutions[0] ?? analysis.particularSolution ?? []}
+                vectors={vectors}
+              />
+
+              {analysis.status === 'infinite' ? (
+                <details className="linear-combination-details">
+                  <summary>第2例と一般解を表示</summary>
+                  <div className="linear-combination-detail-content">
+                    {analysis.exampleSolutions[1] ? (
+                      <SolutionExample
+                        heading="異なる係数の第2例"
+                        coefficients={analysis.exampleSolutions[1]}
+                        vectors={vectors}
+                      />
+                    ) : null}
+                    <GeneralSolution analysis={analysis} />
+                  </div>
+                </details>
+              ) : null}
+
+              {vectors.length === 2 ? (
+                <p className="parallelogram-note">
+                  座標面では <CoefficientName index={1} /><MathVectorName name={vectors[0].name} /> と
+                  {' '}<CoefficientName index={2} /><MathVectorName name={vectors[1].name} /> を原点からの2辺とする
+                  {analysis.rank === 2 ? '平行四辺形' : '退化した平行四辺形'}を重ねています。
+                </p>
+              ) : null}
+            </div>
+          )}
+
+          {showsGeneralTargetFormula ? (
+            <GeneralTargetFormula vectors={vectors as readonly [VectorValue, VectorValue]} />
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
+function SolutionExample({
+  heading,
+  coefficients,
+  vectors,
+}: {
+  readonly heading: string;
+  readonly coefficients: readonly number[];
+  readonly vectors: readonly VectorValue[];
+}) {
+  const formatted = coefficients.map((coefficient) => formatMathNumber(coefficient));
+  const isApproximate = formatted.some((coefficient) => coefficient.approximate);
+
+  return (
+    <section className="solution-example">
+      <h3>{heading}</h3>
+      <div className="coefficient-vector-equation">
+        <MathVectorName name="c" />
+        <span aria-hidden="true">{isApproximate ? '≈' : '='}</span>
+        <MathColumnVector values={formatted.map((coefficient) => coefficient.text)} />
+      </div>
+      <p className="expanded-linear-combination">
+        <MathVectorName name="x" />
+        <span aria-hidden="true">{isApproximate ? '≈' : '='}</span>
+        {vectors.length === 0 ? (
+          <MathVectorName name="0" />
+        ) : vectors.map((vector, index) => (
+          <span className="linear-combination-term" key={vector.id}>
+            {index > 0 ? <span className="term-plus"> + </span> : null}
+            <span>({formatted[index]?.text ?? '0'})</span>
+            <MathVectorName name={vector.name} />
+          </span>
+        ))}
+      </p>
+      {vectors.length === 0 ? (
+        <p className="empty-sum-note">空和は零ベクトルです。係数を必要としない表し方だけが存在します。</p>
+      ) : null}
+    </section>
+  );
+}
+
+function GeneralSolution({ analysis }: { readonly analysis: LinearCombinationAnalysis }) {
+  const particular = (analysis.particularSolution ?? []).map((value) => formatMathNumber(value));
+  const basis = analysis.nullspaceBasis.map((direction) =>
+    direction.map((value) => formatMathNumber(value)),
+  );
+  const isApproximate = [
+    ...particular,
+    ...basis.flat(),
+  ].some((value) => value.approximate);
+
+  return (
+    <section className="general-solution">
+      <h3>自由係数を使った一般解</h3>
+      <p>
+        自由係数は{analysis.freeParameterCount}個です。任意の実数
+        {analysis.freeParameterCount === 1 ? 'を動かすと、すべての表し方が得られます。' : 'の組を動かすと、すべての表し方が得られます。'}
+      </p>
+      <div className="general-solution-equation">
+        <MathVectorName name="c" />
+        <span aria-hidden="true">{isApproximate ? '≈' : '='}</span>
+        <MathColumnVector values={particular.map((value) => value.text)} />
+        {basis.map((direction, index) => (
+          <span className="nullspace-term" key={`nullspace-${index}`}>
+            <span aria-hidden="true">+</span>
+            <CoefficientName base="t" index={index + 1} />
+            <MathColumnVector values={direction.map((value) => value.text)} />
+          </span>
+        ))}
+      </div>
+      <p className="parameter-domain">
+        {basis.map((_, index) => (
+          <span key={`parameter-${index}`}>
+            {index > 0 ? ', ' : ''}<CoefficientName base="t" index={index + 1} /> ∈ ℝ
+          </span>
+        ))}
+      </p>
+    </section>
+  );
+}
+
+function GeneralTargetFormula({
+  vectors,
+}: {
+  readonly vectors: readonly [VectorValue, VectorValue];
+}) {
+  const [first, second] = vectors;
+  const [p, q] = first.coordinates;
+  const [r, s] = second.coordinates;
+  const determinant = p * s - r * q;
+  const displayedValues = [s, -r, -q, p, determinant].map((value) => formatMathNumber(value));
+  const isApproximate = displayedValues.some((value) => value.approximate);
+
+  return (
+    <details className="general-target-formula">
+      <summary>一般の [a; b] に対する係数公式</summary>
+      <div className="general-target-content">
+        <p>
+          <MathVectorName name="x" /> = [a; b] とすると、<MathMatrixName name="B" /> の行列式は
+          {' '}<span className="math-scalar">det</span>(<MathMatrixName name="B" />)
+          {displayedValues[4].approximate ? ' ≈ ' : ' = '}{displayedValues[4].text} ≠ 0 です。
+          したがって係数は常に一意に定まります。
+        </p>
+        <div className="general-target-equation">
+          <MathVectorName name="c" />
+          <span aria-hidden="true">{isApproximate ? '≈' : '='}</span>
+          <span className="inverse-factor">1 / {displayedValues[4].text}</span>
+          <MathGridMatrix
+            rows={[
+              [displayedValues[0].text, displayedValues[1].text],
+              [displayedValues[2].text, displayedValues[3].text],
+            ]}
+          />
+          <MathColumnVector values={['a', 'b']} />
+        </div>
+        {isApproximate ? (
+          <p className="approximation-note">座標の表示を有効数字6桁に丸めているため、式には近似記号を使っています。</p>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
+function MathColumnVector({ values }: { readonly values: readonly string[] }) {
+  return (
+    <span className="display-column-vector" aria-label={`列ベクトル ${values.join('、')}`}>
+      {values.map((value, index) => (
+        <span key={`${value}-${index}`}>{value}</span>
+      ))}
+    </span>
+  );
+}
+
+function MathGridMatrix({ rows }: { readonly rows: readonly (readonly string[])[] }) {
+  return (
+    <span className="display-grid-matrix" aria-label={`行列 ${rows.flat().join('、')}`}>
+      {rows.flatMap((row, rowIndex) =>
+        row.map((value, columnIndex) => (
+          <span key={`${rowIndex}-${columnIndex}`}>{value}</span>
+        )),
+      )}
+    </span>
+  );
+}
+
+function CoefficientName({
+  base = 'c',
+  index,
+}: {
+  readonly base?: string;
+  readonly index: number;
+}) {
+  return (
+    <span className="math-scalar">
+      <span className="math-scalar-base">{base}</span>
+      <sub>{index}</sub>
+    </span>
   );
 }
 
