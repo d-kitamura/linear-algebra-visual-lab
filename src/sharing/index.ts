@@ -17,3 +17,17 @@ export type {
   ShareStateV1,
   SharedVisualizationState,
 } from './shareState';
+
+export {
+  SHARE_STATE_QUERY_PARAMETER,
+  buildShareUrl,
+  createShareTextFileContents,
+  createShareTextFileName,
+  readShareStateFromUrl,
+} from './shareUrl';
+
+export type {
+  ShareUrlError,
+  ShareUrlErrorCode,
+  ShareUrlReadResult,
+} from './shareUrl';

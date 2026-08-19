@@ -1,13 +1,21 @@
 import {
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { analyzeVectorSet, type VectorValue } from '../domain';
-import { MAX_ABSOLUTE_COORDINATE, type ShareStateV1 } from '../sharing';
 import {
-  DEFAULT_2D_SHARE_STATE,
+  MAX_ABSOLUTE_COORDINATE,
+  buildShareUrl,
+  createShareTextFileContents,
+  createShareTextFileName,
+  type ShareStateV1,
+} from '../sharing';
+import {
+  createAppInitialization,
   parallelSnapDistanceForViewWidth,
   parseCoordinateInput,
   selectSpanVectors,
@@ -35,17 +43,35 @@ const inspectorTabs = [
 type CoordinateDrafts = Readonly<Record<string, readonly string[]>>;
 type ViewMode = 'auto' | 'manual';
 type InspectorTabId = typeof inspectorTabs[number]['id'];
+type ShareFeedback = {
+  readonly kind: 'success' | 'error';
+  readonly message: string;
+} | null;
 
 export function App() {
-  const [state, setState] = useState<ShareStateV1>(() => DEFAULT_2D_SHARE_STATE);
+  const [initialization] = useState(() => createAppInitialization(window.location.href));
+  const initialState = initialization.initialState;
+  const [state, setState] = useState<ShareStateV1>(initialState);
   const [coordinateDrafts, setCoordinateDrafts] = useState<CoordinateDrafts>(() =>
-    createCoordinateDrafts(DEFAULT_2D_SHARE_STATE.vectors),
+    createCoordinateDrafts(initialState.vectors),
   );
   const [viewMode, setViewMode] = useState<ViewMode>('auto');
   const [manualViewport, setManualViewport] = useState<PlaneViewport | null>(null);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
   const [activeInspectorTab, setActiveInspectorTab] = useState<InspectorTabId>('edit');
+  const [loadErrorMessage, setLoadErrorMessage] = useState(initialization.errorMessage);
+  const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareFeedback, setShareFeedback] = useState<ShareFeedback>(null);
+  const shareDialogRef = useRef<HTMLDialogElement>(null);
+  const shareUrlFieldRef = useRef<HTMLTextAreaElement>(null);
+  const hasInvalidCoordinateDraft = useMemo(
+    () => Object.values(coordinateDrafts).some((drafts) =>
+      drafts.some((draft) => !parseCoordinateInput(draft).ok),
+    ),
+    [coordinateDrafts],
+  );
   const analysis = useMemo(
     () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
     [state],
@@ -141,6 +167,84 @@ export function App() {
     }));
   }
 
+  function handleReset(): void {
+    setState(initialState);
+    setCoordinateDrafts(createCoordinateDrafts(initialState.vectors));
+    setViewMode('auto');
+    setManualViewport(null);
+    setDragViewport(null);
+    setParallelSnapTargetId(null);
+    setActiveInspectorTab('edit');
+    setExportErrorMessage(null);
+    setShareFeedback(null);
+    shareDialogRef.current?.close();
+  }
+
+  function handleOpenShareDialog(): void {
+    if (hasInvalidCoordinateDraft) {
+      return;
+    }
+
+    try {
+      const nextShareUrl = buildShareUrl(window.location.href, state);
+      setShareUrl(nextShareUrl);
+      setShareFeedback(null);
+      setExportErrorMessage(null);
+      shareDialogRef.current?.showModal();
+      window.requestAnimationFrame(() => {
+        shareUrlFieldRef.current?.focus();
+        shareUrlFieldRef.current?.select();
+      });
+    } catch {
+      setExportErrorMessage('共有URLを生成できませんでした。入力内容を確認して、もう一度お試しください。');
+    }
+  }
+
+  async function handleCopyShareUrl(): Promise<void> {
+    try {
+      if (!navigator.clipboard) {
+        throw new Error('Clipboard API is unavailable.');
+      }
+      await navigator.clipboard.writeText(shareUrl);
+      setShareFeedback({ kind: 'success', message: 'クリップボードにコピーしました。' });
+    } catch {
+      shareUrlFieldRef.current?.focus();
+      shareUrlFieldRef.current?.select();
+      setShareFeedback({
+        kind: 'error',
+        message: '自動でコピーできませんでした。選択されたURLを手動でコピーしてください。',
+      });
+    }
+  }
+
+  function handleDownloadShareUrl(): void {
+    const blob = new Blob([createShareTextFileContents(shareUrl)], {
+      type: 'text/plain;charset=utf-8',
+    });
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = createShareTextFileName();
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+    setShareFeedback({
+      kind: 'success',
+      message: 'URLを記載したテキストファイルのダウンロードを開始しました。',
+    });
+  }
+
+  function handleCloseShareDialog(): void {
+    shareDialogRef.current?.close();
+  }
+
+  function handleShareDialogClick(event: ReactMouseEvent<HTMLDialogElement>): void {
+    if (event.target === event.currentTarget) {
+      handleCloseShareDialog();
+    }
+  }
+
   function handleInspectorTabKeyDown(
     event: ReactKeyboardEvent<HTMLButtonElement>,
   ): void {
@@ -221,11 +325,46 @@ export function App() {
             <p className="eyebrow">ベクトル空間 / 2D</p>
             <h1 id="page-title">ベクトルを変えて、生成する空間を見る。</h1>
           </div>
-          <p>
-            列ベクトルの成分を編集すると、座標平面と数学的な判定が連動します。
-            ベクトルを選ぶと、その集合が生成する空間を原点、直線、座標平面として比較できます。
-          </p>
+          <div className="lab-intro-side">
+            <p className="lab-intro-copy">
+              列ベクトルの成分を編集すると、座標平面と数学的な判定が連動します。
+              ベクトルを選ぶと、その集合が生成する空間を原点、直線、座標平面として比較できます。
+            </p>
+            <div className="lab-actions" aria-label="教材状態の操作">
+              <button
+                className="share-export-button"
+                type="button"
+                disabled={hasInvalidCoordinateDraft}
+                aria-describedby={hasInvalidCoordinateDraft ? 'share-export-disabled-help' : undefined}
+                onClick={handleOpenShareDialog}
+              >
+                共有URLをエクスポート
+              </button>
+              <button className="reset-button" type="button" onClick={handleReset}>
+                Reset
+              </button>
+            </div>
+            {hasInvalidCoordinateDraft ? (
+              <p className="lab-action-help" id="share-export-disabled-help">
+                共有する前に、未確定の成分を訂正してください。
+              </p>
+            ) : null}
+          </div>
         </section>
+
+        {loadErrorMessage ? (
+          <div className="page-alert" role="alert">
+            <p>{loadErrorMessage}</p>
+            <button type="button" onClick={() => setLoadErrorMessage(null)}>閉じる</button>
+          </div>
+        ) : null}
+
+        {exportErrorMessage ? (
+          <div className="page-alert" role="alert">
+            <p>{exportErrorMessage}</p>
+            <button type="button" onClick={() => setExportErrorMessage(null)}>閉じる</button>
+          </div>
+        ) : null}
 
         <div className="lab-workspace">
           <section className="plot-card" aria-labelledby="plot-title">
@@ -540,6 +679,52 @@ export function App() {
       <footer className="site-footer">
         <p>{projectInfo.status} — 有効な成分は座標平面と判定へ即時反映されます。</p>
       </footer>
+
+      <dialog
+        className="share-dialog"
+        ref={shareDialogRef}
+        aria-labelledby="share-dialog-title"
+        onClick={handleShareDialogClick}
+        onClose={() => setShareFeedback(null)}
+      >
+        <div className="share-dialog-content">
+          <p className="panel-kicker">Export current state</p>
+          <h2 id="share-dialog-title">共有URLをエクスポート</h2>
+          <p className="share-dialog-description">
+            このURLを開くと、ベクトル、spanの選択、幾何表示が復元されます。
+            表示範囲はベクトル全体が見えるように自動調整されます。
+          </p>
+          <label className="share-url-field">
+            <span>共有URL</span>
+            <textarea
+              ref={shareUrlFieldRef}
+              rows={5}
+              readOnly
+              value={shareUrl}
+              spellCheck={false}
+              onFocus={(event) => event.currentTarget.select()}
+            />
+          </label>
+          <p
+            className={`share-feedback ${shareFeedback?.kind === 'error' ? 'has-error' : ''}`}
+            role={shareFeedback?.kind === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            {shareFeedback?.message ?? 'URLはドラッグして選択し、手動でもコピーできます。'}
+          </p>
+          <div className="share-dialog-actions">
+            <button className="copy-share-button" type="button" onClick={handleCopyShareUrl}>
+              クリップボードにコピー
+            </button>
+            <button type="button" onClick={handleDownloadShareUrl}>
+              テキストで保存
+            </button>
+            <button type="button" onClick={handleCloseShareDialog}>
+              閉じる
+            </button>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 }

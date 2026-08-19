@@ -84,11 +84,111 @@
   text-wrap: balance;
 }
 
-.lab-intro > p {
+.lab-intro-side {
+  display: grid;
+  gap: 18px;
+}
+
+.lab-intro-copy {
   margin: 0 0 5px;
   color: var(--muted);
   font-size: 0.98rem;
   line-height: 1.85;
+}
+
+.lab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lab-actions button,
+.page-alert button,
+.share-dialog-actions button {
+  min-height: 42px;
+  padding: 9px 15px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: var(--ink);
+  background: var(--paper);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 780;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease,
+    transform 120ms ease;
+}
+
+.lab-actions button:hover:not(:disabled),
+.page-alert button:hover,
+.share-dialog-actions button:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+
+.lab-actions button:active:not(:disabled),
+.page-alert button:active,
+.share-dialog-actions button:active {
+  transform: translateY(1px);
+}
+
+.lab-actions button:focus-visible,
+.page-alert button:focus-visible,
+.share-dialog-actions button:focus-visible,
+.share-url-field textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  outline-offset: 2px;
+}
+
+.lab-actions .share-export-button,
+.share-dialog-actions .copy-share-button {
+  color: white;
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+
+.lab-actions .share-export-button:hover:not(:disabled),
+.share-dialog-actions .copy-share-button:hover {
+  color: white;
+  border-color: color-mix(in srgb, var(--accent-strong) 82%, black);
+  background: color-mix(in srgb, var(--accent-strong) 90%, black);
+}
+
+.lab-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.lab-action-help {
+  margin: -8px 0 0;
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.page-alert {
+  margin: -14px 0 24px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+  border-radius: 14px;
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+
+.page-alert p {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
+.page-alert button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 6px 12px;
 }
 
 .lab-workspace {
@@ -1025,13 +1125,92 @@
   margin: 0;
 }
 
+.share-dialog {
+  width: min(680px, calc(100% - 32px));
+  max-width: none;
+  max-height: min(760px, calc(100dvh - 32px));
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: 24px;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 0 30px 100px rgba(18, 28, 36, 0.32);
+}
+
+.share-dialog::backdrop {
+  background: rgba(18, 28, 36, 0.58);
+  backdrop-filter: blur(3px);
+}
+
+.share-dialog-content {
+  padding: clamp(22px, 5vw, 36px);
+}
+
+.share-dialog h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: clamp(1.65rem, 4vw, 2.25rem);
+  letter-spacing: -0.035em;
+}
+
+.share-dialog-description {
+  margin: 14px 0 20px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.75;
+}
+
+.share-url-field {
+  display: grid;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 780;
+}
+
+.share-url-field textarea {
+  width: 100%;
+  min-height: 124px;
+  padding: 13px 14px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: #fffdf7;
+  font-family: var(--mono-font);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.share-feedback {
+  min-height: 1.5em;
+  margin: 10px 2px 18px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.share-feedback.has-error {
+  color: var(--accent-strong);
+}
+
+.share-dialog-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.72fr);
+  gap: 10px;
+}
+
 @media (max-width: 980px) {
   .lab-intro {
     grid-template-columns: 1fr;
     gap: 20px;
   }
 
-  .lab-intro > p {
+  .lab-intro-copy {
     max-width: 680px;
   }
 
@@ -1078,6 +1257,18 @@
 
   .lab-intro h1 {
     font-size: clamp(2.4rem, 12vw, 3.6rem);
+  }
+
+  .lab-actions button {
+    flex: 1 1 auto;
+  }
+
+  .page-alert {
+    align-items: flex-start;
+  }
+
+  .share-dialog-actions {
+    grid-template-columns: 1fr;
   }
 
   .card-heading {
