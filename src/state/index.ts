@@ -1,6 +1,7 @@
 export { DEFAULT_2D_SHARE_STATE } from './defaultState';
 export { createAppInitialization } from './appInitialization';
 export { parseCoordinateInput } from './vectorEditing';
+export { addDefaultVector, removeVector } from './vectorCollection';
 export { selectSpanVectors, updateSpanSelection } from './spanSelection';
 export {
   DEFAULT_PARALLEL_SNAP_DISTANCE,
@@ -9,5 +10,6 @@ export {
   snapDraggedVectorToParallel,
 } from './vectorSnapping';
 export type { CoordinateInputErrorCode, CoordinateInputResult } from './vectorEditing';
+export type { AddDefaultVectorResult } from './vectorCollection';
 export type { ParallelSnapResult } from './vectorSnapping';
 export type { AppInitialization } from './appInitialization';

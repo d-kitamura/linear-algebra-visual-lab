@@ -1,5 +1,5 @@
 export const projectInfo = {
   name: 'Linear Algebra Visual Lab',
-  phase: 'フェーズ 2 完了',
-  status: '2Dの最小縦断版',
+  phase: 'フェーズ 3.1',
+  status: 'ベクトル集合の編集',
 } as const;

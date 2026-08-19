@@ -77,9 +77,11 @@ export function VectorPlane2D({
   const showsYAxis = viewport.minX <= 0 && viewport.maxX >= 0;
   const xTickLabelY = showsXAxis ? origin[1] + 24 : plotBottom + 24;
   const yTickLabelX = showsYAxis ? origin[0] - 18 : plotLeft - 12;
-  const description = vectors
-    .map((vector) => `${vector.name} は第1成分 ${vector.coordinates[0]}、第2成分 ${vector.coordinates[1]}`)
-    .join('。');
+  const vectorDescription = vectors.length === 0
+    ? '表示中の列ベクトルはありません。'
+    : `原点から各列ベクトルの終点へ向かう矢印です。${vectors
+        .map((vector) => `${vector.name} は第1成分 ${vector.coordinates[0]}、第2成分 ${vector.coordinates[1]}`)
+        .join('。')}。`;
   const spanVectorIds = new Set(spanVectors.map((vector) => vector.id));
   const spanDirection = spanVectors.find((vector) =>
     vector.coordinates[0] !== 0 || vector.coordinates[1] !== 0,
@@ -309,7 +311,7 @@ export function VectorPlane2D({
     >
       <title id="vector-plane-title">2次元数ベクトルの座標表示</title>
       <desc id="vector-plane-description">
-        {`原点から各列ベクトルの終点へ向かう矢印です。${description}。${spanDescription}`}
+        {`${vectorDescription}${spanDescription}`}
       </desc>
       <defs>
         <clipPath id="vector-plane-plot-clip">

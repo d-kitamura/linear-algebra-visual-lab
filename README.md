@@ -2,7 +2,7 @@
 
 線形代数を学ぶ学生が、2D/3D のベクトル、一次独立・一次従属、ベクトルが張る空間をブラウザ上で視覚的・対話的に理解するための教材アプリです。
 
-フェーズ 2「2D の最小縦断版」は、共有 URL、復元、Reset と統合棚卸しまで完了しています。フェーズ 3 の前に、現在のmainをGitHub Pagesへ初回公開する作業単位5.1を進めます。実装は小さな単位に分け、各段階で実際の動作を確認してから次へ進めます。Codex はローカルファイルのみを変更し、コミットとプッシュはプロジェクト所有者が行います。
+フェーズ 2「2D の最小縦断版」とGitHub Pagesへの初回公開は完了しています。現在はフェーズ 3 の作業単位3.1として、0〜8本のベクトル集合を追加・削除する機能を実装し、利用者確認を待っています。公開版は [Linear Algebra Visual Lab](https://d-kitamura.github.io/linear-algebra-visual-lab/) です。実装は小さな単位に分け、各段階で実際の動作を確認してから次へ進めます。Codex はローカルファイルのみを変更し、コミットとプッシュはプロジェクト所有者が行います。
 
 ## 文書の役割
 
@@ -37,4 +37,4 @@ pnpm dev
 
 `pnpm dev` で表示されるローカル URL をブラウザで開きます。ビルド成果物は `dist/` に生成されます。
 
-Vite の公開ベースパスは環境変数 `APP_BASE_PATH` で指定できます。D-025により初回公開先をGitHub Pagesとし、プロジェクトサイト用の `/linear-algebra-visual-lab/` をGitHub Actionsのビルドで指定します。公開手順は `docs/GITHUB_PAGES.md` を参照してください。
+Vite の公開ベースパスは環境変数 `APP_BASE_PATH` で指定できます。D-025によりGitHub Pagesのプロジェクトサイト用の `/linear-algebra-visual-lab/` をGitHub Actionsのビルドで指定します。mainへpushするとテスト・ビルド・デプロイが自動実行され、成功後に公開版が更新されます。公開手順は `docs/GITHUB_PAGES.md` を参照してください。

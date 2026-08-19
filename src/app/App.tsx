@@ -9,18 +9,21 @@ import {
 import { analyzeVectorSet, type VectorValue } from '../domain';
 import {
   MAX_ABSOLUTE_COORDINATE,
+  MAX_SHARE_VECTORS,
   buildShareUrl,
   createShareTextFileContents,
   createShareTextFileName,
   type ShareStateV1,
 } from '../sharing';
 import {
+  addDefaultVector,
   createAppInitialization,
   parallelSnapDistanceForViewWidth,
   parseCoordinateInput,
   selectSpanVectors,
   snapDraggedVectorToParallel,
   updateSpanSelection,
+  removeVector as removeVectorFromState,
 } from '../state';
 import { splitVectorName } from '../ui';
 import {
@@ -32,7 +35,16 @@ import {
 import { projectInfo } from './projectInfo';
 import './App.css';
 
-const vectorColors = ['#c84c35', '#087f73'];
+const vectorColors = [
+  '#c84c35',
+  '#087f73',
+  '#6456a8',
+  '#a56a00',
+  '#2f6690',
+  '#9c3f72',
+  '#4f772d',
+  '#8a5a44',
+];
 const coordinateNames = ['第1成分', '第2成分'] as const;
 const inspectorTabs = [
   { id: 'edit', label: 'ベクトル編集', shortLabel: '編集' },
@@ -66,6 +78,7 @@ export function App() {
   const [shareFeedback, setShareFeedback] = useState<ShareFeedback>(null);
   const shareDialogRef = useRef<HTMLDialogElement>(null);
   const shareUrlFieldRef = useRef<HTMLTextAreaElement>(null);
+  const addVectorButtonRef = useRef<HTMLButtonElement>(null);
   const hasInvalidCoordinateDraft = useMemo(
     () => Object.values(coordinateDrafts).some((drafts) =>
       drafts.some((draft) => !parseCoordinateInput(draft).ok),
@@ -169,6 +182,34 @@ export function App() {
       ...current,
       visualization: { ...current.visualization, showSpan },
     }));
+  }
+
+  function handleAddVector(): void {
+    const result = addDefaultVector(state);
+    if (!result.addedVector) {
+      return;
+    }
+    const addedVector = result.addedVector;
+
+    setState(result.state);
+    setCoordinateDrafts((current) => ({
+      ...current,
+      [addedVector.id]: addedVector.coordinates.map(String),
+    }));
+    setParallelSnapTargetId(null);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`${addedVector.id}-coordinate-0`)?.focus();
+    });
+  }
+
+  function handleRemoveVector(vectorId: string): void {
+    setState((current) => removeVectorFromState(current, vectorId));
+    setCoordinateDrafts((current) => Object.fromEntries(
+      Object.entries(current).filter(([id]) => id !== vectorId),
+    ));
+    setDragViewport(null);
+    setParallelSnapTargetId(null);
+    window.requestAnimationFrame(() => addVectorButtonRef.current?.focus());
   }
 
   function handleReset(): void {
@@ -483,10 +524,40 @@ export function App() {
               aria-labelledby="inspector-tab-edit vector-editor-title"
               hidden={activeInspectorTab !== 'edit'}
             >
-              <p className="panel-kicker">Edit vectors</p>
-              <h2 id="vector-editor-title">列ベクトルの成分</h2>
-              <p className="editor-hint">上段が第1成分、下段が第2成分です。</p>
+              <div className="vector-editor-heading">
+                <div>
+                  <p className="panel-kicker">Edit vectors</p>
+                  <h2 id="vector-editor-title">列ベクトルの成分</h2>
+                  <p className="editor-hint">
+                    上段が第1成分、下段が第2成分です。追加したベクトルはspanの対象に含まれます。
+                  </p>
+                </div>
+                <div className="vector-collection-controls">
+                  <span aria-live="polite">{state.vectors.length} / {MAX_SHARE_VECTORS} 本</span>
+                  <button
+                    ref={addVectorButtonRef}
+                    type="button"
+                    disabled={state.vectors.length >= MAX_SHARE_VECTORS}
+                    aria-describedby={state.vectors.length >= MAX_SHARE_VECTORS
+                      ? 'vector-limit-help'
+                      : undefined}
+                    onClick={handleAddVector}
+                  >
+                    ＋ ベクトルを追加
+                  </button>
+                </div>
+              </div>
+              {state.vectors.length >= MAX_SHARE_VECTORS ? (
+                <p className="vector-limit-help" id="vector-limit-help">
+                  共有状態の上限である{MAX_SHARE_VECTORS}本に達しています。
+                </p>
+              ) : null}
               <div className="vector-editor-list">
+                {state.vectors.length === 0 ? (
+                  <p className="empty-vector-editor">
+                    ベクトルはありません。「ベクトルを追加」から始められます。Resetで読込時の状態へ戻せます。
+                  </p>
+                ) : null}
                 {state.vectors.map((vector, vectorIndex) => {
                   const drafts = coordinateDrafts[vector.id] ?? vector.coordinates.map(String);
                   const results = drafts.map(parseCoordinateInput);
@@ -534,19 +605,29 @@ export function App() {
                           );
                         })}
                       </div>
-                      <label className="span-selection-control">
-                        <input
-                          type="checkbox"
-                          checked={state.spanSelection.includes(vector.id)}
-                          aria-label={`${vector.name} を生成する空間の対象に含める`}
-                          onChange={(event) =>
-                            handleSpanSelection(vector.id, event.target.checked)
-                          }
-                        />
-                        <span>
-                          <MathOperator name="span" /> の対象に含める
-                        </span>
-                      </label>
+                      <div className="vector-editor-actions">
+                        <label className="span-selection-control">
+                          <input
+                            type="checkbox"
+                            checked={state.spanSelection.includes(vector.id)}
+                            aria-label={`${vector.name} を生成する空間の対象に含める`}
+                            onChange={(event) =>
+                              handleSpanSelection(vector.id, event.target.checked)
+                            }
+                          />
+                          <span>
+                            <MathOperator name="span" /> の対象に含める
+                          </span>
+                        </label>
+                        <button
+                          className="remove-vector-button"
+                          type="button"
+                          aria-label={`${vector.name} を削除`}
+                          onClick={() => handleRemoveVector(vector.id)}
+                        >
+                          削除
+                        </button>
+                      </div>
                       <p
                         className={`coordinate-feedback ${firstError ? 'has-error' : ''}`}
                         id={errorId}
