@@ -10,6 +10,10 @@ export interface PlaneViewport {
 
 export type SvgPoint = readonly [x: number, y: number];
 
+export const MIN_VIEWPORT_HALF_RANGE = 0.1;
+export const MAX_VIEWPORT_HALF_RANGE = 2_000_000;
+export const MAX_VIEWPORT_CENTER_ABSOLUTE = 2_000_000;
+
 export const DEFAULT_PLANE_VIEWPORT: PlaneViewport = {
   width: 640,
   height: 640,
@@ -100,6 +104,89 @@ export function toSvgPoint(
   ];
 }
 
+export function fromSvgPoint(
+  point: SvgPoint,
+  viewport: PlaneViewport = DEFAULT_PLANE_VIEWPORT,
+): readonly [x: number, y: number] {
+  const plotWidth = viewport.width - viewport.padding * 2;
+  const plotHeight = viewport.height - viewport.padding * 2;
+  const xRatio = (point[0] - viewport.padding) / plotWidth;
+  const yRatio = (point[1] - viewport.padding) / plotHeight;
+
+  return [
+    viewport.minX + xRatio * (viewport.maxX - viewport.minX),
+    viewport.maxY - yRatio * (viewport.maxY - viewport.minY),
+  ];
+}
+
+export function zoomViewportAt(
+  viewport: PlaneViewport,
+  anchor: readonly [x: number, y: number],
+  requestedFactor: number,
+): PlaneViewport {
+  if (!Number.isFinite(requestedFactor) || requestedFactor <= 0) {
+    return viewport;
+  }
+
+  const currentHalfRange = (viewport.maxX - viewport.minX) / 2;
+  const nextHalfRange = clamp(
+    currentHalfRange * requestedFactor,
+    MIN_VIEWPORT_HALF_RANGE,
+    MAX_VIEWPORT_HALF_RANGE,
+  );
+  const factor = nextHalfRange / currentHalfRange;
+  const nextViewport = {
+    ...viewport,
+    minX: anchor[0] + (viewport.minX - anchor[0]) * factor,
+    maxX: anchor[0] + (viewport.maxX - anchor[0]) * factor,
+    minY: anchor[1] + (viewport.minY - anchor[1]) * factor,
+    maxY: anchor[1] + (viewport.maxY - anchor[1]) * factor,
+  };
+
+  return clampViewportCenter(nextViewport);
+}
+
+export function zoomViewportAtCenter(
+  viewport: PlaneViewport,
+  factor: number,
+): PlaneViewport {
+  return zoomViewportAt(viewport, getViewportCenter(viewport), factor);
+}
+
+export function translateViewport(
+  viewport: PlaneViewport,
+  deltaX: number,
+  deltaY: number,
+): PlaneViewport {
+  if (!Number.isFinite(deltaX) || !Number.isFinite(deltaY)) {
+    return viewport;
+  }
+
+  return clampViewportCenter({
+    ...viewport,
+    minX: viewport.minX + deltaX,
+    maxX: viewport.maxX + deltaX,
+    minY: viewport.minY + deltaY,
+    maxY: viewport.maxY + deltaY,
+  });
+}
+
+export function panViewportBySvgDelta(
+  viewport: PlaneViewport,
+  delta: SvgPoint,
+): PlaneViewport {
+  const plotWidth = viewport.width - viewport.padding * 2;
+  const plotHeight = viewport.height - viewport.padding * 2;
+  const unitsPerSvgX = (viewport.maxX - viewport.minX) / plotWidth;
+  const unitsPerSvgY = (viewport.maxY - viewport.minY) / plotHeight;
+
+  return translateViewport(
+    viewport,
+    -delta[0] * unitsPerSvgX,
+    delta[1] * unitsPerSvgY,
+  );
+}
+
 export function createIntegerTicks(minimum: number, maximum: number): number[] {
   const first = Math.ceil(minimum);
   const last = Math.floor(maximum);
@@ -127,6 +214,39 @@ function createNiceStep(roughStep: number): number {
 
 function normalizeTick(value: number): number {
   return Math.abs(value) < Number.EPSILON * 10 ? 0 : Number(value.toPrecision(12));
+}
+
+function getViewportCenter(viewport: PlaneViewport): readonly [number, number] {
+  return [
+    (viewport.minX + viewport.maxX) / 2,
+    (viewport.minY + viewport.maxY) / 2,
+  ];
+}
+
+function clampViewportCenter(viewport: PlaneViewport): PlaneViewport {
+  const [centerX, centerY] = getViewportCenter(viewport);
+  const clampedCenterX = clamp(
+    centerX,
+    -MAX_VIEWPORT_CENTER_ABSOLUTE,
+    MAX_VIEWPORT_CENTER_ABSOLUTE,
+  );
+  const clampedCenterY = clamp(
+    centerY,
+    -MAX_VIEWPORT_CENTER_ABSOLUTE,
+    MAX_VIEWPORT_CENTER_ABSOLUTE,
+  );
+
+  return {
+    ...viewport,
+    minX: viewport.minX + clampedCenterX - centerX,
+    maxX: viewport.maxX + clampedCenterX - centerX,
+    minY: viewport.minY + clampedCenterY - centerY,
+    maxY: viewport.maxY + clampedCenterY - centerY,
+  };
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 export function createArrowHeadPoints(

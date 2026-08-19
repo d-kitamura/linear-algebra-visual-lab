@@ -119,6 +119,62 @@
   gap: 18px;
 }
 
+.viewport-toolbar {
+  display: grid;
+  justify-items: end;
+  gap: 9px;
+}
+
+.example-badge.is-manual {
+  color: var(--accent-strong);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--paper));
+}
+
+.viewport-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.viewport-controls button {
+  min-width: 38px;
+  min-height: 38px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: var(--paper);
+  font-weight: 750;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+
+.viewport-controls button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+
+.viewport-controls button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.viewport-controls button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  outline-offset: 2px;
+}
+
+.viewport-controls button:disabled {
+  color: color-mix(in srgb, var(--muted) 62%, transparent);
+  cursor: default;
+  opacity: 0.65;
+}
+
+.viewport-controls .fit-viewport-button {
+  min-width: auto;
+  font-size: 0.76rem;
+}
+
 .card-heading h2,
 .vector-list-card h2,
 .vector-editor-card h2,
@@ -137,6 +193,33 @@
   height: auto;
   display: block;
   border-radius: 16px;
+  overscroll-behavior: contain;
+  user-select: none;
+}
+
+.plot-interaction-surface {
+  cursor: grab;
+  touch-action: none;
+}
+
+.plot-interaction-surface.is-panning {
+  cursor: grabbing;
+}
+
+.grid-lines,
+.coordinate-axes,
+.tick-labels,
+.vector-arrows,
+.origin-point {
+  pointer-events: none;
+}
+
+.viewport-help {
+  margin: 12px 2px 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.55;
+  text-align: center;
 }
 
 .plot-background {
@@ -631,6 +714,15 @@
 
   .lab-intro h1 {
     font-size: clamp(2.4rem, 12vw, 3.6rem);
+  }
+
+  .card-heading {
+    align-items: flex-start;
+  }
+
+  .viewport-controls {
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .analysis-column {

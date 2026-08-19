@@ -6,8 +6,12 @@ import {
   createArrowHeadPoints,
   createIntegerTicks,
   formatTickValue,
+  fromSvgPoint,
+  panViewportBySvgDelta,
   pointsToSvg,
   toSvgPoint,
+  zoomViewportAt,
+  zoomViewportAtCenter,
 } from '../../src/visualization';
 
 describe('2D plane geometry', () => {
@@ -34,6 +38,13 @@ describe('2D plane geometry', () => {
 
     expect(positiveY).toBeLessThan(320);
     expect(negativeY).toBeGreaterThan(320);
+  });
+
+  it('converts SVG points back to mathematical coordinates', () => {
+    const point = toSvgPoint([2.5, -1.25]);
+
+    expect(fromSvgPoint(point)[0]).toBeCloseTo(2.5);
+    expect(fromSvgPoint(point)[1]).toBeCloseTo(-1.25);
   });
 
   it('creates inclusive integer ticks', () => {
@@ -76,6 +87,35 @@ describe('2D plane geometry', () => {
     expect(formatTickValue(-0, 1)).toBe('0');
     expect(formatTickValue(0.4, 0.2)).toBe('0.4');
     expect(formatTickValue(20_000, 10_000)).toBe('2e4');
+  });
+
+  it('zooms around a fixed mathematical anchor', () => {
+    const anchor = [2, 1] as const;
+    const anchorSvgBefore = toSvgPoint(anchor, DEFAULT_PLANE_VIEWPORT);
+    const zoomed = zoomViewportAt(DEFAULT_PLANE_VIEWPORT, anchor, 0.5);
+    const anchorSvgAfter = toSvgPoint(anchor, zoomed);
+
+    expect(zoomed.maxX - zoomed.minX).toBeCloseTo(5);
+    expect(anchorSvgAfter[0]).toBeCloseTo(anchorSvgBefore[0]);
+    expect(anchorSvgAfter[1]).toBeCloseTo(anchorSvgBefore[1]);
+  });
+
+  it('zooms around the viewport center for button controls', () => {
+    const zoomed = zoomViewportAtCenter(DEFAULT_PLANE_VIEWPORT, 2);
+
+    expect(zoomed.minX).toBe(-10);
+    expect(zoomed.maxX).toBe(10);
+    expect(zoomed.minY).toBe(-10);
+    expect(zoomed.maxY).toBe(10);
+  });
+
+  it('pans in the direction of an SVG background drag', () => {
+    const panned = panViewportBySvgDelta(DEFAULT_PLANE_VIEWPORT, [53.6, 107.2]);
+
+    expect(panned.minX).toBeCloseTo(-6);
+    expect(panned.maxX).toBeCloseTo(4);
+    expect(panned.minY).toBeCloseTo(-3);
+    expect(panned.maxY).toBeCloseTo(7);
   });
 
   it('creates a triangular arrow head and serializes its points', () => {

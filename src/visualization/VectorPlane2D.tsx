@@ -1,3 +1,9 @@
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import type { VectorValue } from '../domain';
 import { splitVectorName } from '../ui';
 import {
@@ -5,22 +11,40 @@ import {
   createAdaptiveTicks,
   createArrowHeadPoints,
   formatTickValue,
+  fromSvgPoint,
+  panViewportBySvgDelta,
   pointsToSvg,
   toSvgPoint,
+  translateViewport,
+  zoomViewportAt,
   type PlaneViewport,
+  type SvgPoint,
 } from './planeGeometry';
 
 interface VectorPlane2DProps {
   readonly vectors: readonly VectorValue[];
   readonly colors: readonly string[];
   readonly viewport?: PlaneViewport;
+  readonly onViewportChange?: (viewport: PlaneViewport) => void;
 }
+
+const WHEEL_ZOOM_SENSITIVITY = 0.0015;
+const MAX_WHEEL_DELTA = 500;
 
 export function VectorPlane2D({
   vectors,
   colors,
   viewport = DEFAULT_PLANE_VIEWPORT,
+  onViewportChange,
 }: VectorPlane2DProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const viewportRef = useRef(viewport);
+  const onViewportChangeRef = useRef(onViewportChange);
+  const pointerPositionsRef = useRef(new Map<number, SvgPoint>());
+  const [isPanning, setIsPanning] = useState(false);
+  viewportRef.current = viewport;
+  onViewportChangeRef.current = onViewportChange;
+
   const xScale = createAdaptiveTicks(viewport.minX, viewport.maxX);
   const yScale = createAdaptiveTicks(viewport.minY, viewport.maxY);
   const origin = toSvgPoint([0, 0], viewport);
@@ -28,12 +52,145 @@ export function VectorPlane2D({
   const plotRight = viewport.width - viewport.padding;
   const plotTop = viewport.padding;
   const plotBottom = viewport.height - viewport.padding;
+  const showsXAxis = viewport.minY <= 0 && viewport.maxY >= 0;
+  const showsYAxis = viewport.minX <= 0 && viewport.maxX >= 0;
+  const xTickLabelY = showsXAxis ? origin[1] + 24 : plotBottom + 24;
+  const yTickLabelX = showsYAxis ? origin[0] - 18 : plotLeft - 12;
   const description = vectors
     .map((vector) => `${vector.name} は第1成分 ${vector.coordinates[0]}、第2成分 ${vector.coordinates[1]}`)
     .join('。');
 
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) {
+      return undefined;
+    }
+
+    function handleWheel(event: WheelEvent): void {
+      if (!onViewportChangeRef.current || !svgRef.current) {
+        return;
+      }
+
+      event.preventDefault();
+      const currentViewport = viewportRef.current;
+      const svgPoint = clientPointToSvg(
+        svgRef.current,
+        event.clientX,
+        event.clientY,
+        currentViewport,
+        true,
+      );
+      const anchor = fromSvgPoint(svgPoint, currentViewport);
+      const boundedDelta = Math.max(-MAX_WHEEL_DELTA, Math.min(MAX_WHEEL_DELTA, event.deltaY));
+      const factor = Math.exp(boundedDelta * WHEEL_ZOOM_SENSITIVITY);
+
+      emitViewport(zoomViewportAt(currentViewport, anchor, factor));
+    }
+
+    svg.addEventListener('wheel', handleWheel, { passive: false });
+    return () => svg.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  function emitViewport(nextViewport: PlaneViewport): void {
+    viewportRef.current = nextViewport;
+    onViewportChangeRef.current?.(nextViewport);
+  }
+
+  function handlePointerDown(event: ReactPointerEvent<SVGRectElement>): void {
+    if (!onViewportChangeRef.current) {
+      return;
+    }
+
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pointerPositionsRef.current.set(
+      event.pointerId,
+      clientPointToSvg(
+        event.currentTarget.ownerSVGElement,
+        event.clientX,
+        event.clientY,
+        viewportRef.current,
+        false,
+      ),
+    );
+    setIsPanning(true);
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<SVGRectElement>): void {
+    if (!pointerPositionsRef.current.has(event.pointerId)) {
+      return;
+    }
+
+    event.preventDefault();
+    const previousPositions = new Map(pointerPositionsRef.current);
+    const currentPoint = clientPointToSvg(
+      event.currentTarget.ownerSVGElement,
+      event.clientX,
+      event.clientY,
+      viewportRef.current,
+      false,
+    );
+    pointerPositionsRef.current.set(event.pointerId, currentPoint);
+
+    if (pointerPositionsRef.current.size === 1) {
+      const previousPoint = previousPositions.get(event.pointerId);
+      if (previousPoint) {
+        emitViewport(panViewportBySvgDelta(viewportRef.current, [
+          currentPoint[0] - previousPoint[0],
+          currentPoint[1] - previousPoint[1],
+        ]));
+      }
+      return;
+    }
+
+    const pointerIds = [...pointerPositionsRef.current.keys()].slice(0, 2);
+    const previousFirst = previousPositions.get(pointerIds[0]);
+    const previousSecond = previousPositions.get(pointerIds[1]);
+    const currentFirst = pointerPositionsRef.current.get(pointerIds[0]);
+    const currentSecond = pointerPositionsRef.current.get(pointerIds[1]);
+
+    if (!previousFirst || !previousSecond || !currentFirst || !currentSecond) {
+      return;
+    }
+
+    const previousDistance = distance(previousFirst, previousSecond);
+    const currentDistance = distance(currentFirst, currentSecond);
+    if (previousDistance === 0 || currentDistance === 0) {
+      return;
+    }
+
+    const previousMidpoint = midpoint(previousFirst, previousSecond);
+    const currentMidpoint = midpoint(currentFirst, currentSecond);
+    const anchor = fromSvgPoint(previousMidpoint, viewportRef.current);
+    const zoomed = zoomViewportAt(
+      viewportRef.current,
+      anchor,
+      previousDistance / currentDistance,
+    );
+    const currentMidpointCoordinate = fromSvgPoint(currentMidpoint, zoomed);
+
+    emitViewport(translateViewport(
+      zoomed,
+      anchor[0] - currentMidpointCoordinate[0],
+      anchor[1] - currentMidpointCoordinate[1],
+    ));
+  }
+
+  function handlePointerEnd(event: ReactPointerEvent<SVGRectElement>): void {
+    pointerPositionsRef.current.delete(event.pointerId);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setIsPanning(pointerPositionsRef.current.size > 0);
+  }
+
   return (
     <svg
+      ref={svgRef}
       className="vector-plane"
       viewBox={`0 0 ${viewport.width} ${viewport.height}`}
       role="img"
@@ -43,14 +200,30 @@ export function VectorPlane2D({
       <desc id="vector-plane-description">
         {`原点から各列ベクトルの終点へ向かう矢印です。${description}。`}
       </desc>
+      <defs>
+        <clipPath id="vector-plane-plot-clip">
+          <rect
+            x={plotLeft}
+            y={plotTop}
+            width={plotRight - plotLeft}
+            height={plotBottom - plotTop}
+            rx="8"
+          />
+        </clipPath>
+      </defs>
 
       <rect
-        className="plot-background"
+        className={`plot-background plot-interaction-surface ${isPanning ? 'is-panning' : ''}`}
         x={plotLeft}
         y={plotTop}
         width={plotRight - plotLeft}
         height={plotBottom - plotTop}
         rx="8"
+        aria-hidden="true"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
       />
 
       <g className="grid-lines" aria-hidden="true">
@@ -65,19 +238,27 @@ export function VectorPlane2D({
       </g>
 
       <g className="coordinate-axes" aria-hidden="true">
-        <line x1={plotLeft} y1={origin[1]} x2={plotRight} y2={origin[1]} />
-        <line x1={origin[0]} y1={plotBottom} x2={origin[0]} y2={plotTop} />
-        <path d={`M ${plotRight - 10} ${origin[1] - 5} L ${plotRight} ${origin[1]} L ${plotRight - 10} ${origin[1] + 5}`} />
-        <path d={`M ${origin[0] - 5} ${plotTop + 10} L ${origin[0]} ${plotTop} L ${origin[0] + 5} ${plotTop + 10}`} />
-        <text className="axis-symbol" x={plotRight + 18} y={origin[1] + 5}>x</text>
-        <text className="axis-symbol" x={origin[0] + 8} y={plotTop - 16}>y</text>
+        {showsXAxis ? (
+          <>
+            <line x1={plotLeft} y1={origin[1]} x2={plotRight} y2={origin[1]} />
+            <path d={`M ${plotRight - 10} ${origin[1] - 5} L ${plotRight} ${origin[1]} L ${plotRight - 10} ${origin[1] + 5}`} />
+            <text className="axis-symbol" x={plotRight + 18} y={origin[1] + 5}>x</text>
+          </>
+        ) : null}
+        {showsYAxis ? (
+          <>
+            <line x1={origin[0]} y1={plotBottom} x2={origin[0]} y2={plotTop} />
+            <path d={`M ${origin[0] - 5} ${plotTop + 10} L ${origin[0]} ${plotTop} L ${origin[0] + 5} ${plotTop + 10}`} />
+            <text className="axis-symbol" x={origin[0] + 8} y={plotTop - 16}>y</text>
+          </>
+        ) : null}
       </g>
 
       <g className="tick-labels" aria-hidden="true">
         {xScale.values.filter((tick) => tick !== 0).map((tick) => {
           const [x] = toSvgPoint([tick, 0], viewport);
           return (
-            <text key={`label-x-${tick}`} x={x} y={origin[1] + 24} textAnchor="middle">
+            <text key={`label-x-${tick}`} x={x} y={xTickLabelY} textAnchor="middle">
               {formatTickValue(tick, xScale.step)}
             </text>
           );
@@ -85,15 +266,17 @@ export function VectorPlane2D({
         {yScale.values.filter((tick) => tick !== 0).map((tick) => {
           const [, y] = toSvgPoint([0, tick], viewport);
           return (
-            <text key={`label-y-${tick}`} x={origin[0] - 18} y={y + 4} textAnchor="end">
+            <text key={`label-y-${tick}`} x={yTickLabelX} y={y + 4} textAnchor="end">
               {formatTickValue(tick, yScale.step)}
             </text>
           );
         })}
-        <text x={origin[0] - 16} y={origin[1] + 22}>0</text>
+        {showsXAxis && showsYAxis ? (
+          <text x={origin[0] - 16} y={origin[1] + 22}>0</text>
+        ) : null}
       </g>
 
-      <g className="vector-arrows">
+      <g className="vector-arrows" clipPath="url(#vector-plane-plot-clip)">
         {vectors.map((vector, index) => {
           const coordinates = vector.coordinates as readonly [number, number];
           const end = toSvgPoint(coordinates, viewport);
@@ -142,7 +325,47 @@ export function VectorPlane2D({
         })}
       </g>
 
-      <circle className="origin-point" cx={origin[0]} cy={origin[1]} r="4" aria-hidden="true" />
+      <circle
+        className="origin-point"
+        cx={origin[0]}
+        cy={origin[1]}
+        r="4"
+        clipPath="url(#vector-plane-plot-clip)"
+        aria-hidden="true"
+      />
     </svg>
   );
+}
+
+function clientPointToSvg(
+  svg: SVGSVGElement | null,
+  clientX: number,
+  clientY: number,
+  viewport: PlaneViewport,
+  clampToPlot: boolean,
+): SvgPoint {
+  if (!svg) {
+    return [viewport.width / 2, viewport.height / 2];
+  }
+
+  const bounds = svg.getBoundingClientRect();
+  const x = (clientX - bounds.left) * viewport.width / Math.max(1, bounds.width);
+  const y = (clientY - bounds.top) * viewport.height / Math.max(1, bounds.height);
+
+  if (!clampToPlot) {
+    return [x, y];
+  }
+
+  return [
+    Math.min(viewport.width - viewport.padding, Math.max(viewport.padding, x)),
+    Math.min(viewport.height - viewport.padding, Math.max(viewport.padding, y)),
+  ];
+}
+
+function distance(first: SvgPoint, second: SvgPoint): number {
+  return Math.hypot(second[0] - first[0], second[1] - first[1]);
+}
+
+function midpoint(first: SvgPoint, second: SvgPoint): SvgPoint {
+  return [(first[0] + second[0]) / 2, (first[1] + second[1]) / 2];
 }

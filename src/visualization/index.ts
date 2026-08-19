@@ -1,13 +1,21 @@
 export { VectorPlane2D } from './VectorPlane2D';
 export {
   DEFAULT_PLANE_VIEWPORT,
+  MAX_VIEWPORT_CENTER_ABSOLUTE,
+  MAX_VIEWPORT_HALF_RANGE,
+  MIN_VIEWPORT_HALF_RANGE,
   createAdaptiveTicks,
   createAutoFitViewport,
   createArrowHeadPoints,
   createIntegerTicks,
   formatTickValue,
+  fromSvgPoint,
+  panViewportBySvgDelta,
   pointsToSvg,
+  translateViewport,
   toSvgPoint,
+  zoomViewportAt,
+  zoomViewportAtCenter,
 } from './planeGeometry';
 
 export type { PlaneViewport, SvgPoint, TickScale } from './planeGeometry';

@@ -3,7 +3,12 @@ import { analyzeVectorSet, type VectorValue } from '../domain';
 import type { ShareStateV1 } from '../sharing';
 import { DEFAULT_2D_SHARE_STATE, parseCoordinateInput } from '../state';
 import { splitVectorName } from '../ui';
-import { VectorPlane2D, createAutoFitViewport } from '../visualization';
+import {
+  VectorPlane2D,
+  createAutoFitViewport,
+  zoomViewportAtCenter,
+  type PlaneViewport,
+} from '../visualization';
 import { projectInfo } from './projectInfo';
 import './App.css';
 
@@ -11,19 +16,39 @@ const vectorColors = ['#c84c35', '#087f73'];
 const coordinateNames = ['第1成分', '第2成分'] as const;
 
 type CoordinateDrafts = Readonly<Record<string, readonly string[]>>;
+type ViewMode = 'auto' | 'manual';
 
 export function App() {
   const [state, setState] = useState<ShareStateV1>(() => DEFAULT_2D_SHARE_STATE);
   const [coordinateDrafts, setCoordinateDrafts] = useState<CoordinateDrafts>(() =>
     createCoordinateDrafts(DEFAULT_2D_SHARE_STATE.vectors),
   );
+  const [viewMode, setViewMode] = useState<ViewMode>('auto');
+  const [manualViewport, setManualViewport] = useState<PlaneViewport | null>(null);
   const analysis = useMemo(
     () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
     [state],
   );
-  const viewport = useMemo(() => createAutoFitViewport(state.vectors), [state.vectors]);
+  const autoViewport = useMemo(() => createAutoFitViewport(state.vectors), [state.vectors]);
+  const viewport = viewMode === 'auto' ? autoViewport : (manualViewport ?? autoViewport);
   const isIndependent = analysis.isLinearlyIndependent;
-  const viewportLabel = formatViewportHalfRange(viewport.maxX);
+  const viewportLabel = viewMode === 'auto'
+    ? `自動表示 ±${formatViewportNumber((viewport.maxX - viewport.minX) / 2)}`
+    : `手動表示・幅 ${formatViewportNumber(viewport.maxX - viewport.minX)}`;
+
+  function handleManualViewportChange(nextViewport: PlaneViewport): void {
+    setManualViewport(nextViewport);
+    setViewMode('manual');
+  }
+
+  function handleButtonZoom(factor: number): void {
+    handleManualViewportChange(zoomViewportAtCenter(viewport, factor));
+  }
+
+  function handleFitViewport(): void {
+    setManualViewport(null);
+    setViewMode('auto');
+  }
 
   function handleCoordinateChange(
     vectorId: string,
@@ -83,7 +108,7 @@ export function App() {
           </div>
           <p>
             列ベクトルの成分を編集すると、座標平面と数学的な判定が連動します。
-            表示範囲と目盛は、すべてのベクトルが見えるよう自動調整されます。
+            表示範囲は自動調整に加え、ホイール、ピンチ、背景ドラッグでも変更できます。
           </p>
         </section>
 
@@ -94,9 +119,47 @@ export function App() {
                 <p className="panel-kicker">Coordinate plane</p>
                 <h2 id="plot-title">2次元座標平面</h2>
               </div>
-              <span className="example-badge">{`自動表示 ±${viewportLabel}`}</span>
+              <div className="viewport-toolbar">
+                <span className={`example-badge ${viewMode === 'manual' ? 'is-manual' : ''}`}>
+                  {viewportLabel}
+                </span>
+                <div className="viewport-controls" role="group" aria-label="座標面の表示範囲">
+                  <button
+                    type="button"
+                    aria-label="縮小して広い範囲を表示"
+                    title="縮小"
+                    onClick={() => handleButtonZoom(1.25)}
+                  >
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="拡大して狭い範囲を表示"
+                    title="拡大"
+                    onClick={() => handleButtonZoom(0.8)}
+                  >
+                    ＋
+                  </button>
+                  <button
+                    className="fit-viewport-button"
+                    type="button"
+                    disabled={viewMode === 'auto'}
+                    onClick={handleFitViewport}
+                  >
+                    全体を表示
+                  </button>
+                </div>
+              </div>
             </div>
-            <VectorPlane2D vectors={state.vectors} colors={vectorColors} viewport={viewport} />
+            <VectorPlane2D
+              vectors={state.vectors}
+              colors={vectorColors}
+              viewport={viewport}
+              onViewportChange={handleManualViewportChange}
+            />
+            <p className="viewport-help">
+              ホイール／ピンチで拡大・縮小、座標面の背景ドラッグで移動できます。
+            </p>
           </section>
 
           <aside className="analysis-column" aria-label="ベクトル集合の編集と解析結果">
@@ -211,7 +274,7 @@ export function App() {
             </section>
 
             <p className="development-note">
-              この段階では数値入力と自動調整を確認します。手動ズーム、先端ドラッグ、生成する空間の幾何表示は後続の作業単位で追加します。
+              この段階では表示範囲の操作を確認します。ベクトル先端のドラッグ、生成する空間の幾何表示は後続の作業単位で追加します。
             </p>
           </aside>
         </div>
@@ -292,6 +355,6 @@ function createCoordinateDrafts(vectors: readonly VectorValue[]): CoordinateDraf
   );
 }
 
-function formatViewportHalfRange(halfRange: number): string {
-  return new Intl.NumberFormat('ja-JP', { maximumSignificantDigits: 4 }).format(halfRange);
+function formatViewportNumber(value: number): string {
+  return new Intl.NumberFormat('ja-JP', { maximumSignificantDigits: 4 }).format(value);
 }
