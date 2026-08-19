@@ -254,6 +254,20 @@ D-001〜D-008 は、2026-08-19 に利用者が提案どおり一括承認した�
 - Reset: `CurrentState` を `InitialState` へ戻し、入力欄の文字列を同期し、表示を自動範囲、詳細タブを「ベクトル編集」へ戻し、ドラッグ・吸着・エクスポートの一時状態を消去する。閲覧中URLは変更しない。
 - 配布: GitHub Pages等のサブパスを維持する。クリップボードの安定利用にはHTTPSを推奨し、HTTP環境では手動コピーとテキスト保存を代替手段とする。
 
+### D-025 GitHub Pagesへの初回公開と自動デプロイ
+
+- 状態: **決定・ローカル実装済み・初回公開待ち**（2026-08-19、フェーズ3着手前の作業単位5.1）
+- 初回公開先: GitHub Pagesのプロジェクトサイト `https://d-kitamura.github.io/linear-algebra-visual-lab/` とする。学内nginxは将来の代替公開先として残す。
+- 公開元: mainのソースファイルをそのまま配信せず、GitHub ActionsがViteで生成した `dist/` だけをPages artifactとして公開する。PagesのSourceは「GitHub Actions」とする。
+- 起動条件: mainへのpushで自動実行し、障害調査や再実行のためActions画面からの手動実行も許可する。
+- ビルド: リポジトリの `packageManager` 指定に合わせてpnpmを用い、ロックファイルに従って依存関係をインストールする。自動テスト成功後、`APP_BASE_PATH=/linear-algebra-visual-lab/` を指定して本番ビルドする。
+- デプロイ: `dist/index.html` とハッシュ付き静的アセットを一つの成果物としてアップロードし、`github-pages`環境へデプロイする。`dist/`をmainへコミットしない。
+- 共有URL: 実行時の `window.location.href` を基準とする現行方式を維持し、本番originと `/linear-algebra-visual-lab/` を自動的に共有URLへ反映する。
+- 担当分担: Codexはローカルのワークフロー、文書、ビルド検証を担当し、利用者はGitHub上のSettings、コミット、push、Actions実行結果と公開画面を確認する。
+- 再評価条件: リポジトリ名、公開先、カスタムドメインを変更した場合はbase pathを見直す。GitHub Actionsの参照バージョンは実装・棚卸し時に公式の現行版を確認する。
+
+ローカル検証ではpnpm 11.19.0によるロックファイル整合、11ファイル・93テスト、TypeScript型検査、公開用base pathでのViteビルドに成功した。`dist/index.html` が `/linear-algebra-visual-lab/assets/` 以下のJavaScriptとCSSを参照し、入口と両アセットが同サブパスの静的配信でHTTP 200になることを確認した。GitHub Actions上の実行と本番URLは利用者のcommit・push・Pages設定後に確認する。
+
 ## 3. 決定後も残る確認事項
 
 - 学内サーバーまたは利用サービスが許容する URL 長。
@@ -262,7 +276,7 @@ D-001〜D-008 は、2026-08-19 に利用者が提案どおり一括承認した�
 - 3D の直接編集とカメラ操作を両立できる操作方式。
 - D-009 の相対許容誤差と、許容誤差付近を学生へどう説明するか。
 - D-010 の URL 防御上限と、実運用で保証する URL 長。
-- D-011 の公開先とベースパス、nginx のリクエスト行上限。
+- D-025の初回GitHub Pages公開後に、学内nginxへも配置するか、およびnginxのリクエスト行上限。
 - D-012 の基準表示範囲と、今後追加する教材例に対する見やすさ。
 - D-013・D-014 の採用値について、異なる端末で問題が見つかった場合の再調整。
 - D-015 の数式描画手段と、`math-writing-rules.txt` に今後追加される表記規則。
