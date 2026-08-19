@@ -8,7 +8,7 @@
 
 `https://d-kitamura.github.io/linear-algebra-visual-lab/`
 
-この文書は作業単位5.1の実装記録と利用者向け操作手順である。GitHub Actionsワークフロー、Pages設定、初回公開、本番環境での共有URL・Reset等の確認まで完了している。
+この文書は、現在のロードマップでは作業単位6.1に当たる初回公開の実装記録と利用者向け操作手順である。GitHub Actionsワークフロー、Pages設定、初回公開、本番環境での共有URL・Reset等の確認まで完了している。
 
 ## 処理の流れ
 

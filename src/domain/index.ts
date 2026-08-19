@@ -4,6 +4,17 @@ export {
   analyzeVectorSet,
 } from './vectorSet';
 
+export {
+  InvalidLinearCombinationError,
+  analyzeLinearCombination,
+} from './linearCombination';
+
+export type {
+  LinearCombinationAnalysis,
+  LinearCombinationStatus,
+  LinearCombinationValidationCode,
+} from './linearCombination';
+
 export type {
   RankOptions,
   VectorDimension,
