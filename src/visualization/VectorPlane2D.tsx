@@ -38,10 +38,18 @@ interface VectorPlane2DProps {
   readonly spanVectors?: readonly VectorValue[];
   readonly spanDimension?: number;
   readonly showSpan?: boolean;
+  readonly linearCombinationVisible?: boolean;
+  readonly target?: readonly [number, number] | null;
+  readonly targetSnapKind?: 'origin' | 'span-line' | null;
+  readonly onTargetPlacement?: (coordinates: readonly [number, number]) => void;
+  readonly onTargetDragStart?: () => void;
+  readonly onTargetChange?: (coordinates: readonly [number, number]) => void;
+  readonly onTargetDragEnd?: () => void;
 }
 
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 const MAX_WHEEL_DELTA = 500;
+const TARGET_TAP_MOVEMENT_THRESHOLD = 8;
 
 export function VectorPlane2D({
   vectors,
@@ -55,12 +63,22 @@ export function VectorPlane2D({
   spanVectors = [],
   spanDimension = 0,
   showSpan = false,
+  linearCombinationVisible = false,
+  target = null,
+  targetSnapKind = null,
+  onTargetPlacement,
+  onTargetDragStart,
+  onTargetChange,
+  onTargetDragEnd,
 }: VectorPlane2DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportRef = useRef(viewport);
   const onViewportChangeRef = useRef(onViewportChange);
   const pointerPositionsRef = useRef(new Map<number, SvgPoint>());
+  const pointerStartPositionsRef = useRef(new Map<number, SvgPoint>());
+  const draggedBackgroundPointersRef = useRef(new Set<number>());
   const vectorDragRef = useRef<{ pointerId: number; vectorId: string } | null>(null);
+  const targetDragRef = useRef<{ pointerId: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [draggingVectorId, setDraggingVectorId] = useState<string | null>(null);
   viewportRef.current = viewport;
@@ -102,6 +120,11 @@ export function VectorPlane2D({
   const spanDescription = showSpan
     ? `選択した${spanVectors.length === 0 ? '空集合' : spanVectors.map((vector) => vector.name).join('、')}が生成する空間を、${spanShapeLabel}として表示しています。`
     : '選択したベクトルが生成する空間の幾何表示はオフです。';
+  const targetDescription = linearCombinationVisible
+    ? target
+      ? `ターゲット x は第1成分 ${target[0]}、第2成分 ${target[1]} です。`
+      : '一次結合を調べるモードです。ターゲット x はまだ配置されていません。'
+    : '一次結合を調べるモードはオフです。';
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -110,7 +133,12 @@ export function VectorPlane2D({
     }
 
     function handleWheel(event: WheelEvent): void {
-      if (!onViewportChangeRef.current || !svgRef.current || vectorDragRef.current) {
+      if (
+        !onViewportChangeRef.current
+        || !svgRef.current
+        || vectorDragRef.current
+        || targetDragRef.current
+      ) {
         return;
       }
 
@@ -140,7 +168,7 @@ export function VectorPlane2D({
   }
 
   function handlePointerDown(event: ReactPointerEvent<SVGRectElement>): void {
-    if (!onViewportChangeRef.current || vectorDragRef.current) {
+    if (!onViewportChangeRef.current || vectorDragRef.current || targetDragRef.current) {
       return;
     }
 
@@ -150,17 +178,21 @@ export function VectorPlane2D({
 
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    pointerPositionsRef.current.set(
-      event.pointerId,
-      clientPointToSvg(
-        event.currentTarget.ownerSVGElement,
-        event.clientX,
-        event.clientY,
-        viewportRef.current,
-        false,
-      ),
+    const point = clientPointToSvg(
+      event.currentTarget.ownerSVGElement,
+      event.clientX,
+      event.clientY,
+      viewportRef.current,
+      false,
     );
-    setIsPanning(true);
+    pointerPositionsRef.current.set(event.pointerId, point);
+    pointerStartPositionsRef.current.set(event.pointerId, point);
+    if (pointerPositionsRef.current.size > 1) {
+      for (const pointerId of pointerPositionsRef.current.keys()) {
+        draggedBackgroundPointersRef.current.add(pointerId);
+      }
+    }
+    setIsPanning(!linearCombinationVisible);
   }
 
   function handlePointerMove(event: ReactPointerEvent<SVGRectElement>): void {
@@ -179,9 +211,24 @@ export function VectorPlane2D({
     );
     pointerPositionsRef.current.set(event.pointerId, currentPoint);
 
+    const startPoint = pointerStartPositionsRef.current.get(event.pointerId);
+    if (
+      startPoint
+      && distance(startPoint, currentPoint) > TARGET_TAP_MOVEMENT_THRESHOLD
+    ) {
+      draggedBackgroundPointersRef.current.add(event.pointerId);
+    }
+
     if (pointerPositionsRef.current.size === 1) {
+      if (
+        linearCombinationVisible
+        && !draggedBackgroundPointersRef.current.has(event.pointerId)
+      ) {
+        return;
+      }
       const previousPoint = previousPositions.get(event.pointerId);
       if (previousPoint) {
+        setIsPanning(true);
         emitViewport(panViewportBySvgDelta(viewportRef.current, [
           currentPoint[0] - previousPoint[0],
           currentPoint[1] - previousPoint[1],
@@ -191,6 +238,8 @@ export function VectorPlane2D({
     }
 
     const pointerIds = [...pointerPositionsRef.current.keys()].slice(0, 2);
+    pointerIds.forEach((pointerId) => draggedBackgroundPointersRef.current.add(pointerId));
+    setIsPanning(true);
     const previousFirst = previousPositions.get(pointerIds[0]);
     const previousSecond = previousPositions.get(pointerIds[1]);
     const currentFirst = pointerPositionsRef.current.get(pointerIds[0]);
@@ -224,11 +273,26 @@ export function VectorPlane2D({
   }
 
   function handlePointerEnd(event: ReactPointerEvent<SVGRectElement>): void {
+    const point = pointerPositionsRef.current.get(event.pointerId);
+    const shouldPlaceTarget = (
+      event.type === 'pointerup'
+      && linearCombinationVisible
+      && Boolean(onTargetPlacement)
+      && pointerPositionsRef.current.size === 1
+      && !draggedBackgroundPointersRef.current.has(event.pointerId)
+    );
+
     pointerPositionsRef.current.delete(event.pointerId);
+    pointerStartPositionsRef.current.delete(event.pointerId);
+    draggedBackgroundPointersRef.current.delete(event.pointerId);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     setIsPanning(pointerPositionsRef.current.size > 0);
+
+    if (shouldPlaceTarget && point) {
+      onTargetPlacement?.(vectorCoordinatesFromSvgPoint(point, viewportRef.current));
+    }
   }
 
   function handleVectorPointerDown(
@@ -238,6 +302,7 @@ export function VectorPlane2D({
     if (
       !onVectorChange
       || vectorDragRef.current
+      || targetDragRef.current
       || pointerPositionsRef.current.size > 0
       || (event.pointerType === 'mouse' && event.button !== 0)
     ) {
@@ -301,6 +366,61 @@ export function VectorPlane2D({
     onVectorDragEnd?.(vectorId);
   }
 
+  function handleTargetPointerDown(
+    event: ReactPointerEvent<SVGCircleElement>,
+  ): void {
+    if (
+      !onTargetChange
+      || vectorDragRef.current
+      || targetDragRef.current
+      || pointerPositionsRef.current.size > 0
+      || (event.pointerType === 'mouse' && event.button !== 0)
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    targetDragRef.current = { pointerId: event.pointerId };
+    onTargetDragStart?.();
+  }
+
+  function handleTargetPointerMove(
+    event: ReactPointerEvent<SVGCircleElement>,
+  ): void {
+    if (targetDragRef.current?.pointerId !== event.pointerId || !onTargetChange) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    const svgPoint = clientPointToSvg(
+      event.currentTarget.ownerSVGElement,
+      event.clientX,
+      event.clientY,
+      viewportRef.current,
+      false,
+    );
+    onTargetChange(vectorCoordinatesFromSvgPoint(svgPoint, viewportRef.current));
+  }
+
+  function handleTargetPointerEnd(
+    event: ReactPointerEvent<SVGCircleElement>,
+  ): void {
+    if (targetDragRef.current?.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    targetDragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    onTargetDragEnd?.();
+  }
+
   return (
     <svg
       ref={svgRef}
@@ -311,7 +431,7 @@ export function VectorPlane2D({
     >
       <title id="vector-plane-title">2次元数ベクトルの座標表示</title>
       <desc id="vector-plane-description">
-        {`${vectorDescription}${spanDescription}`}
+        {`${vectorDescription}${spanDescription}${targetDescription}`}
       </desc>
       <defs>
         <clipPath id="vector-plane-plot-clip">
@@ -335,7 +455,7 @@ export function VectorPlane2D({
       </defs>
 
       <rect
-        className={`plot-background plot-interaction-surface ${isPanning ? 'is-panning' : ''}`}
+        className={`plot-background plot-interaction-surface ${linearCombinationVisible ? 'is-target-mode' : ''} ${isPanning ? 'is-panning' : ''}`}
         x={plotLeft}
         y={plotTop}
         width={plotRight - plotLeft}
@@ -521,6 +641,18 @@ export function VectorPlane2D({
         })}
       </g>
 
+      {linearCombinationVisible && target ? (
+        <TargetVector
+          target={target}
+          viewport={viewport}
+          origin={origin}
+          snapKind={targetSnapKind}
+          onPointerDown={handleTargetPointerDown}
+          onPointerMove={handleTargetPointerMove}
+          onPointerEnd={handleTargetPointerEnd}
+        />
+      ) : null}
+
       <circle
         className="origin-point"
         cx={origin[0]}
@@ -530,6 +662,66 @@ export function VectorPlane2D({
         aria-hidden="true"
       />
     </svg>
+  );
+}
+
+function TargetVector({
+  target,
+  viewport,
+  origin,
+  snapKind,
+  onPointerDown,
+  onPointerMove,
+  onPointerEnd,
+}: {
+  readonly target: readonly [number, number];
+  readonly viewport: PlaneViewport;
+  readonly origin: SvgPoint;
+  readonly snapKind: 'origin' | 'span-line' | null;
+  readonly onPointerDown: (event: ReactPointerEvent<SVGCircleElement>) => void;
+  readonly onPointerMove: (event: ReactPointerEvent<SVGCircleElement>) => void;
+  readonly onPointerEnd: (event: ReactPointerEvent<SVGCircleElement>) => void;
+}) {
+  const end = toSvgPoint(target, viewport);
+  const arrowHead = createArrowHeadPoints(origin, end);
+  const labelX = end[0] + (target[0] >= 0 ? 16 : -16);
+  const labelY = end[1] - 16;
+
+  return (
+    <g
+      className={`target-vector ${snapKind ? 'is-snapped' : ''}`}
+      clipPath="url(#vector-plane-plot-clip)"
+    >
+      <title>{`ターゲット x は第1成分 ${target[0]}、第2成分 ${target[1]} の列ベクトル`}</title>
+      <line x1={origin[0]} y1={origin[1]} x2={end[0]} y2={end[1]} />
+      {arrowHead ? (
+        <polygon points={pointsToSvg(arrowHead)} />
+      ) : (
+        <circle className="target-zero" cx={origin[0]} cy={origin[1]} r="9" />
+      )}
+      <circle className="target-tip" cx={end[0]} cy={end[1]} r="5" />
+      <circle
+        className="target-drag-handle"
+        cx={end[0]}
+        cy={end[1]}
+        r="20"
+        aria-hidden="true"
+        focusable="false"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
+        onLostPointerCapture={onPointerEnd}
+      />
+      <text
+        className="target-label"
+        x={labelX}
+        y={labelY}
+        textAnchor={target[0] >= 0 ? 'start' : 'end'}
+      >
+        x
+      </text>
+    </g>
   );
 }
 

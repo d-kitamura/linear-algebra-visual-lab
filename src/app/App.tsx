@@ -21,9 +21,11 @@ import {
   parallelSnapDistanceForViewWidth,
   parseCoordinateInput,
   selectSpanVectors,
+  snapTargetToSelectedSpan,
   snapDraggedVectorToParallel,
   updateSpanSelection,
   removeVector as removeVectorFromState,
+  type TargetSnapKind,
 } from '../state';
 import { formatVectorSpokenName, splitVectorName } from '../ui';
 import {
@@ -53,6 +55,7 @@ const inspectorTabs = [
 ] as const;
 
 type CoordinateDrafts = Readonly<Record<string, readonly string[]>>;
+type TargetCoordinateDrafts = readonly [string, string];
 type ViewMode = 'auto' | 'manual';
 type InspectorTabId = typeof inspectorTabs[number]['id'];
 type ShareFeedback = {
@@ -71,10 +74,14 @@ export function App() {
   const [coordinateDrafts, setCoordinateDrafts] = useState<CoordinateDrafts>(() =>
     createCoordinateDrafts(initialState.vectors),
   );
+  const [targetCoordinateDrafts, setTargetCoordinateDrafts] = useState<TargetCoordinateDrafts>(
+    () => createTargetCoordinateDrafts(initialState.linearCombination.target),
+  );
   const [viewMode, setViewMode] = useState<ViewMode>('auto');
   const [manualViewport, setManualViewport] = useState<PlaneViewport | null>(null);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
+  const [targetSnapKind, setTargetSnapKind] = useState<TargetSnapKind>(null);
   const [activeInspectorTab, setActiveInspectorTab] = useState<InspectorTabId>('edit');
   const [loadErrorMessage, setLoadErrorMessage] = useState(initialization.errorMessage);
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
@@ -84,8 +91,18 @@ export function App() {
   const shareUrlFieldRef = useRef<HTMLTextAreaElement>(null);
   const addVectorButtonRef = useRef<HTMLButtonElement>(null);
   const coordinateInputIssues = useMemo(
-    () => collectCoordinateInputIssues(state.vectors, coordinateDrafts),
-    [state.vectors, coordinateDrafts],
+    () => collectCoordinateInputIssues(
+      state.vectors,
+      coordinateDrafts,
+      state.linearCombination.visible,
+      targetCoordinateDrafts,
+    ),
+    [
+      state.vectors,
+      state.linearCombination.visible,
+      coordinateDrafts,
+      targetCoordinateDrafts,
+    ],
   );
   const hasInvalidCoordinateDraft = coordinateInputIssues.length > 0;
   const analysis = useMemo(
@@ -100,7 +117,16 @@ export function App() {
     () => analyzeVectorSet({ dimension: state.dim, vectors: spanVectors }),
     [state.dim, spanVectors],
   );
-  const autoViewport = useMemo(() => createAutoFitViewport(state.vectors), [state.vectors]);
+  const targetCoordinates = useMemo(
+    () => toTwoDimensionalTarget(state.linearCombination.target),
+    [state.linearCombination.target],
+  );
+  const autoViewport = useMemo(
+    () => createAutoFitViewport(state.linearCombination.visible && targetCoordinates
+      ? [...state.vectors, { coordinates: targetCoordinates }]
+      : state.vectors),
+    [state.vectors, state.linearCombination.visible, targetCoordinates],
+  );
   const selectedViewport = viewMode === 'auto' ? autoViewport : (manualViewport ?? autoViewport);
   const viewport = dragViewport ?? selectedViewport;
   const isIndependent = analysis.isLinearlyIndependent;
@@ -168,6 +194,109 @@ export function App() {
     setParallelSnapTargetId(null);
   }
 
+  function handleLinearCombinationVisibility(): void {
+    const nextVisible = !state.linearCombination.visible;
+    setState((current) => ({
+      ...current,
+      linearCombination: {
+        ...current.linearCombination,
+        visible: nextVisible,
+      },
+    }));
+    setTargetSnapKind(null);
+    if (!nextVisible) {
+      setTargetCoordinateDrafts(createTargetCoordinateDrafts(state.linearCombination.target));
+    }
+  }
+
+  function updateTargetFromPointer(coordinates: readonly [number, number]): void {
+    const candidate: readonly [number, number] = [
+      clampDraggedCoordinate(coordinates[0]),
+      clampDraggedCoordinate(coordinates[1]),
+    ];
+    const snapResult = snapTargetToSelectedSpan(
+      candidate,
+      spanVectors,
+      spanAnalysis.rank,
+      parallelSnapDistanceForViewWidth(viewport.maxX - viewport.minX),
+    );
+
+    setState((current) => ({
+      ...current,
+      linearCombination: {
+        ...current.linearCombination,
+        target: snapResult.coordinates,
+      },
+    }));
+    setTargetCoordinateDrafts(coordinatesToTargetDrafts(snapResult.coordinates));
+    setTargetSnapKind(snapResult.snapKind);
+  }
+
+  function handleTargetPlacement(coordinates: readonly [number, number]): void {
+    updateTargetFromPointer(coordinates);
+    setTargetSnapKind(null);
+  }
+
+  function handleTargetDragStart(): void {
+    setDragViewport(viewport);
+    setTargetSnapKind(null);
+  }
+
+  function handleTargetDragEnd(): void {
+    setDragViewport(null);
+    setTargetSnapKind(null);
+  }
+
+  function handleTargetCoordinateChange(coordinateIndex: number, input: string): void {
+    const nextDrafts = targetCoordinateDrafts.map((value, index) =>
+      index === coordinateIndex ? input : value,
+    ) as [string, string];
+    setTargetCoordinateDrafts(nextDrafts);
+
+    if (nextDrafts.every((draft) => draft.trim().length === 0)) {
+      setState((current) => ({
+        ...current,
+        linearCombination: {
+          ...current.linearCombination,
+          target: null,
+        },
+      }));
+      setTargetSnapKind(null);
+      return;
+    }
+
+    const parsed = nextDrafts.map(parseCoordinateInput);
+    if (!parsed.every((result) => result.ok)) {
+      return;
+    }
+
+    const coordinates: readonly [number, number] = [
+      parsed[0].ok ? parsed[0].value : 0,
+      parsed[1].ok ? parsed[1].value : 0,
+    ];
+    setState((current) => ({
+      ...current,
+      linearCombination: {
+        ...current.linearCombination,
+        target: coordinates,
+      },
+    }));
+    setTargetSnapKind(null);
+  }
+
+  function handleClearTarget(): void {
+    setState((current) => ({
+      ...current,
+      linearCombination: {
+        ...current.linearCombination,
+        target: null,
+      },
+    }));
+    setTargetCoordinateDrafts(['', '']);
+    setTargetSnapKind(null);
+    setDragViewport(null);
+  }
+
   function handleSpanSelection(vectorId: string, selected: boolean): void {
     setState((current) => ({
       ...current,
@@ -218,10 +347,12 @@ export function App() {
   function handleReset(): void {
     setState(initialState);
     setCoordinateDrafts(createCoordinateDrafts(initialState.vectors));
+    setTargetCoordinateDrafts(createTargetCoordinateDrafts(initialState.linearCombination.target));
     setViewMode('auto');
     setManualViewport(null);
     setDragViewport(null);
     setParallelSnapTargetId(null);
+    setTargetSnapKind(null);
     setActiveInspectorTab('edit');
     setExportErrorMessage(null);
     setShareUrl('');
@@ -470,6 +601,16 @@ export function App() {
                 <h2 id="plot-title">2次元座標平面</h2>
               </div>
               <div className="viewport-toolbar">
+                <button
+                  className="target-mode-button"
+                  type="button"
+                  aria-pressed={state.linearCombination.visible}
+                  onClick={handleLinearCombinationVisibility}
+                >
+                  {state.linearCombination.visible
+                    ? '一次結合モードを終了'
+                    : '一次結合を調べる'}
+                </button>
                 <span className={`example-badge ${viewMode === 'manual' ? 'is-manual' : ''}`}>
                   {viewportLabel}
                 </span>
@@ -501,6 +642,14 @@ export function App() {
                 </div>
               </div>
             </div>
+            {state.linearCombination.visible ? (
+              <TargetEditor
+                drafts={targetCoordinateDrafts}
+                target={targetCoordinates}
+                onCoordinateChange={handleTargetCoordinateChange}
+                onClear={handleClearTarget}
+              />
+            ) : null}
             <VectorPlane2D
               vectors={state.vectors}
               colors={vectorColors}
@@ -513,9 +662,18 @@ export function App() {
               spanVectors={spanVectors}
               spanDimension={spanAnalysis.rank}
               showSpan={state.visualization.showSpan}
+              linearCombinationVisible={state.linearCombination.visible}
+              target={targetCoordinates}
+              targetSnapKind={targetSnapKind}
+              onTargetPlacement={handleTargetPlacement}
+              onTargetDragStart={handleTargetDragStart}
+              onTargetChange={updateTargetFromPointer}
+              onTargetDragEnd={handleTargetDragEnd}
             />
             <p className="viewport-help">
-              矢印先端の丸をドラッグするとベクトルを変更できます。座標面の内側では1本指で移動、2本指で拡大・縮小できます。
+              {state.linearCombination.visible
+                ? 'クリックまたはタップでターゲット x を配置し、x の先端をドラッグして変更できます。背景をドラッグすると表示範囲を移動できます。'
+                : '矢印先端の丸をドラッグするとベクトルを変更できます。座標面の内側では1本指で移動、2本指で拡大・縮小できます。'}
               ページをスクロールするときは座標面の外側をスワイプしてください。
             </p>
           </section>
@@ -837,8 +995,8 @@ export function App() {
           <p className="panel-kicker">Export current state</p>
           <h2 id="share-dialog-title">共有URLをエクスポート</h2>
           <p className="share-dialog-description" id="share-dialog-description">
-            このURLを開くと、ベクトル、spanの選択、幾何表示が復元されます。
-            表示範囲はベクトル全体が見えるように自動調整されます。
+            このURLを開くと、ベクトル、spanの選択、幾何表示、一次結合のターゲットが復元されます。
+            表示範囲はベクトルと表示中のターゲット全体が見えるように自動調整されます。
           </p>
           <label className="share-url-field">
             <span>共有URL</span>
@@ -874,6 +1032,92 @@ export function App() {
         </div>
       </dialog>
     </div>
+  );
+}
+
+function TargetEditor({
+  drafts,
+  target,
+  onCoordinateChange,
+  onClear,
+}: {
+  readonly drafts: TargetCoordinateDrafts;
+  readonly target: readonly [number, number] | null;
+  readonly onCoordinateChange: (coordinateIndex: number, input: string) => void;
+  readonly onClear: () => void;
+}) {
+  const hasDraftInput = drafts.some((draft) => draft.trim().length > 0);
+  const results = drafts.map(parseCoordinateInput);
+  const invalidResults = hasDraftInput ? results.filter((result) => !result.ok) : [];
+  const firstError = invalidResults[0];
+
+  return (
+    <section className="target-editor" aria-labelledby="target-editor-title">
+      <div className="target-editor-copy">
+        <p className="panel-kicker">Linear combination target</p>
+        <h3 id="target-editor-title">ターゲット <MathVectorName name="x" /></h3>
+        <p>
+          座標面をクリックまたはタップして配置するか、成分を入力してください。
+          選択集合 <span className="math-set-name">X</span> が生成する空間への所属を次の段階で調べます。
+        </p>
+      </div>
+      <div className="target-editor-controls">
+        <MathVectorName name="x" />
+        <span className="math-equals" aria-hidden="true">=</span>
+        <div className="editable-column-vector target-column-vector">
+          {drafts.map((draft, coordinateIndex) => {
+            const result = results[coordinateIndex];
+            const isInvalid = hasDraftInput && !result.ok;
+            const inputId = `linear-combination-target-coordinate-${coordinateIndex}`;
+            const errorId = `${inputId}-error`;
+
+            return (
+              <label className="coordinate-field" key={inputId} htmlFor={inputId}>
+                <span className="visually-hidden">
+                  {`ターゲット x の${coordinateNames[coordinateIndex]}`}
+                </span>
+                <input
+                  id={inputId}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="未配置"
+                  value={draft}
+                  aria-invalid={isInvalid}
+                  aria-describedby={isInvalid ? errorId : undefined}
+                  onChange={(event) => onCoordinateChange(coordinateIndex, event.target.value)}
+                />
+                {isInvalid && !result.ok ? (
+                  <span className="visually-hidden" id={errorId}>
+                    {result.message} ターゲットには直前の有効値を使います。
+                  </span>
+                ) : null}
+              </label>
+            );
+          })}
+        </div>
+        <button
+          className="clear-target-button"
+          type="button"
+          disabled={!target && !hasDraftInput}
+          onClick={onClear}
+        >
+          ターゲットを消去
+        </button>
+      </div>
+      <p
+        className={`target-coordinate-feedback ${firstError ? 'has-error' : ''}`}
+        role="status"
+        aria-live="polite"
+      >
+        {firstError && !firstError.ok
+          ? `${invalidResults.length}か所が未確定です。${firstError.message} ターゲットには直前の有効値を使います。`
+          : target
+            ? '入力と座標面上のターゲットは同期しています。'
+            : 'ターゲットは未配置です。この状態も共有できます。'}
+      </p>
+    </section>
   );
 }
 
@@ -1044,11 +1288,32 @@ function createCoordinateDrafts(vectors: readonly VectorValue[]): CoordinateDraf
   );
 }
 
+function createTargetCoordinateDrafts(
+  target: readonly number[] | null,
+): TargetCoordinateDrafts {
+  const coordinates = toTwoDimensionalTarget(target);
+  return coordinates ? coordinatesToTargetDrafts(coordinates) : ['', ''];
+}
+
+function coordinatesToTargetDrafts(
+  coordinates: readonly [number, number],
+): TargetCoordinateDrafts {
+  return [String(coordinates[0]), String(coordinates[1])];
+}
+
+function toTwoDimensionalTarget(
+  target: readonly number[] | null,
+): readonly [number, number] | null {
+  return target?.length === 2 ? [target[0], target[1]] : null;
+}
+
 function collectCoordinateInputIssues(
   vectors: readonly VectorValue[],
   drafts: CoordinateDrafts,
+  targetVisible: boolean,
+  targetDrafts: TargetCoordinateDrafts,
 ): readonly CoordinateInputIssue[] {
-  return vectors.flatMap((vector) =>
+  const vectorIssues = vectors.flatMap((vector) =>
     (drafts[vector.id] ?? vector.coordinates.map(String)).flatMap((draft, coordinateIndex) => {
       const result = parseCoordinateInput(draft);
       return result.ok
@@ -1058,6 +1323,16 @@ function collectCoordinateInputIssues(
           }];
     }),
   );
+  const hasTargetDraftInput = targetDrafts.some((draft) => draft.trim().length > 0);
+  const targetIssues = targetVisible && hasTargetDraftInput
+    ? targetDrafts.flatMap((draft, coordinateIndex) => (
+        parseCoordinateInput(draft).ok
+          ? []
+          : [{ inputId: `linear-combination-target-coordinate-${coordinateIndex}` }]
+      ))
+    : [];
+
+  return [...vectorIssues, ...targetIssues];
 }
 
 function formatViewportNumber(value: number): string {

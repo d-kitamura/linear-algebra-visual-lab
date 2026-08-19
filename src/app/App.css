@@ -275,6 +275,32 @@
   gap: 9px;
 }
 
+.target-mode-button {
+  min-height: 44px;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, #2f6690 42%, var(--line));
+  border-radius: 10px;
+  color: #244e70;
+  background: color-mix(in srgb, #2f6690 7%, var(--paper));
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 780;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.target-mode-button:hover,
+.target-mode-button[aria-pressed='true'] {
+  color: white;
+  border-color: #2f6690;
+  background: #2f6690;
+}
+
+.target-mode-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, #2f6690 28%, transparent);
+  outline-offset: 2px;
+}
+
 .example-badge.is-manual {
   color: var(--accent-strong);
   border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
@@ -358,6 +384,10 @@
   touch-action: none;
 }
 
+.plot-interaction-surface.is-target-mode {
+  cursor: crosshair;
+}
+
 .plot-interaction-surface.is-panning {
   cursor: grabbing;
 }
@@ -367,6 +397,7 @@
 .tick-labels,
 .span-layer,
 .vector-arrows,
+.target-vector,
 .origin-point {
   pointer-events: none;
 }
@@ -522,6 +553,162 @@
   stroke: #fffdf7;
   stroke-width: 5px;
   stroke-linejoin: round;
+}
+
+.target-vector {
+  --target-color: #245b8d;
+  color: var(--target-color);
+}
+
+.target-vector line {
+  stroke: var(--target-color);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 13 7;
+}
+
+.target-vector polygon,
+.target-zero,
+.target-tip {
+  fill: var(--target-color);
+}
+
+.target-zero,
+.target-tip {
+  stroke: #fffdf7;
+  stroke-width: 2;
+}
+
+.target-vector.is-snapped line {
+  stroke-width: 8;
+}
+
+.target-drag-handle {
+  pointer-events: all;
+  cursor: grab;
+  touch-action: none;
+  fill: var(--target-color);
+  fill-opacity: 0;
+  stroke: var(--target-color);
+  stroke-width: 3;
+  stroke-opacity: 0;
+}
+
+.target-vector.is-snapped .target-drag-handle {
+  fill-opacity: 0.22;
+  stroke-opacity: 0.9;
+}
+
+@media (hover: hover) {
+  .target-drag-handle:hover {
+    fill-opacity: 0.12;
+    stroke-opacity: 0.65;
+  }
+}
+
+.target-label {
+  fill: var(--target-color);
+  font-family: Cambria, "Times New Roman", serif;
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #fffdf7;
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.target-editor {
+  margin: -2px 0 16px;
+  padding: 15px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px 20px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, #2f6690 30%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, #2f6690 6%, #fffdf7);
+}
+
+.target-editor .panel-kicker {
+  margin-bottom: 5px;
+  color: #245b8d;
+  font-size: 0.65rem;
+}
+
+.target-editor h3 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: 1rem;
+}
+
+.target-editor-copy > p:last-child {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.target-editor-controls {
+  display: grid;
+  grid-template-columns: auto auto minmax(96px, 116px) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.target-editor-controls > .math-vector {
+  font-size: 1.3rem;
+}
+
+.target-column-vector {
+  width: 100%;
+}
+
+.target-column-vector input::placeholder {
+  color: color-mix(in srgb, var(--muted) 68%, transparent);
+  font-family: var(--body-font);
+  font-size: 0.63rem;
+}
+
+.clear-target-button {
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  background: var(--paper);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.clear-target-button:hover:not(:disabled) {
+  color: #245b8d;
+  border-color: #2f6690;
+}
+
+.clear-target-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, #2f6690 26%, transparent);
+  outline-offset: 2px;
+}
+
+.clear-target-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.target-coordinate-feedback {
+  grid-column: 1 / -1;
+  margin: -5px 0 0;
+  color: var(--muted);
+  font-size: 0.67rem;
+  line-height: 1.5;
+}
+
+.target-coordinate-feedback.has-error {
+  color: #9b2f2f;
+  font-weight: 700;
 }
 
 .analysis-column {
@@ -1427,6 +1614,18 @@
   .viewport-controls {
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+
+  .target-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .target-editor-controls {
+    grid-template-columns: auto auto minmax(96px, 1fr);
+  }
+
+  .clear-target-button {
+    grid-column: 1 / -1;
   }
 
   .analysis-column {
