@@ -1,4 +1,9 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import {
+  useMemo,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { analyzeVectorSet, type VectorValue } from '../domain';
 import { MAX_ABSOLUTE_COORDINATE, type ShareStateV1 } from '../sharing';
 import {
@@ -21,9 +26,15 @@ import './App.css';
 
 const vectorColors = ['#c84c35', '#087f73'];
 const coordinateNames = ['第1成分', '第2成分'] as const;
+const inspectorTabs = [
+  { id: 'edit', label: 'ベクトル編集', shortLabel: '編集' },
+  { id: 'span', label: '生成する空間', shortLabel: 'span' },
+  { id: 'all', label: '全ベクトル', shortLabel: '全体' },
+] as const;
 
 type CoordinateDrafts = Readonly<Record<string, readonly string[]>>;
 type ViewMode = 'auto' | 'manual';
+type InspectorTabId = typeof inspectorTabs[number]['id'];
 
 export function App() {
   const [state, setState] = useState<ShareStateV1>(() => DEFAULT_2D_SHARE_STATE);
@@ -34,6 +45,7 @@ export function App() {
   const [manualViewport, setManualViewport] = useState<PlaneViewport | null>(null);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
+  const [activeInspectorTab, setActiveInspectorTab] = useState<InspectorTabId>('edit');
   const analysis = useMemo(
     () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
     [state],
@@ -127,6 +139,30 @@ export function App() {
       ...current,
       visualization: { ...current.visualization, showSpan },
     }));
+  }
+
+  function handleInspectorTabKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+  ): void {
+    const currentIndex = inspectorTabs.findIndex((tab) => tab.id === activeInspectorTab);
+    let nextIndex = currentIndex;
+
+    if (event.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % inspectorTabs.length;
+    } else if (event.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + inspectorTabs.length) % inspectorTabs.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = inspectorTabs.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    const nextTab = inspectorTabs[nextIndex];
+    setActiveInspectorTab(nextTab.id);
+    document.getElementById(`inspector-tab-${nextTab.id}`)?.focus();
   }
 
   function handleCoordinateChange(
@@ -249,7 +285,60 @@ export function App() {
           </section>
 
           <aside className="analysis-column" aria-label="ベクトル集合の編集と解析結果">
-            <section className="vector-editor-card" aria-labelledby="vector-editor-title">
+            <section className="analysis-summary" aria-labelledby="analysis-summary-title">
+              <h2 className="visually-hidden" id="analysis-summary-title">現在の解析要約</h2>
+              <button
+                className="summary-tile summary-span"
+                type="button"
+                onClick={() => setActiveInspectorTab('span')}
+              >
+                <span className="summary-label">選択集合 <span className="math-set-name">X</span></span>
+                <strong>{spanShape.summary}</strong>
+                <span className="summary-math">
+                  <MathOperator name="dim" />(<MathOperator name="span" />(<span className="math-set-name">X</span>))
+                  {' = '}{spanAnalysis.spanDimension}
+                </span>
+              </button>
+              <button
+                className="summary-tile summary-all"
+                type="button"
+                onClick={() => setActiveInspectorTab('all')}
+              >
+                <span className="summary-label">表示中の全ベクトル</span>
+                <strong>{isIndependent ? '一次独立' : '一次従属'}</strong>
+                <span className="summary-math">
+                  <MathOperator name="rank" />(<MathMatrixName />)
+                  {' = '}{analysis.rank}
+                </span>
+              </button>
+            </section>
+
+            <div className="inspector-tablist" role="tablist" aria-label="編集・解析の詳細">
+              {inspectorTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  id={`inspector-tab-${tab.id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeInspectorTab === tab.id}
+                  aria-controls={`inspector-panel-${tab.id}`}
+                  tabIndex={activeInspectorTab === tab.id ? 0 : -1}
+                  onClick={() => setActiveInspectorTab(tab.id)}
+                  onKeyDown={handleInspectorTabKeyDown}
+                >
+                  <span className="tab-label-wide">{tab.label}</span>
+                  <span className="tab-label-short">{tab.shortLabel}</span>
+                </button>
+              ))}
+            </div>
+
+            <section
+              className="vector-editor-card inspector-panel"
+              id="inspector-panel-edit"
+              role="tabpanel"
+              aria-labelledby="inspector-tab-edit vector-editor-title"
+              hidden={activeInspectorTab !== 'edit'}
+            >
               <p className="panel-kicker">Edit vectors</p>
               <h2 id="vector-editor-title">列ベクトルの成分</h2>
               <p className="editor-hint">上段が第1成分、下段が第2成分です。</p>
@@ -329,7 +418,13 @@ export function App() {
               </div>
             </section>
 
-            <section className={`span-card is-rank-${spanAnalysis.rank}`} aria-labelledby="span-card-title">
+            <section
+              className={`span-card inspector-panel is-rank-${spanAnalysis.rank}`}
+              id="inspector-panel-span"
+              role="tabpanel"
+              aria-labelledby="inspector-tab-span span-card-title"
+              hidden={activeInspectorTab !== 'span'}
+            >
               <div className="span-card-heading">
                 <div>
                   <p className="panel-kicker">Selected span</p>
@@ -386,7 +481,13 @@ export function App() {
               </dl>
             </section>
 
-            <section className={`result-card ${isIndependent ? 'is-independent' : 'is-dependent'}`}>
+            <section
+              className={`result-card inspector-panel ${isIndependent ? 'is-independent' : 'is-dependent'}`}
+              id="inspector-panel-all"
+              role="tabpanel"
+              aria-labelledby="inspector-tab-all"
+              hidden={activeInspectorTab !== 'all'}
+            >
               <p className="panel-kicker">All vectors</p>
               <MatrixDefinition vectors={state.vectors} />
               <p className="result-symbol" aria-hidden="true">{isIndependent ? '∥' : '≈'}</p>
@@ -554,11 +655,13 @@ function SelectedMatrixDefinition({ vectors }: { readonly vectors: readonly Vect
 function describeSpanShape(rank: number): {
   readonly heading: string;
   readonly explanation: string;
+  readonly summary: string;
 } {
   if (rank === 0) {
     return {
       heading: '原点だけです',
       explanation: '生成する空間は、零ベクトルだけからなる零部分空間です。',
+      summary: '原点',
     };
   }
 
@@ -566,12 +669,14 @@ function describeSpanShape(rank: number): {
     return {
       heading: '原点を通る直線です',
       explanation: '選択した非零ベクトルの実数倍が、この直線全体を作ります。',
+      summary: '原点を通る直線',
     };
   }
 
   return {
     heading: '2次元座標平面全体です',
     explanation: '2本の一次独立な方向によって、平面上のすべてのベクトルを作れます。',
+    summary: '2次元座標平面全体',
   };
 }
 
