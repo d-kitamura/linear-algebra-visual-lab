@@ -12,8 +12,10 @@ export {
   fromSvgPoint,
   panViewportBySvgDelta,
   pointsToSvg,
+  roundCoordinateForViewport,
   translateViewport,
   toSvgPoint,
+  vectorCoordinatesFromSvgPoint,
   zoomViewportAt,
   zoomViewportAtCenter,
 } from './planeGeometry';

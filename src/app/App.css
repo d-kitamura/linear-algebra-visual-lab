@@ -267,6 +267,39 @@
   stroke-linejoin: round;
 }
 
+.vector-drag-handle {
+  pointer-events: all;
+  cursor: grab;
+  touch-action: none;
+  fill-opacity: 0;
+  stroke-width: 2;
+  stroke-opacity: 0;
+}
+
+.vector-drag-handle.is-dragging {
+  cursor: grabbing;
+  fill-opacity: 0.14;
+  stroke-opacity: 0.75;
+}
+
+.vector-drag-handle.is-snapped {
+  fill-opacity: 0.24;
+  stroke-width: 4;
+  stroke-opacity: 1;
+}
+
+.vector-arrow.is-snap-target line {
+  stroke-width: 10;
+  stroke-dasharray: 18 8;
+}
+
+@media (hover: hover) {
+  .vector-drag-handle:hover {
+    fill-opacity: 0.1;
+    stroke-opacity: 0.55;
+  }
+}
+
 .vector-label {
   font-size: 22px;
   paint-order: stroke;

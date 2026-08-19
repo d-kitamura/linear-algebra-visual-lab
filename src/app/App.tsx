@@ -1,7 +1,12 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { analyzeVectorSet, type VectorValue } from '../domain';
-import type { ShareStateV1 } from '../sharing';
-import { DEFAULT_2D_SHARE_STATE, parseCoordinateInput } from '../state';
+import { MAX_ABSOLUTE_COORDINATE, type ShareStateV1 } from '../sharing';
+import {
+  DEFAULT_2D_SHARE_STATE,
+  parallelSnapDistanceForViewWidth,
+  parseCoordinateInput,
+  snapDraggedVectorToParallel,
+} from '../state';
 import { splitVectorName } from '../ui';
 import {
   VectorPlane2D,
@@ -25,12 +30,15 @@ export function App() {
   );
   const [viewMode, setViewMode] = useState<ViewMode>('auto');
   const [manualViewport, setManualViewport] = useState<PlaneViewport | null>(null);
+  const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
+  const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
   const analysis = useMemo(
     () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
     [state],
   );
   const autoViewport = useMemo(() => createAutoFitViewport(state.vectors), [state.vectors]);
-  const viewport = viewMode === 'auto' ? autoViewport : (manualViewport ?? autoViewport);
+  const selectedViewport = viewMode === 'auto' ? autoViewport : (manualViewport ?? autoViewport);
+  const viewport = dragViewport ?? selectedViewport;
   const isIndependent = analysis.isLinearlyIndependent;
   const viewportLabel = viewMode === 'auto'
     ? `自動表示 ±${formatViewportNumber((viewport.maxX - viewport.minX) / 2)}`
@@ -48,6 +56,47 @@ export function App() {
   function handleFitViewport(): void {
     setManualViewport(null);
     setViewMode('auto');
+  }
+
+  function handleVectorDragStart(): void {
+    setDragViewport(viewport);
+    setParallelSnapTargetId(null);
+  }
+
+  function handleVectorDrag(
+    vectorId: string,
+    coordinates: readonly [number, number],
+  ): void {
+    const candidateCoordinates: readonly [number, number] = [
+      clampDraggedCoordinate(coordinates[0]),
+      clampDraggedCoordinate(coordinates[1]),
+    ];
+    const snapResult = snapDraggedVectorToParallel(
+      vectorId,
+      candidateCoordinates,
+      state.vectors,
+      parallelSnapDistanceForViewWidth(viewport.maxX - viewport.minX),
+    );
+    const safeCoordinates = snapResult.coordinates;
+
+    setState((current) => ({
+      ...current,
+      vectors: current.vectors.map((vector) =>
+        vector.id === vectorId
+          ? { ...vector, coordinates: safeCoordinates }
+          : vector,
+      ),
+    }));
+    setCoordinateDrafts((current) => ({
+      ...current,
+      [vectorId]: safeCoordinates.map(String),
+    }));
+    setParallelSnapTargetId(snapResult.targetVectorId);
+  }
+
+  function handleVectorDragEnd(): void {
+    setDragViewport(null);
+    setParallelSnapTargetId(null);
   }
 
   function handleCoordinateChange(
@@ -156,9 +205,13 @@ export function App() {
               colors={vectorColors}
               viewport={viewport}
               onViewportChange={handleManualViewportChange}
+              onVectorDragStart={handleVectorDragStart}
+              onVectorChange={handleVectorDrag}
+              onVectorDragEnd={handleVectorDragEnd}
+              parallelSnapTargetId={parallelSnapTargetId}
             />
             <p className="viewport-help">
-              ホイール／ピンチで拡大・縮小、座標面の背景ドラッグで移動できます。
+              矢印先端の丸をドラッグするとベクトルを変更できます。ほかのベクトルとほぼ平行になると吸着します。
             </p>
           </section>
 
@@ -274,7 +327,7 @@ export function App() {
             </section>
 
             <p className="development-note">
-              この段階では表示範囲の操作を確認します。ベクトル先端のドラッグ、生成する空間の幾何表示は後続の作業単位で追加します。
+              この段階では数値入力と先端ドラッグの同期を確認します。生成する空間の幾何表示は後続の作業単位で追加します。
             </p>
           </aside>
         </div>
@@ -357,4 +410,13 @@ function createCoordinateDrafts(vectors: readonly VectorValue[]): CoordinateDraf
 
 function formatViewportNumber(value: number): string {
   return new Intl.NumberFormat('ja-JP', { maximumSignificantDigits: 4 }).format(value);
+}
+
+function clampDraggedCoordinate(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  const clamped = Math.min(MAX_ABSOLUTE_COORDINATE, Math.max(-MAX_ABSOLUTE_COORDINATE, value));
+  return Object.is(clamped, -0) ? 0 : clamped;
 }

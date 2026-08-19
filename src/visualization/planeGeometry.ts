@@ -119,6 +119,34 @@ export function fromSvgPoint(
   ];
 }
 
+export function vectorCoordinatesFromSvgPoint(
+  point: SvgPoint,
+  viewport: PlaneViewport = DEFAULT_PLANE_VIEWPORT,
+): readonly [x: number, y: number] {
+  const coordinates = fromSvgPoint(point, viewport);
+
+  return [
+    roundCoordinateForViewport(coordinates[0], viewport),
+    roundCoordinateForViewport(coordinates[1], viewport),
+  ];
+}
+
+export function roundCoordinateForViewport(
+  value: number,
+  viewport: PlaneViewport,
+): number {
+  if (!Number.isFinite(value)) {
+    return value;
+  }
+
+  const plotWidth = viewport.width - viewport.padding * 2;
+  const unitsPerSvgPixel = (viewport.maxX - viewport.minX) / plotWidth;
+  const step = 10 ** Math.floor(Math.log10(unitsPerSvgPixel));
+  const rounded = Math.round(value / step) * step;
+
+  return normalizeTick(rounded);
+}
+
 export function zoomViewportAt(
   viewport: PlaneViewport,
   anchor: readonly [x: number, y: number],

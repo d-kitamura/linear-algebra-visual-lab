@@ -9,7 +9,9 @@ import {
   fromSvgPoint,
   panViewportBySvgDelta,
   pointsToSvg,
+  roundCoordinateForViewport,
   toSvgPoint,
+  vectorCoordinatesFromSvgPoint,
   zoomViewportAt,
   zoomViewportAtCenter,
 } from '../../src/visualization';
@@ -116,6 +118,20 @@ describe('2D plane geometry', () => {
     expect(panned.maxX).toBeCloseTo(4);
     expect(panned.minY).toBeCloseTo(-3);
     expect(panned.maxY).toBeCloseTo(7);
+  });
+
+  it('rounds dragged coordinates at the visible screen resolution', () => {
+    expect(roundCoordinateForViewport(1.234, DEFAULT_PLANE_VIEWPORT)).toBe(1.23);
+    expect(roundCoordinateForViewport(-2.346, DEFAULT_PLANE_VIEWPORT)).toBe(-2.35);
+
+    const zoomed = zoomViewportAtCenter(DEFAULT_PLANE_VIEWPORT, 0.02);
+    expect(roundCoordinateForViewport(0.01234, zoomed)).toBe(0.0123);
+  });
+
+  it('converts a dragged SVG point into rounded vector coordinates', () => {
+    const point = toSvgPoint([1.234, -2.346]);
+
+    expect(vectorCoordinatesFromSvgPoint(point)).toEqual([1.23, -2.35]);
   });
 
   it('creates a triangular arrow head and serializes its points', () => {
