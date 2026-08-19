@@ -1,4 +1,5 @@
 export {
+  LEGACY_SHARE_STATE_VERSION,
   MAX_ABSOLUTE_COORDINATE,
   MAX_ENCODED_SHARE_STATE_LENGTH,
   MAX_SHARE_VECTOR_ID_LENGTH,
@@ -12,9 +13,12 @@ export {
 } from './shareState';
 
 export type {
+  ShareState,
   ShareStateDecodeResult,
   ShareStateErrorCode,
   ShareStateV1,
+  ShareStateV2,
+  SharedLinearCombinationState,
   SharedVisualizationState,
 } from './shareState';
 

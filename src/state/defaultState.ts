@@ -1,7 +1,7 @@
-import { validateShareState, type ShareStateV1 } from '../sharing';
+import { validateShareState, type ShareState } from '../sharing';
 
-const initialState: ShareStateV1 = {
-  v: 1,
+const initialState: ShareState = {
+  v: 2,
   lab: 'vector-space',
   dim: 2,
   vectors: [
@@ -10,6 +10,7 @@ const initialState: ShareStateV1 = {
   ],
   spanSelection: ['v1', 'v2'],
   visualization: { showSpan: true },
+  linearCombination: { visible: false, target: null },
 };
 
 export const DEFAULT_2D_SHARE_STATE = validateShareState(initialState);

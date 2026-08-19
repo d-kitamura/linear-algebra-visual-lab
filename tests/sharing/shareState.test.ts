@@ -6,12 +6,13 @@ import {
   decodeShareState,
   encodeShareState,
   validateShareState,
+  type ShareState,
   type ShareStateErrorCode,
   type ShareStateV1,
 } from '../../src/sharing';
 
-const exampleState: ShareStateV1 = {
-  v: 1,
+const exampleState: ShareState = {
+  v: 2,
   lab: 'vector-space',
   dim: 2,
   vectors: [
@@ -20,6 +21,7 @@ const exampleState: ShareStateV1 = {
   ],
   spanSelection: ['v1'],
   visualization: { showSpan: true },
+  linearCombination: { visible: true, target: [3, -2] },
 };
 
 function expectDecodeError(encoded: string, code: ShareStateErrorCode): void {
@@ -67,13 +69,14 @@ describe('share-state round trip', () => {
   });
 
   it('supports a 3D state and an empty span selection', () => {
-    const state: ShareStateV1 = {
-      v: 1,
+    const state: ShareState = {
+      v: 2,
       lab: 'vector-space',
       dim: 3,
       vectors: [{ id: 'v1', name: 'v₁', coordinates: [1, 0, -2.5] }],
       spanSelection: [],
       visualization: { showSpan: false },
+      linearCombination: { visible: true, target: [2, 0, -1] },
     };
 
     const decoded = decodeShareState(encodeShareState(state));
@@ -98,7 +101,7 @@ describe('share-state schema validation', () => {
         name: `v${index}`,
         coordinates: [index, 0],
       })),
-    } as ShareStateV1;
+    } as ShareState;
 
     expect(() => encodeShareState(state)).toThrowError(
       expect.objectContaining({ code: 'VECTOR_LIMIT_EXCEEDED' }),
@@ -116,7 +119,7 @@ describe('share-state schema validation', () => {
         },
       ],
       spanSelection: ['v1'],
-    } as ShareStateV1;
+    } as ShareState;
 
     expect(() => encodeShareState(state)).toThrowError(
       expect.objectContaining({ code: 'COORDINATE_LIMIT_EXCEEDED' }),
@@ -128,7 +131,7 @@ describe('share-state schema validation', () => {
       ...exampleState,
       vectors: [{ id: 'v1', name: 'v₁', coordinates: [Number.NaN, 0] }],
       spanSelection: ['v1'],
-    } as ShareStateV1;
+    } as ShareState;
 
     expect(() => encodeShareState(state)).toThrowError(
       expect.objectContaining({ code: 'INVALID_STATE' }),
@@ -139,7 +142,7 @@ describe('share-state schema validation', () => {
     const invalid = {
       ...exampleState,
       dim: 3,
-    } as ShareStateV1;
+    } as ShareState;
 
     expect(() => encodeShareState(invalid)).toThrowError(
       expect.objectContaining({ code: 'INVALID_STATE' }),
@@ -150,7 +153,7 @@ describe('share-state schema validation', () => {
     const invalid = {
       ...exampleState,
       vectors: [exampleState.vectors[0], exampleState.vectors[0]],
-    } as ShareStateV1;
+    } as ShareState;
 
     expect(() => encodeShareState(invalid)).toThrowError(
       expect.objectContaining({ code: 'INVALID_STATE' }),
@@ -158,8 +161,8 @@ describe('share-state schema validation', () => {
   });
 
   it('rejects duplicate and unknown span selections', () => {
-    const duplicate = { ...exampleState, spanSelection: ['v1', 'v1'] } as ShareStateV1;
-    const unknown = { ...exampleState, spanSelection: ['missing'] } as ShareStateV1;
+    const duplicate = { ...exampleState, spanSelection: ['v1', 'v1'] } as ShareState;
+    const unknown = { ...exampleState, spanSelection: ['missing'] } as ShareState;
 
     expect(() => encodeShareState(duplicate)).toThrowError(
       expect.objectContaining({ code: 'INVALID_STATE' }),
@@ -180,7 +183,7 @@ describe('share-state schema validation', () => {
       ...exampleState,
       vectors: [{ id: 'v1', name: '\ud800', coordinates: [1, 0] }],
       spanSelection: ['v1'],
-    } as ShareStateV1;
+    } as ShareState;
 
     expect(() => encodeShareState(invalid)).toThrowError(
       expect.objectContaining({ code: 'INVALID_STATE' }),
@@ -192,11 +195,78 @@ describe('share-state schema validation', () => {
       ...exampleState,
       vectors: [{ id: 'v1', name: 'v₁', coordinates: [-0, 0] }],
       spanSelection: ['v1'],
-    } as ShareStateV1;
+    } as ShareState;
     const validated = validateShareState(state);
 
     expect(validated.vectors[0].coordinates).toEqual([0, 0]);
     expect(Object.is(validated.vectors[0].coordinates[0], -0)).toBe(false);
+  });
+
+  it('validates and canonicalizes the linear-combination target', () => {
+    const validated = validateShareState({
+      ...exampleState,
+      linearCombination: { visible: true, target: [-0, 2] },
+    });
+
+    expect(validated.linearCombination).toEqual({ visible: true, target: [0, 2] });
+    expect(Object.is(validated.linearCombination.target?.[0], -0)).toBe(false);
+  });
+
+  it('accepts a hidden explorer without a target', () => {
+    const state: ShareState = {
+      ...exampleState,
+      linearCombination: { visible: false, target: null },
+    };
+
+    expect(validateShareState(state)).toEqual(state);
+  });
+
+  it('rejects an invalid explorer value and target', () => {
+    expectDecodeError(encodeRawValue({
+      ...exampleState,
+      linearCombination: { visible: 'yes', target: [1, 2] },
+    }), 'INVALID_STATE');
+    expectDecodeError(encodeRawValue({
+      ...exampleState,
+      linearCombination: { visible: true, target: [1, 2, 3] },
+    }), 'INVALID_STATE');
+    expectDecodeError(encodeRawValue({
+      ...exampleState,
+      linearCombination: {
+        visible: true,
+        target: [MAX_ABSOLUTE_COORDINATE + 1, 0],
+      },
+    }), 'COORDINATE_LIMIT_EXCEEDED');
+  });
+
+  it('migrates a strict v1 state to the current v2 defaults', () => {
+    const legacyState: ShareStateV1 = {
+      v: 1,
+      lab: 'vector-space',
+      dim: 2,
+      vectors: exampleState.vectors,
+      spanSelection: exampleState.spanSelection,
+      visualization: exampleState.visualization,
+    };
+    const decoded = decodeShareState(encodeRawValue(legacyState));
+
+    expect(decoded).toEqual({
+      ok: true,
+      state: {
+        ...legacyState,
+        v: 2,
+        linearCombination: { visible: false, target: null },
+      },
+    });
+  });
+
+  it('keeps v1 strict instead of accepting v2 fields under the old version', () => {
+    const legacyWithNewField = {
+      ...exampleState,
+      v: 1,
+    };
+
+    expectDecodeError(encodeRawValue(legacyWithNewField), 'INVALID_STATE');
   });
 });
 
@@ -222,7 +292,7 @@ describe('safe share-state decoding', () => {
   });
 
   it('rejects an unsupported schema version', () => {
-    expectDecodeError(encodeRawValue({ ...exampleState, v: 2 }), 'UNSUPPORTED_VERSION');
+    expectDecodeError(encodeRawValue({ ...exampleState, v: 3 }), 'UNSUPPORTED_VERSION');
   });
 
   it('rejects a wrong visualization value type', () => {

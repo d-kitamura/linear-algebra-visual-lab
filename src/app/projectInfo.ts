@@ -1,5 +1,5 @@
 export const projectInfo = {
   name: 'Linear Algebra Visual Lab',
-  phase: 'フェーズ 4.1',
-  status: '一次結合の数学ロジック',
+  phase: 'フェーズ 4.2',
+  status: '共有状態 v2',
 } as const;

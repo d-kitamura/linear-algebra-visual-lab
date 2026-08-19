@@ -13,7 +13,7 @@ import {
   buildShareUrl,
   createShareTextFileContents,
   createShareTextFileName,
-  type ShareStateV1,
+  type ShareState,
 } from '../sharing';
 import {
   addDefaultVector,
@@ -67,7 +67,7 @@ interface CoordinateInputIssue {
 export function App() {
   const [initialization] = useState(() => createAppInitialization(window.location.href));
   const initialState = initialization.initialState;
-  const [state, setState] = useState<ShareStateV1>(initialState);
+  const [state, setState] = useState<ShareState>(initialState);
   const [coordinateDrafts, setCoordinateDrafts] = useState<CoordinateDrafts>(() =>
     createCoordinateDrafts(initialState.vectors),
   );

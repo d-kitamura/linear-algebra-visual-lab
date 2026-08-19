@@ -4,12 +4,12 @@ import {
   MAX_SHARE_VECTORS,
   decodeShareState,
   encodeShareState,
-  type ShareStateV1,
+  type ShareState,
 } from '../../src/sharing';
 import { addDefaultVector, removeVector } from '../../src/state';
 
-const initialState: ShareStateV1 = {
-  v: 1,
+const initialState: ShareState = {
+  v: 2,
   lab: 'vector-space',
   dim: 2,
   vectors: [
@@ -18,6 +18,7 @@ const initialState: ShareStateV1 = {
   ],
   spanSelection: ['v1', 'v2'],
   visualization: { showSpan: true },
+  linearCombination: { visible: true, target: [3, -2] },
 };
 
 describe('vector collection editing', () => {
@@ -30,7 +31,7 @@ describe('vector collection editing', () => {
   });
 
   it('skips suffixes already used by either an ID or a display name', () => {
-    const state: ShareStateV1 = {
+    const state: ShareState = {
       ...initialState,
       vectors: [
         { id: 'custom', name: 'v₁', coordinates: [1, 0] },
@@ -44,18 +45,19 @@ describe('vector collection editing', () => {
   });
 
   it('creates the correct coordinate count for a future 3D state', () => {
-    const state3d: ShareStateV1 = {
+    const state3d: ShareState = {
       ...initialState,
       dim: 3,
       vectors: [],
       spanSelection: [],
+      linearCombination: { visible: false, target: null },
     };
 
     expect(addDefaultVector(state3d).addedVector?.coordinates).toEqual([1, 0, 0]);
   });
 
   it('does not add more than the shared-state safety limit', () => {
-    const state: ShareStateV1 = {
+    const state: ShareState = {
       ...initialState,
       vectors: Array.from({ length: MAX_SHARE_VECTORS }, (_, index) => ({
         id: `v${index + 1}`,
@@ -75,6 +77,7 @@ describe('vector collection editing', () => {
 
     expect(result.vectors.map((vector) => vector.id)).toEqual(['v2']);
     expect(result.spanSelection).toEqual(['v2']);
+    expect(result.linearCombination).toEqual(initialState.linearCombination);
     expect(removeVector(result, 'missing')).toBe(result);
   });
 
@@ -87,7 +90,7 @@ describe('vector collection editing', () => {
     expect(analysis).toMatchObject({ rank: 0, isLinearlyIndependent: true });
   });
 
-  it('round-trips an edited collection through share state v1', () => {
+  it('round-trips an edited collection and target through share state v2', () => {
     const edited = removeVector(addDefaultVector(initialState).state, 'v1');
 
     expect(decodeShareState(encodeShareState(edited))).toEqual({

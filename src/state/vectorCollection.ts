@@ -1,12 +1,12 @@
 import type { VectorDimension, VectorValue } from '../domain';
-import { MAX_SHARE_VECTORS, type ShareStateV1 } from '../sharing';
+import { MAX_SHARE_VECTORS, type ShareState } from '../sharing';
 
 export interface AddDefaultVectorResult {
-  readonly state: ShareStateV1;
+  readonly state: ShareState;
   readonly addedVector: VectorValue | null;
 }
 
-export function addDefaultVector(state: ShareStateV1): AddDefaultVectorResult {
+export function addDefaultVector(state: ShareState): AddDefaultVectorResult {
   if (state.vectors.length >= MAX_SHARE_VECTORS) {
     return { state, addedVector: null };
   }
@@ -23,7 +23,7 @@ export function addDefaultVector(state: ShareStateV1): AddDefaultVectorResult {
   };
 }
 
-export function removeVector(state: ShareStateV1, vectorId: string): ShareStateV1 {
+export function removeVector(state: ShareState, vectorId: string): ShareState {
   if (!state.vectors.some((vector) => vector.id === vectorId)) {
     return state;
   }

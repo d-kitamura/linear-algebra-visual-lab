@@ -4,11 +4,11 @@ import {
   createShareTextFileContents,
   createShareTextFileName,
   readShareStateFromUrl,
-  type ShareStateV1,
+  type ShareState,
 } from '../../src/sharing';
 
-const exampleState: ShareStateV1 = {
-  v: 1,
+const exampleState: ShareState = {
+  v: 2,
   lab: 'vector-space',
   dim: 2,
   vectors: [
@@ -17,6 +17,7 @@ const exampleState: ShareStateV1 = {
   ],
   spanSelection: ['v2'],
   visualization: { showSpan: false },
+  linearCombination: { visible: true, target: [3, -2] },
 };
 
 describe('共有URL', () => {
@@ -32,7 +33,7 @@ describe('共有URL', () => {
     expect(url.hash).toBe('');
   });
 
-  it('生成したURLから数学状態、span選択、表示切替を復元する', () => {
+  it('生成したURLから数学状態、span選択、表示切替、ターゲットを復元する', () => {
     const shareUrl = buildShareUrl('https://example.jp/lab/', exampleState);
     const result = readShareStateFromUrl(shareUrl);
 

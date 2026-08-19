@@ -1,8 +1,8 @@
-import { readShareStateFromUrl, type ShareStateV1 } from '../sharing';
+import { readShareStateFromUrl, type ShareState } from '../sharing';
 import { DEFAULT_2D_SHARE_STATE } from './defaultState';
 
 export interface AppInitialization {
-  readonly initialState: ShareStateV1;
+  readonly initialState: ShareState;
   readonly source: 'default' | 'shared' | 'fallback';
   readonly errorMessage: string | null;
 }

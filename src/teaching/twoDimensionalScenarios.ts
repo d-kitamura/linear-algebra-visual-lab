@@ -1,10 +1,10 @@
-import type { ShareStateV1 } from '../sharing';
+import type { ShareState } from '../sharing';
 
 export interface TeachingScenario {
   readonly id: string;
   readonly title: string;
   readonly learningPoint: string;
-  readonly state: ShareStateV1;
+  readonly state: ShareState;
   readonly expected: {
     readonly vectorCount: number;
     readonly rank: number;
@@ -73,15 +73,16 @@ export const TWO_DIMENSIONAL_TEACHING_SCENARIOS: readonly TeachingScenario[] = [
 ];
 
 function createScenarioState(
-  vectors: ShareStateV1['vectors'],
-  spanSelection: ShareStateV1['spanSelection'],
-): ShareStateV1 {
+  vectors: ShareState['vectors'],
+  spanSelection: ShareState['spanSelection'],
+): ShareState {
   return {
-    v: 1,
+    v: 2,
     lab: 'vector-space',
     dim: 2,
     vectors,
     spanSelection,
     visualization: { showSpan: true },
+    linearCombination: { visible: false, target: null },
   };
 }

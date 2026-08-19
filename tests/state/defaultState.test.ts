@@ -6,6 +6,11 @@ import { DEFAULT_2D_SHARE_STATE } from '../../src/state';
 describe('DEFAULT_2D_SHARE_STATE', () => {
   it('is a valid shareable 2D state', () => {
     expect(validateShareState(DEFAULT_2D_SHARE_STATE)).toEqual(DEFAULT_2D_SHARE_STATE);
+    expect(DEFAULT_2D_SHARE_STATE.v).toBe(2);
+    expect(DEFAULT_2D_SHARE_STATE.linearCombination).toEqual({
+      visible: false,
+      target: null,
+    });
   });
 
   it('contains two independent vectors spanning the plane', () => {

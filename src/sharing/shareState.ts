@@ -1,6 +1,7 @@
 import type { VectorDimension, VectorValue } from '../domain';
 
-export const SHARE_STATE_VERSION = 1 as const;
+export const LEGACY_SHARE_STATE_VERSION = 1 as const;
+export const SHARE_STATE_VERSION = 2 as const;
 export const MAX_SHARE_VECTORS = 8;
 export const MAX_SHARE_VECTOR_ID_LENGTH = 32;
 export const MAX_SHARE_VECTOR_NAME_LENGTH = 40;
@@ -14,14 +15,31 @@ export interface SharedVisualizationState {
   readonly showSpan: boolean;
 }
 
+export interface SharedLinearCombinationState {
+  readonly visible: boolean;
+  readonly target: readonly number[] | null;
+}
+
 export interface ShareStateV1 {
-  readonly v: typeof SHARE_STATE_VERSION;
+  readonly v: typeof LEGACY_SHARE_STATE_VERSION;
   readonly lab: typeof SHARE_LAB;
   readonly dim: VectorDimension;
   readonly vectors: readonly VectorValue[];
   readonly spanSelection: readonly string[];
   readonly visualization: SharedVisualizationState;
 }
+
+export interface ShareStateV2 {
+  readonly v: typeof SHARE_STATE_VERSION;
+  readonly lab: typeof SHARE_LAB;
+  readonly dim: VectorDimension;
+  readonly vectors: readonly VectorValue[];
+  readonly spanSelection: readonly string[];
+  readonly visualization: SharedVisualizationState;
+  readonly linearCombination: SharedLinearCombinationState;
+}
+
+export type ShareState = ShareStateV2;
 
 export type ShareStateErrorCode =
   | 'EMPTY_ENCODED_STATE'
@@ -48,24 +66,79 @@ export class InvalidShareStateError extends Error {
 }
 
 export type ShareStateDecodeResult =
-  | { readonly ok: true; readonly state: ShareStateV1 }
+  | { readonly ok: true; readonly state: ShareState }
   | { readonly ok: false; readonly error: InvalidShareStateError };
 
-export function validateShareState(input: unknown): ShareStateV1 {
-  const state = requireRecord(input, '$');
-  requireExactKeys(
-    state,
-    ['v', 'lab', 'dim', 'vectors', 'spanSelection', 'visualization'],
-    '$',
-  );
+interface ValidatedCommonFields {
+  readonly dim: VectorDimension;
+  readonly vectors: readonly VectorValue[];
+  readonly spanSelection: readonly string[];
+  readonly visualization: SharedVisualizationState;
+}
 
-  if (state.v !== SHARE_STATE_VERSION) {
-    throw new InvalidShareStateError(
-      'UNSUPPORTED_VERSION',
-      `共有状態のバージョン ${String(state.v)} には対応していません。`,
-      '$.v',
+export function validateShareState(input: unknown): ShareState {
+  const state = requireRecord(input, '$');
+
+  if (state.v === LEGACY_SHARE_STATE_VERSION) {
+    const common = validateCommonFields(
+      state,
+      ['v', 'lab', 'dim', 'vectors', 'spanSelection', 'visualization'],
     );
+
+    return {
+      v: SHARE_STATE_VERSION,
+      lab: SHARE_LAB,
+      ...common,
+      linearCombination: { visible: false, target: null },
+    };
   }
+
+  if (state.v === SHARE_STATE_VERSION) {
+    const common = validateCommonFields(
+      state,
+      ['v', 'lab', 'dim', 'vectors', 'spanSelection', 'visualization', 'linearCombination'],
+    );
+    const linearCombination = requireRecord(
+      state.linearCombination,
+      '$.linearCombination',
+    );
+    requireExactKeys(linearCombination, ['visible', 'target'], '$.linearCombination');
+
+    if (typeof linearCombination.visible !== 'boolean') {
+      throw invalidState(
+        'visible は真偽値である必要があります。',
+        '$.linearCombination.visible',
+      );
+    }
+
+    const target = linearCombination.target === null
+      ? null
+      : requireCoordinates(
+          linearCombination.target,
+          common.dim,
+          '$.linearCombination.target',
+        );
+
+    return {
+      v: SHARE_STATE_VERSION,
+      lab: SHARE_LAB,
+      ...common,
+      linearCombination: { visible: linearCombination.visible, target },
+    };
+  }
+
+  throw new InvalidShareStateError(
+    'UNSUPPORTED_VERSION',
+    `共有状態のバージョン ${String(state.v)} には対応していません。`,
+    '$.v',
+  );
+}
+
+function validateCommonFields(
+  state: Record<string, unknown>,
+  expectedKeys: readonly string[],
+): ValidatedCommonFields {
+  requireExactKeys(state, expectedKeys, '$');
 
   if (state.lab !== SHARE_LAB) {
     throw invalidState('共有状態の Lab が正しくありません。', '$.lab');
@@ -145,8 +218,6 @@ export function validateShareState(input: unknown): ShareStateV1 {
   }
 
   return {
-    v: SHARE_STATE_VERSION,
-    lab: SHARE_LAB,
     dim: dimension,
     vectors,
     spanSelection,
@@ -154,7 +225,7 @@ export function validateShareState(input: unknown): ShareStateV1 {
   };
 }
 
-export function encodeShareState(state: ShareStateV1): string {
+export function encodeShareState(state: ShareState): string {
   const validatedState = validateShareState(state);
   const json = JSON.stringify(validatedState);
   const encoded = bytesToBase64Url(new TextEncoder().encode(json));
