@@ -1,16 +1,63 @@
-import type { CSSProperties } from 'react';
-import { analyzeVectorSet } from '../domain';
-import { DEFAULT_2D_SHARE_STATE } from '../state';
-import { VectorPlane2D } from '../visualization';
+import { useMemo, useState, type CSSProperties } from 'react';
+import { analyzeVectorSet, type VectorValue } from '../domain';
+import type { ShareStateV1 } from '../sharing';
+import { DEFAULT_2D_SHARE_STATE, parseCoordinateInput } from '../state';
+import { splitVectorName } from '../ui';
+import { VectorPlane2D, createAutoFitViewport } from '../visualization';
 import { projectInfo } from './projectInfo';
 import './App.css';
 
 const vectorColors = ['#c84c35', '#087f73'];
+const coordinateNames = ['第1成分', '第2成分'] as const;
+
+type CoordinateDrafts = Readonly<Record<string, readonly string[]>>;
 
 export function App() {
-  const state = DEFAULT_2D_SHARE_STATE;
-  const analysis = analyzeVectorSet({ dimension: state.dim, vectors: state.vectors });
+  const [state, setState] = useState<ShareStateV1>(() => DEFAULT_2D_SHARE_STATE);
+  const [coordinateDrafts, setCoordinateDrafts] = useState<CoordinateDrafts>(() =>
+    createCoordinateDrafts(DEFAULT_2D_SHARE_STATE.vectors),
+  );
+  const analysis = useMemo(
+    () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
+    [state],
+  );
+  const viewport = useMemo(() => createAutoFitViewport(state.vectors), [state.vectors]);
   const isIndependent = analysis.isLinearlyIndependent;
+  const viewportLabel = formatViewportHalfRange(viewport.maxX);
+
+  function handleCoordinateChange(
+    vectorId: string,
+    coordinateIndex: number,
+    input: string,
+  ): void {
+    setCoordinateDrafts((current) => ({
+      ...current,
+      [vectorId]: (current[vectorId] ?? []).map((value, index) =>
+        index === coordinateIndex ? input : value,
+      ),
+    }));
+
+    const parsed = parseCoordinateInput(input);
+    if (!parsed.ok) {
+      return;
+    }
+
+    setState((current) => ({
+      ...current,
+      vectors: current.vectors.map((vector) => {
+        if (vector.id !== vectorId) {
+          return vector;
+        }
+
+        return {
+          ...vector,
+          coordinates: vector.coordinates.map((coordinate, index) =>
+            index === coordinateIndex ? parsed.value : coordinate,
+          ),
+        };
+      }),
+    }));
+  }
 
   return (
     <div className="app-shell">
@@ -32,11 +79,11 @@ export function App() {
         <section className="lab-intro" aria-labelledby="page-title">
           <div>
             <p className="eyebrow">ベクトル空間 / 2D</p>
-            <h1 id="page-title">ベクトルの向きと、張る空間を見る。</h1>
+            <h1 id="page-title">ベクトルを変えて、生成する空間を見る。</h1>
           </div>
           <p>
-            2本のベクトルを座標平面で確認し、一次独立性と span の次元を対応づけます。
-            この段階では固定された例を表示しています。
+            列ベクトルの成分を編集すると、座標平面と数学的な判定が連動します。
+            表示範囲と目盛は、すべてのベクトルが見えるよう自動調整されます。
           </p>
         </section>
 
@@ -47,20 +94,88 @@ export function App() {
                 <p className="panel-kicker">Coordinate plane</p>
                 <h2 id="plot-title">2次元座標平面</h2>
               </div>
-              <span className="example-badge">固定例</span>
+              <span className="example-badge">{`自動表示 ±${viewportLabel}`}</span>
             </div>
-            <VectorPlane2D vectors={state.vectors} colors={vectorColors} />
+            <VectorPlane2D vectors={state.vectors} colors={vectorColors} viewport={viewport} />
           </section>
 
-          <aside className="analysis-column" aria-label="ベクトル集合の解析結果">
+          <aside className="analysis-column" aria-label="ベクトル集合の編集と解析結果">
+            <section className="vector-editor-card" aria-labelledby="vector-editor-title">
+              <p className="panel-kicker">Edit vectors</p>
+              <h2 id="vector-editor-title">列ベクトルの成分</h2>
+              <p className="editor-hint">上段が第1成分、下段が第2成分です。</p>
+              <div className="vector-editor-list">
+                {state.vectors.map((vector, vectorIndex) => {
+                  const drafts = coordinateDrafts[vector.id] ?? vector.coordinates.map(String);
+                  const results = drafts.map(parseCoordinateInput);
+                  const firstError = results.find((result) => !result.ok);
+                  const errorId = `${vector.id}-coordinate-error`;
+
+                  return (
+                    <div className="vector-editor" key={vector.id}>
+                      <span
+                        className="vector-key"
+                        style={{
+                          '--vector-color': vectorColors[vectorIndex % vectorColors.length],
+                        } as CSSProperties}
+                        aria-hidden="true"
+                      >
+                        {vectorIndex + 1}
+                      </span>
+                      <MathVectorName name={vector.name} />
+                      <span className="math-equals" aria-hidden="true">=</span>
+                      <div className="editable-column-vector">
+                        {drafts.map((draft, coordinateIndex) => {
+                          const result = results[coordinateIndex];
+                          const isInvalid = !result.ok;
+                          const inputId = `${vector.id}-coordinate-${coordinateIndex}`;
+
+                          return (
+                            <label className="coordinate-field" key={inputId} htmlFor={inputId}>
+                              <span className="visually-hidden">
+                                {`${vector.name} の${coordinateNames[coordinateIndex]}`}
+                              </span>
+                              <input
+                                id={inputId}
+                                type="text"
+                                inputMode="decimal"
+                                autoComplete="off"
+                                spellCheck={false}
+                                value={draft}
+                                aria-invalid={isInvalid}
+                                aria-describedby={isInvalid ? errorId : undefined}
+                                onChange={(event) =>
+                                  handleCoordinateChange(vector.id, coordinateIndex, event.target.value)
+                                }
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <p
+                        className={`coordinate-feedback ${firstError ? 'has-error' : ''}`}
+                        id={errorId}
+                        role={firstError ? 'alert' : undefined}
+                      >
+                        {firstError && !firstError.ok
+                          ? `${firstError.message} 表示には直前の有効値を使います。`
+                          : '入力は表示と判定へすぐに反映されます。'}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
             <section className={`result-card ${isIndependent ? 'is-independent' : 'is-dependent'}`}>
               <p className="panel-kicker">Analysis</p>
+              <MatrixDefinition vectors={state.vectors} />
               <p className="result-symbol" aria-hidden="true">{isIndependent ? '∥' : '≈'}</p>
               <h2>{isIndependent ? '一次独立です' : '一次従属です'}</h2>
               <p className="result-explanation">
                 {isIndependent
-                  ? '2本のベクトルは異なる方向をもち、どちらも他方のスカラー倍ではありません。'
-                  : '少なくとも1本のベクトルが、他のベクトルの組合せで表せます。'}
+                  ? 'どのベクトルも、他のベクトルの一次結合では表せません。'
+                  : '少なくとも1本のベクトルが、他のベクトルの一次結合で表せます。'}
               </p>
 
               <dl className="metric-grid">
@@ -69,48 +184,114 @@ export function App() {
                   <dd>{analysis.vectorCount}</dd>
                 </div>
                 <div>
-                  <dt>rank</dt>
+                  <dt>
+                    <MathOperator name="rank" />
+                    (<MathMatrixName />)
+                  </dt>
                   <dd>{analysis.rank}</dd>
                 </div>
                 <div>
-                  <dt>span の次元</dt>
+                  <dt>
+                    生成する空間の次元
+                    <small className="dimension-expression">
+                      <MathOperator name="dim" />
+                      (<MathOperator name="span" />(&#123;
+                      {state.vectors.map((vector, index) => (
+                        <span key={vector.id}>
+                          {index > 0 ? ', ' : ''}
+                          <MathVectorName name={vector.name} />
+                        </span>
+                      ))}
+                      &#125;))
+                    </small>
+                  </dt>
                   <dd>{analysis.spanDimension}</dd>
                 </div>
               </dl>
             </section>
 
-            <section className="vector-list-card" aria-labelledby="vector-list-title">
-              <p className="panel-kicker">Vectors</p>
-              <h2 id="vector-list-title">表示中のベクトル</h2>
-              <ul>
-                {state.vectors.map((vector, index) => (
-                  <li key={vector.id}>
-                    <span
-                      className="vector-key"
-                      style={{ '--vector-color': vectorColors[index % vectorColors.length] } as CSSProperties}
-                      aria-hidden="true"
-                    >
-                      {index + 1}
-                    </span>
-                    <span>
-                      <strong>{vector.name}</strong>
-                      <small>{`(${vector.coordinates.join(', ')})`}</small>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
             <p className="development-note">
-              次の作業単位で座標の数値入力を追加します。現在は表示と数学的判定の整合性を確認する段階です。
+              この段階では数値入力と自動調整を確認します。手動ズーム、先端ドラッグ、生成する空間の幾何表示は後続の作業単位で追加します。
             </p>
           </aside>
         </div>
       </main>
 
       <footer className="site-footer">
-        <p>{projectInfo.status} — 共有・編集機能は後続の作業単位で追加します。</p>
+        <p>{projectInfo.status} — 有効な成分は座標平面と判定へ即時反映されます。</p>
       </footer>
     </div>
   );
+}
+
+function MathVectorName({ name }: { readonly name: string }) {
+  const { base, subscript } = splitVectorName(name);
+
+  return (
+    <span className="math-symbol math-vector" aria-label={name}>
+      <span className="math-vector-base" aria-hidden="true">{base}</span>
+      {subscript ? (
+        <sub className="math-vector-subscript" aria-hidden="true">{subscript}</sub>
+      ) : null}
+    </span>
+  );
+}
+
+function MathMatrixName() {
+  return <span className="math-symbol math-matrix">A</span>;
+}
+
+function MathOperator({ name }: { readonly name: string }) {
+  return <span className="math-operator">{name}</span>;
+}
+
+function MatrixDefinition({ vectors }: { readonly vectors: readonly VectorValue[] }) {
+  const rowCount = vectors[0]?.coordinates.length ?? 0;
+  const ariaDescription = vectors
+    .map((vector) => `${vector.name} を第${vectors.indexOf(vector) + 1}列`)
+    .join('、');
+
+  return (
+    <div
+      className="matrix-definition"
+      aria-label={`行列 A は、${ariaDescription}に並べた行列です。`}
+    >
+      <MathMatrixName />
+      <span className="math-equals" aria-hidden="true">=</span>
+      <span className="matrix-bracket" aria-hidden="true">
+        <span
+          className="matrix-values"
+          style={{ '--matrix-columns': vectors.length } as CSSProperties}
+        >
+          {Array.from({ length: rowCount }, (_, rowIndex) =>
+            vectors.map((vector) => (
+              <span key={`${vector.id}-${rowIndex}`}>
+                {vector.coordinates[rowIndex]}
+              </span>
+            )),
+          )}
+        </span>
+      </span>
+      <span className="matrix-columns-note" aria-hidden="true">
+        = [
+        {vectors.map((vector, index) => (
+          <span key={vector.id}>
+            {index > 0 ? ' ' : ''}
+            <MathVectorName name={vector.name} />
+          </span>
+        ))}
+        ]
+      </span>
+    </div>
+  );
+}
+
+function createCoordinateDrafts(vectors: readonly VectorValue[]): CoordinateDrafts {
+  return Object.fromEntries(
+    vectors.map((vector) => [vector.id, vector.coordinates.map(String)]),
+  );
+}
+
+function formatViewportHalfRange(halfRange: number): string {
+  return new Intl.NumberFormat('ja-JP', { maximumSignificantDigits: 4 }).format(halfRange);
 }

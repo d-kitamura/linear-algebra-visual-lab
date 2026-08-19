@@ -20,6 +20,71 @@ export const DEFAULT_PLANE_VIEWPORT: PlaneViewport = {
   maxY: 5,
 };
 
+export interface TickScale {
+  readonly values: readonly number[];
+  readonly step: number;
+}
+
+const DEFAULT_AUTO_FIT_MARGIN_RATIO = 0.15;
+const DEFAULT_TARGET_TICK_INTERVALS = 10;
+
+export function createAutoFitViewport(
+  vectors: readonly { readonly coordinates: readonly number[] }[],
+  baseHalfRange = 5,
+  marginRatio = DEFAULT_AUTO_FIT_MARGIN_RATIO,
+): PlaneViewport {
+  const largestCoordinate = vectors.reduce(
+    (largest, vector) => Math.max(
+      largest,
+      Math.abs(vector.coordinates[0] ?? 0),
+      Math.abs(vector.coordinates[1] ?? 0),
+    ),
+    0,
+  );
+  const halfRange = Math.max(baseHalfRange, largestCoordinate * (1 + marginRatio));
+
+  return {
+    ...DEFAULT_PLANE_VIEWPORT,
+    minX: -halfRange,
+    maxX: halfRange,
+    minY: -halfRange,
+    maxY: halfRange,
+  };
+}
+
+export function createAdaptiveTicks(
+  minimum: number,
+  maximum: number,
+  targetIntervals = DEFAULT_TARGET_TICK_INTERVALS,
+): TickScale {
+  const range = maximum - minimum;
+  const roughStep = range / Math.max(1, targetIntervals);
+  const step = createNiceStep(roughStep);
+  const firstIndex = Math.ceil(minimum / step - Number.EPSILON);
+  const lastIndex = Math.floor(maximum / step + Number.EPSILON);
+  const values = Array.from(
+    { length: Math.max(0, lastIndex - firstIndex + 1) },
+    (_, index) => normalizeTick((firstIndex + index) * step),
+  );
+
+  return { values, step };
+}
+
+export function formatTickValue(value: number, step: number): string {
+  const normalized = normalizeTick(value);
+  const absolute = Math.abs(normalized);
+
+  if (absolute >= 10_000 || (absolute > 0 && absolute < 0.001)) {
+    return normalized.toExponential(0).replace('e+', 'e');
+  }
+
+  const decimalPlaces = step >= 1
+    ? 0
+    : Math.min(8, Math.max(0, Math.ceil(-Math.log10(step))));
+
+  return normalized.toFixed(decimalPlaces).replace(/\.0+$/u, '');
+}
+
 export function toSvgPoint(
   coordinates: readonly [number, number],
   viewport: PlaneViewport = DEFAULT_PLANE_VIEWPORT,
@@ -40,6 +105,28 @@ export function createIntegerTicks(minimum: number, maximum: number): number[] {
   const last = Math.floor(maximum);
 
   return Array.from({ length: Math.max(0, last - first + 1) }, (_, index) => first + index);
+}
+
+function createNiceStep(roughStep: number): number {
+  if (!Number.isFinite(roughStep) || roughStep <= 0) {
+    return 1;
+  }
+
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalized = roughStep / magnitude;
+  const niceNormalized = normalized <= 1
+    ? 1
+    : normalized <= 2
+      ? 2
+      : normalized <= 5
+        ? 5
+        : 10;
+
+  return niceNormalized * magnitude;
+}
+
+function normalizeTick(value: number): number {
+  return Math.abs(value) < Number.EPSILON * 10 ? 0 : Number(value.toPrecision(12));
 }
 
 export function createArrowHeadPoints(

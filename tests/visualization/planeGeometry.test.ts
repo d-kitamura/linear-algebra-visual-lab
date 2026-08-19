@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PLANE_VIEWPORT,
+  createAdaptiveTicks,
+  createAutoFitViewport,
   createArrowHeadPoints,
   createIntegerTicks,
+  formatTickValue,
   pointsToSvg,
   toSvgPoint,
 } from '../../src/visualization';
@@ -35,6 +38,44 @@ describe('2D plane geometry', () => {
 
   it('creates inclusive integer ticks', () => {
     expect(createIntegerTicks(-2.4, 2.4)).toEqual([-2, -1, 0, 1, 2]);
+  });
+
+  it('keeps the default range when every vector fits inside it', () => {
+    const viewport = createAutoFitViewport([
+      { coordinates: [2, 1] },
+      { coordinates: [-3, 2] },
+    ]);
+
+    expect(viewport.minX).toBe(-5);
+    expect(viewport.maxX).toBe(5);
+    expect(viewport.minY).toBe(-5);
+    expect(viewport.maxY).toBe(5);
+  });
+
+  it('expands symmetrically with margin for an out-of-range vector', () => {
+    const viewport = createAutoFitViewport([{ coordinates: [8, -2] }]);
+
+    expect(viewport.maxX).toBeCloseTo(9.2);
+    expect(viewport.minX).toBeCloseTo(-9.2);
+    expect(viewport.maxY).toBeCloseTo(9.2);
+    expect(viewport.minY).toBeCloseTo(-9.2);
+  });
+
+  it('chooses readable 1-2-5 tick steps for changing ranges', () => {
+    expect(createAdaptiveTicks(-5, 5)).toEqual({
+      values: [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5],
+      step: 1,
+    });
+    expect(createAdaptiveTicks(-11.5, 11.5)).toEqual({
+      values: [-10, -5, 0, 5, 10],
+      step: 5,
+    });
+  });
+
+  it('formats ordinary and large tick values without negative zero', () => {
+    expect(formatTickValue(-0, 1)).toBe('0');
+    expect(formatTickValue(0.4, 0.2)).toBe('0.4');
+    expect(formatTickValue(20_000, 10_000)).toBe('2e4');
   });
 
   it('creates a triangular arrow head and serializes its points', () => {

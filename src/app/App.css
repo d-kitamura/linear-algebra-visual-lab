@@ -99,7 +99,8 @@
 }
 
 .plot-card,
-.vector-list-card {
+.vector-list-card,
+.vector-editor-card {
   border: 1px solid var(--line);
   border-radius: 24px;
   background: color-mix(in srgb, var(--paper) 90%, transparent);
@@ -120,6 +121,7 @@
 
 .card-heading h2,
 .vector-list-card h2,
+.vector-editor-card h2,
 .result-card h2 {
   margin: 0;
   font-family: var(--display-font);
@@ -157,14 +159,14 @@
 .coordinate-axes text,
 .tick-labels text {
   fill: #68717a;
-  font-family: var(--mono-font);
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
   font-size: 13px;
 }
 
-.coordinate-axes text {
+.coordinate-axes .axis-symbol {
   fill: #303942;
   font-size: 16px;
-  font-weight: 800;
+  font-style: italic;
 }
 
 .origin-point {
@@ -184,7 +186,6 @@
 
 .vector-label {
   font-size: 22px;
-  font-weight: 800;
   paint-order: stroke;
   stroke: #fffdf7;
   stroke-width: 5px;
@@ -251,7 +252,7 @@
   z-index: 1;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   border-top: 1px solid rgba(255, 255, 255, 0.16);
 }
 
@@ -259,9 +260,23 @@
   padding-top: 18px;
 }
 
+.metric-grid div:last-child {
+  grid-column: 1 / -1;
+  margin-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 .metric-grid dt {
   color: rgba(255, 255, 255, 0.58);
   font-size: 0.7rem;
+}
+
+.dimension-expression {
+  margin-top: 4px;
+  display: block;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 
 .metric-grid dd {
@@ -273,6 +288,222 @@
 
 .vector-list-card {
   padding: 24px;
+}
+
+.vector-editor-card {
+  padding: 24px;
+}
+
+.vector-editor-card h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+
+.editor-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.vector-editor-list {
+  margin-top: 18px;
+}
+
+.vector-editor {
+  padding: 18px 0;
+  display: grid;
+  grid-template-columns: auto auto auto minmax(92px, 1fr);
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+}
+
+.vector-editor:last-child {
+  padding-bottom: 0;
+}
+
+.math-symbol,
+.math-operator,
+.math-equals,
+.matrix-values,
+.coordinate-field input {
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+
+.math-symbol {
+  font-style: normal;
+}
+
+.math-vector {
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.math-vector-base,
+.math-matrix,
+.svg-vector-base {
+  font-family: Cambria, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 700;
+}
+
+.math-vector-subscript,
+.svg-vector-subscript {
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.math-vector-subscript {
+  position: relative;
+  bottom: -0.22em;
+  margin-left: 0.04em;
+  font-size: 0.64em;
+  line-height: 0;
+  vertical-align: baseline;
+}
+
+.vector-editor > .math-vector {
+  min-width: 1.65rem;
+  font-size: 1.35rem;
+  text-align: center;
+}
+
+.math-equals {
+  font-size: 1.15rem;
+}
+
+.math-operator {
+  font-style: normal;
+  font-weight: 400;
+}
+
+.editable-column-vector {
+  position: relative;
+  width: min(100%, 124px);
+  padding: 5px 13px;
+  display: grid;
+  gap: 6px;
+}
+
+.editable-column-vector::before,
+.editable-column-vector::after,
+.matrix-bracket::before,
+.matrix-bracket::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  border-top: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+
+.editable-column-vector::before,
+.matrix-bracket::before {
+  left: 0;
+  border-left: 2px solid currentColor;
+}
+
+.editable-column-vector::after,
+.matrix-bracket::after {
+  right: 0;
+  border-right: 2px solid currentColor;
+}
+
+.coordinate-field {
+  display: block;
+}
+
+.coordinate-field input {
+  width: 100%;
+  min-height: 36px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  background: #fffdf8;
+  font-size: 1rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.coordinate-field input:focus {
+  outline: none;
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.coordinate-field input[aria-invalid='true'] {
+  border-color: #b63232;
+  background: #fff6f3;
+}
+
+.coordinate-feedback {
+  grid-column: 2 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.coordinate-feedback.has-error {
+  color: #9b2f2f;
+  font-weight: 700;
+}
+
+.matrix-definition {
+  position: relative;
+  z-index: 1;
+  min-height: 70px;
+  margin: 16px 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.2rem;
+}
+
+.matrix-definition > .math-matrix {
+  font-size: 1.4rem;
+}
+
+.matrix-bracket {
+  position: relative;
+  padding: 6px 15px;
+}
+
+.matrix-values {
+  display: grid;
+  grid-template-columns: repeat(var(--matrix-columns), minmax(28px, auto));
+  gap: 5px 13px;
+  color: white;
+  font-size: 0.94rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.matrix-columns-note {
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .vector-list-card h2 {
