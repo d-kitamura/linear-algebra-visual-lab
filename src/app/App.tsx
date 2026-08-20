@@ -1578,17 +1578,24 @@ function GeneralTargetFormula({
         <div className="general-target-equation">
           <MathVectorName name="c" />
           <span aria-hidden="true">{isApproximate ? '≈' : '='}</span>
-          <span className="inverse-factor">1 / {displayedValues[4].text}</span>
+          <MathFraction
+            numerator="1"
+            denominator={displayedValues[4].text}
+            ariaLabel={`1 を ${displayedValues[4].text} で割った値`}
+          />
           <MathGridMatrix
             rows={[
               [displayedValues[0].text, displayedValues[1].text],
               [displayedValues[2].text, displayedValues[3].text],
             ]}
           />
-          <MathTransposedRowVector values={[
-            <MathScalarSymbol base="a" />,
-            <MathScalarSymbol base="b" />,
-          ]} ariaLabel="a、b の転置列ベクトル" />
+          <MathColumnVector
+            values={[
+              <MathScalarSymbol base="a" />,
+              <MathScalarSymbol base="b" />,
+            ]}
+            ariaLabel="a、b の列ベクトル"
+          />
         </div>
         {isApproximate ? (
           <p className="approximation-note">座標の表示を有効数字6桁に丸めているため、式には近似記号を使っています。</p>
@@ -1610,6 +1617,23 @@ function MathColumnVector({
       {values.map((value, index) => (
         <span key={index}>{value}</span>
       ))}
+    </span>
+  );
+}
+
+function MathFraction({
+  numerator,
+  denominator,
+  ariaLabel,
+}: {
+  readonly numerator: ReactNode;
+  readonly denominator: ReactNode;
+  readonly ariaLabel: string;
+}) {
+  return (
+    <span className="math-fraction" aria-label={ariaLabel}>
+      <span aria-hidden="true">{numerator}</span>
+      <span aria-hidden="true">{denominator}</span>
     </span>
   );
 }
