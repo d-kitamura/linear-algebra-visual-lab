@@ -13,10 +13,10 @@ const initialState: ShareState = {
   lab: 'vector-space',
   dim: 2,
   vectors: [
-    { id: 'v1', name: 'v₁', coordinates: [2, 1] },
-    { id: 'v2', name: 'v₂', coordinates: [-3, 2] },
+    { id: 'a1', name: 'a₁', coordinates: [2, 1] },
+    { id: 'a2', name: 'a₂', coordinates: [-3, 2] },
   ],
-  spanSelection: ['v1', 'v2'],
+  spanSelection: ['a1', 'a2'],
   visualization: { showSpan: true },
   linearCombination: { visible: true, target: [3, -2] },
 };
@@ -25,23 +25,23 @@ describe('vector collection editing', () => {
   it('adds a selected default vector with a stable ID, name, and coordinates', () => {
     const result = addDefaultVector(initialState);
 
-    expect(result.addedVector).toEqual({ id: 'v3', name: 'v₃', coordinates: [1, 0] });
+    expect(result.addedVector).toEqual({ id: 'a3', name: 'a₃', coordinates: [1, 0] });
     expect(result.state.vectors).toHaveLength(3);
-    expect(result.state.spanSelection).toEqual(['v1', 'v2', 'v3']);
+    expect(result.state.spanSelection).toEqual(['a1', 'a2', 'a3']);
   });
 
   it('skips suffixes already used by either an ID or a display name', () => {
     const state: ShareState = {
       ...initialState,
       vectors: [
-        { id: 'custom', name: 'v₁', coordinates: [1, 0] },
-        { id: 'v2', name: 'a', coordinates: [0, 1] },
+        { id: 'custom', name: 'a₁', coordinates: [1, 0] },
+        { id: 'a2', name: 'v', coordinates: [0, 1] },
       ],
       spanSelection: [],
     };
 
     expect(addDefaultVector(state).addedVector)
-      .toEqual({ id: 'v3', name: 'v₃', coordinates: [1, 0] });
+      .toEqual({ id: 'a3', name: 'a₃', coordinates: [1, 0] });
   });
 
   it('creates the correct coordinate count for a future 3D state', () => {
@@ -73,16 +73,16 @@ describe('vector collection editing', () => {
   });
 
   it('removes the vector and its span selection while preserving the others', () => {
-    const result = removeVector(initialState, 'v1');
+    const result = removeVector(initialState, 'a1');
 
-    expect(result.vectors.map((vector) => vector.id)).toEqual(['v2']);
-    expect(result.spanSelection).toEqual(['v2']);
+    expect(result.vectors.map((vector) => vector.id)).toEqual(['a2']);
+    expect(result.spanSelection).toEqual(['a2']);
     expect(result.linearCombination).toEqual(initialState.linearCombination);
     expect(removeVector(result, 'missing')).toBe(result);
   });
 
   it('allows an empty collection and keeps it mathematically independent', () => {
-    const emptyState = removeVector(removeVector(initialState, 'v1'), 'v2');
+    const emptyState = removeVector(removeVector(initialState, 'a1'), 'a2');
     const analysis = analyzeVectorSet({ dimension: 2, vectors: emptyState.vectors });
 
     expect(emptyState.vectors).toEqual([]);
@@ -91,7 +91,7 @@ describe('vector collection editing', () => {
   });
 
   it('round-trips an edited collection and target through share state v2', () => {
-    const edited = removeVector(addDefaultVector(initialState).state, 'v1');
+    const edited = removeVector(addDefaultVector(initialState).state, 'a1');
 
     expect(decodeShareState(encodeShareState(edited))).toEqual({
       ok: true,

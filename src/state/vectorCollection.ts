@@ -44,15 +44,15 @@ function createNextDefaultVector(
   let suffix = 1;
 
   while (
-    existingIds.has(`v${suffix}`)
-    || existingNames.has(`v${toUnicodeSubscript(suffix)}`)
+    existingIds.has(`a${suffix}`)
+    || existingNames.has(`a${toUnicodeSubscript(suffix)}`)
   ) {
     suffix += 1;
   }
 
   return {
-    id: `v${suffix}`,
-    name: `v${toUnicodeSubscript(suffix)}`,
+    id: `a${suffix}`,
+    name: `a${toUnicodeSubscript(suffix)}`,
     coordinates: Array.from({ length: dimension }, (_, index) => (index === 0 ? 1 : 0)),
   };
 }

@@ -25,8 +25,8 @@ export const TWO_DIMENSIONAL_TEACHING_SCENARIOS: readonly TeachingScenario[] = [
     title: '零ベクトル',
     learningPoint: '零ベクトル1本のrankは0で、その集合は一次従属である。',
     state: createScenarioState(
-      [{ id: 'v1', name: 'v₁', coordinates: [0, 0] }],
-      ['v1'],
+      [{ id: 'a1', name: 'a₁', coordinates: [0, 0] }],
+      ['a1'],
     ),
     expected: { vectorCount: 1, rank: 0, isLinearlyIndependent: false },
   },
@@ -36,10 +36,10 @@ export const TWO_DIMENSIONAL_TEACHING_SCENARIOS: readonly TeachingScenario[] = [
     learningPoint: '異なる2本でも一方が他方の実数倍なら、rankは1で一次従属となる。',
     state: createScenarioState(
       [
-        { id: 'v1', name: 'v₁', coordinates: [2, 1] },
-        { id: 'v2', name: 'v₂', coordinates: [-4, -2] },
+        { id: 'a1', name: 'a₁', coordinates: [2, 1] },
+        { id: 'a2', name: 'a₂', coordinates: [-4, -2] },
       ],
-      ['v1', 'v2'],
+      ['a1', 'a2'],
     ),
     expected: { vectorCount: 2, rank: 1, isLinearlyIndependent: false },
   },
@@ -49,10 +49,10 @@ export const TWO_DIMENSIONAL_TEACHING_SCENARIOS: readonly TeachingScenario[] = [
     learningPoint: '異なる2方向を持つ2本のrankは2で、2次元座標平面全体を生成する。',
     state: createScenarioState(
       [
-        { id: 'v1', name: 'v₁', coordinates: [1, 0] },
-        { id: 'v2', name: 'v₂', coordinates: [0, 1] },
+        { id: 'a1', name: 'a₁', coordinates: [1, 0] },
+        { id: 'a2', name: 'a₂', coordinates: [0, 1] },
       ],
-      ['v1', 'v2'],
+      ['a1', 'a2'],
     ),
     expected: { vectorCount: 2, rank: 2, isLinearlyIndependent: true },
   },
@@ -62,11 +62,11 @@ export const TWO_DIMENSIONAL_TEACHING_SCENARIOS: readonly TeachingScenario[] = [
     learningPoint: '2次元では3本のベクトルは一次従属だが、rank 2なら座標平面全体を生成する。',
     state: createScenarioState(
       [
-        { id: 'v1', name: 'v₁', coordinates: [1, 0] },
-        { id: 'v2', name: 'v₂', coordinates: [0, 1] },
-        { id: 'v3', name: 'v₃', coordinates: [1, 1] },
+        { id: 'a1', name: 'a₁', coordinates: [1, 0] },
+        { id: 'a2', name: 'a₂', coordinates: [0, 1] },
+        { id: 'a3', name: 'a₃', coordinates: [1, 1] },
       ],
-      ['v1', 'v2', 'v3'],
+      ['a1', 'a2', 'a3'],
     ),
     expected: { vectorCount: 3, rank: 2, isLinearlyIndependent: false },
   },

@@ -40,7 +40,7 @@ interface ReducedSystem {
 }
 
 /**
- * 選択したベクトルを列に持つ行列 B について Bc = x を解析する。
+ * 選択したベクトルを列に持つ行列 A について Ac = v を解析する。
  * D-009 と同じ列ごとの正規化と相対許容誤差を使い、描画には依存しない。
  */
 export function analyzeLinearCombination(
@@ -59,7 +59,7 @@ export function analyzeLinearCombination(
         ...vectorSet.vectors,
         {
           id: createTargetId(vectorSet.vectors),
-          name: 'x',
+          name: 'v',
           coordinates: target,
         },
       ],

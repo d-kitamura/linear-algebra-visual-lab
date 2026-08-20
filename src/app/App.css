@@ -247,6 +247,11 @@
   align-items: start;
 }
 
+.lab-workspace > *,
+.analysis-column > * {
+  min-width: 0;
+}
+
 .plot-card,
 .vector-list-card,
 .vector-editor-card,
@@ -437,8 +442,10 @@
 
 .coordinate-axes .axis-symbol {
   fill: #303942;
+  font-family: Cambria, "Times New Roman", serif;
   font-size: 16px;
   font-style: italic;
+  font-weight: 400;
 }
 
 .origin-point {
@@ -1406,6 +1413,7 @@
 .linear-combination-system {
   margin: 12px 0 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 7px;
   color: #245b8d;
@@ -1527,9 +1535,11 @@
 }
 
 .coefficient-vector-equation,
-.expanded-linear-combination,
 .general-solution-equation,
-.general-target-equation {
+.general-target-equation,
+.expanded-general-combination {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1539,9 +1549,55 @@
   font-size: 1rem;
 }
 
+.linear-combination-definition {
+  min-width: 0;
+  max-width: 100%;
+  margin: 13px 0 15px;
+}
+
+.linear-combination-definition .linear-combination-system {
+  margin: 0;
+}
+
+.coefficient-transpose-definition {
+  margin-top: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+  color: var(--muted);
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 0.86rem;
+}
+
 .expanded-linear-combination {
   margin: 12px 0 0;
+  display: grid;
+  gap: 7px;
+  color: var(--ink);
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 1rem;
   line-height: 1.7;
+}
+
+.expanded-equation-line {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+}
+
+.equation-lhs-placeholder {
+  width: 1.1em;
+}
+
+.linear-combination-terms {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  row-gap: 3px;
 }
 
 .linear-combination-term {
@@ -1550,6 +1606,13 @@
 
 .term-plus {
   margin-right: 7px;
+}
+
+.vector-tuple {
+  min-width: 0;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
 }
 
 .display-column-vector,
@@ -1614,6 +1677,41 @@
   vertical-align: baseline;
 }
 
+.math-sum {
+  position: relative;
+  display: inline-block;
+  margin-inline: 0.12em;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-style: normal;
+}
+
+.math-sum sub {
+  position: absolute;
+  left: 50%;
+  bottom: -0.52em;
+  transform: translateX(-50%);
+  font-family: Cambria, "Times New Roman", serif;
+  font-size: 0.48em;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.transposed-row-vector {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-style: normal;
+}
+
+.transposed-row-vector sup {
+  margin-right: 0.06em;
+  font-family: Cambria, "Times New Roman", serif;
+  font-size: 0.62em;
+  font-style: italic;
+  font-weight: 400;
+}
+
 .linear-combination-details,
 .general-target-formula {
   margin-top: 14px;
@@ -1668,10 +1766,54 @@
   line-height: 1.65;
 }
 
+.general-solution-derivation {
+  margin: 12px 0;
+  padding-left: 1.35rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.7;
+}
+
+.general-solution-derivation li + li {
+  margin-top: 7px;
+}
+
+.general-solution-derivation strong {
+  color: var(--ink);
+}
+
+.general-solution-reason {
+  padding: 10px;
+  border-radius: 9px;
+  color: var(--ink) !important;
+  background: color-mix(in srgb, #2f6690 7%, transparent);
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+
+.symbolic-nullspace-term,
 .nullspace-term {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+
+.general-solution-equation.is-values {
+  margin-top: 8px;
+}
+
+.expanded-general-combination {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  line-height: 1.75;
+}
+
+.affine-coefficient {
+  white-space: normal;
+}
+
+.expanded-general-combination .linear-combination-term {
+  white-space: normal;
 }
 
 .parameter-domain {
@@ -1962,7 +2104,13 @@
   }
 
   .card-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-items: flex-start;
+  }
+
+  .viewport-toolbar {
+    width: 100%;
   }
 
   .viewport-controls {

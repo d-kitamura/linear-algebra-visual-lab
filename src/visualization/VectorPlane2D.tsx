@@ -124,8 +124,8 @@ export function VectorPlane2D({
     : '選択したベクトルが生成する空間の幾何表示はオフです。';
   const targetDescription = linearCombinationVisible
     ? target
-      ? `ターゲット x は第1成分 ${target[0]}、第2成分 ${target[1]} です。${linearCombinationCoefficients && spanVectors.length === 2 ? '2項の一次結合を原点からの2辺とする平行四辺形も表示しています。' : ''}`
-      : '一次結合を調べるモードです。ターゲット x はまだ配置されていません。'
+      ? `ターゲット v は第1成分 ${target[0]}、第2成分 ${target[1]} です。${linearCombinationCoefficients && spanVectors.length === 2 ? '2項の一次結合を原点からの2辺とする平行四辺形も表示しています。' : ''}`
+      : '一次結合を調べるモードです。ターゲット v はまだ配置されていません。'
     : '一次結合を調べるモードはオフです。';
 
   useEffect(() => {
@@ -838,7 +838,7 @@ function TargetVector({
       className={`target-vector ${snapKind ? 'is-snapped' : ''}`}
       clipPath="url(#vector-plane-plot-clip)"
     >
-      <title>{`ターゲット x は第1成分 ${target[0]}、第2成分 ${target[1]} の列ベクトル`}</title>
+      <title>{`ターゲット v は第1成分 ${target[0]}、第2成分 ${target[1]} の列ベクトル`}</title>
       <line x1={origin[0]} y1={origin[1]} x2={end[0]} y2={end[1]} />
       {arrowHead ? (
         <polygon points={pointsToSvg(arrowHead)} />
@@ -865,7 +865,7 @@ function TargetVector({
         y={labelY}
         textAnchor={target[0] >= 0 ? 'start' : 'end'}
       >
-        x
+        v
       </text>
     </g>
   );

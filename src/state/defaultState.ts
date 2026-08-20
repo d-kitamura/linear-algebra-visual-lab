@@ -5,10 +5,10 @@ const initialState: ShareState = {
   lab: 'vector-space',
   dim: 2,
   vectors: [
-    { id: 'v1', name: 'v₁', coordinates: [2, 1] },
-    { id: 'v2', name: 'v₂', coordinates: [-3, 2] },
+    { id: 'a1', name: 'a₁', coordinates: [2, 1] },
+    { id: 'a2', name: 'a₂', coordinates: [-3, 2] },
   ],
-  spanSelection: ['v1', 'v2'],
+  spanSelection: ['a1', 'a2'],
   visualization: { showSpan: true },
   linearCombination: { visible: false, target: null },
 };

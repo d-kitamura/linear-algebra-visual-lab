@@ -5,6 +5,7 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
 } from 'react';
 import {
   analyzeLinearCombination,
@@ -715,7 +716,7 @@ export function App() {
             />
             <p className="viewport-help">
               {state.linearCombination.visible
-                ? 'クリックまたはタップでターゲット x を配置し、x の先端をドラッグして変更できます。背景をドラッグすると表示範囲を移動できます。'
+                ? 'クリックまたはタップでターゲット v を配置し、v の先端をドラッグして変更できます。背景をドラッグすると表示範囲を移動できます。'
                 : '矢印先端の丸をドラッグするとベクトルを変更できます。座標面の内側では1本指で移動、2本指で拡大・縮小できます。'}
               ページをスクロールするときは座標面の外側をスワイプしてください。
             </p>
@@ -729,10 +730,10 @@ export function App() {
                 type="button"
                 onClick={() => setActiveInspectorTab('span')}
               >
-                <span className="summary-label">選択集合 <span className="math-set-name">X</span></span>
+                <span className="summary-label">選択集合 <span className="math-set-name">S</span></span>
                 <strong>{spanShape.summary}</strong>
                 <span className="summary-math">
-                  <MathOperator name="dim" />(<MathOperator name="span" />(<span className="math-set-name">X</span>))
+                  <MathOperator name="dim" />(<MathOperator name="span" />(<span className="math-set-name">S</span>))
                   {' = '}{spanAnalysis.spanDimension}
                 </span>
               </button>
@@ -957,13 +958,13 @@ export function App() {
                 </div>
                 <div>
                   <dt>
-                    <MathOperator name="rank" />(<MathMatrixName name="B" />)
+                    <MathOperator name="rank" />(<MathMatrixName name="A" />)
                   </dt>
                   <dd>{spanAnalysis.rank}</dd>
                 </div>
                 <div>
                   <dt>
-                    <MathOperator name="dim" />(<MathOperator name="span" />(<span className="math-set-name">X</span>))
+                    <MathOperator name="dim" />(<MathOperator name="span" />(<span className="math-set-name">S</span>))
                   </dt>
                   <dd>{spanAnalysis.spanDimension}</dd>
                 </div>
@@ -1106,14 +1107,14 @@ function TargetEditor({
     <section className="target-editor" aria-labelledby="target-editor-title">
       <div className="target-editor-copy">
         <p className="panel-kicker">Linear combination target</p>
-        <h3 id="target-editor-title">ターゲット <MathVectorName name="x" /></h3>
+        <h3 id="target-editor-title">ターゲット <MathVectorName name="v" /></h3>
         <p>
           座標面をクリックまたはタップして配置するか、成分を入力してください。
-          選択集合 <span className="math-set-name">X</span> の一次結合で表せるかを右側の「一次結合」タブに表示します。
+          選択集合 <span className="math-set-name">S</span> の一次結合で表せるかを右側の「一次結合」タブに表示します。
         </p>
       </div>
       <div className="target-editor-controls">
-        <MathVectorName name="x" />
+        <MathVectorName name="v" />
         <span className="math-equals" aria-hidden="true">=</span>
         <div className="editable-column-vector target-column-vector">
           {drafts.map((draft, coordinateIndex) => {
@@ -1125,7 +1126,7 @@ function TargetEditor({
             return (
               <label className="coordinate-field" key={inputId} htmlFor={inputId}>
                 <span className="visually-hidden">
-                  {`ターゲット x の${coordinateNames[coordinateIndex]}`}
+                  {`ターゲット v の${coordinateNames[coordinateIndex]}`}
                 </span>
                 <input
                   id={inputId}
@@ -1200,12 +1201,7 @@ function LinearCombinationExplorer({
     >
       <p className="panel-kicker">Linear combination explorer</p>
       <h2 id="linear-combination-title">一次結合でターゲットを表す</h2>
-      <p className="linear-combination-system" aria-label="行列 B、係数ベクトル c、ターゲット x による方程式 B c イコール x">
-        <MathMatrixName name="B" />
-        <MathVectorName name="c" />
-        <span className="math-equals" aria-hidden="true">=</span>
-        <MathVectorName name="x" />
-      </p>
+      <LinearCombinationDefinition vectors={vectors} />
 
       {!target || !analysis || !statusPresentation ? (
         <div className="linear-combination-empty">
@@ -1230,11 +1226,11 @@ function LinearCombinationExplorer({
 
           <div className="linear-combination-ranks" aria-label="係数行列と拡大係数行列のランク">
             <span>
-              <MathOperator name="rank" />(<MathMatrixName name="B" />)
+              <MathOperator name="rank" />(<MathMatrixName name="A" />)
               {' = '}{analysis.rank}
             </span>
             <span>
-              <MathOperator name="rank" />([<MathMatrixName name="B" /> | <MathVectorName name="x" />])
+              <MathOperator name="rank" />([<MathMatrixName name="A" /> | <MathVectorName name="v" />])
               {' = '}{analysis.augmentedRank}
             </span>
           </div>
@@ -1242,28 +1238,29 @@ function LinearCombinationExplorer({
           {analysis.status === 'none' ? (
             <p className="linear-combination-obstruction">
               2つのrankが異なるため連立一次方程式は不能です。
-              <MathVectorName name="x" /> は選択集合が生成する空間に含まれません。
+              <MathVectorName name="v" /> は選択集合が生成する空間に含まれません。
             </p>
           ) : (
             <div className="linear-combination-solutions">
               <SolutionExample
-                heading={analysis.status === 'unique' ? '唯一解' : '係数の一例'}
+                heading={analysis.status === 'unique' ? '唯一解' : '係数の例1'}
                 coefficients={analysis.exampleSolutions[0] ?? analysis.particularSolution ?? []}
                 vectors={vectors}
               />
 
+              {analysis.status === 'infinite' && analysis.exampleSolutions[1] ? (
+                <SolutionExample
+                  heading="係数の例2"
+                  coefficients={analysis.exampleSolutions[1]}
+                  vectors={vectors}
+                />
+              ) : null}
+
               {analysis.status === 'infinite' ? (
                 <details className="linear-combination-details">
-                  <summary>第2例と一般解を表示</summary>
+                  <summary>自由係数を使った一般解を表示</summary>
                   <div className="linear-combination-detail-content">
-                    {analysis.exampleSolutions[1] ? (
-                      <SolutionExample
-                        heading="異なる係数の第2例"
-                        coefficients={analysis.exampleSolutions[1]}
-                        vectors={vectors}
-                      />
-                    ) : null}
-                    <GeneralSolution analysis={analysis} />
+                    <GeneralSolution analysis={analysis} vectors={vectors} />
                   </div>
                 </details>
               ) : null}
@@ -1287,6 +1284,61 @@ function LinearCombinationExplorer({
   );
 }
 
+function LinearCombinationDefinition({ vectors }: { readonly vectors: readonly VectorValue[] }) {
+  return (
+    <div className="linear-combination-definition">
+      <div
+        className="linear-combination-system"
+        aria-label={`ターゲット v は、行列 A と係数ベクトル c の積であり、${vectors.length}本のベクトルの組と係数列の積です。`}
+      >
+        <MathVectorName name="v" />
+        <span className="math-equals" aria-hidden="true">=</span>
+        <MathMatrixName name="A" />
+        <MathVectorName name="c" />
+        <span className="math-equals" aria-hidden="true">=</span>
+        <VectorTuple vectors={vectors} />
+        <SymbolicCoefficientVector count={vectors.length} />
+      </div>
+      <div className="coefficient-transpose-definition">
+        <MathVectorName name="c" />
+        <span aria-hidden="true">=</span>
+        <MathTransposedRowVector
+          ariaLabel={`係数 c 1 から c ${vectors.length} の転置列ベクトル`}
+          values={Array.from({ length: vectors.length }, (_, index) => (
+            <CoefficientName index={index + 1} />
+          ))}
+        />
+      </div>
+    </div>
+  );
+}
+
+function VectorTuple({ vectors }: { readonly vectors: readonly VectorValue[] }) {
+  return (
+    <span className="vector-tuple" aria-label={`${vectors.length}本のベクトルの組`}>
+      <span aria-hidden="true">(</span>
+      {vectors.map((vector, index) => (
+        <span key={vector.id}>
+          {index > 0 ? <span aria-hidden="true">, </span> : null}
+          <MathVectorName name={vector.name} />
+        </span>
+      ))}
+      <span aria-hidden="true">)</span>
+    </span>
+  );
+}
+
+function SymbolicCoefficientVector({ count }: { readonly count: number }) {
+  return (
+    <MathColumnVector
+      ariaLabel={`係数 c 1 から c ${count} の列ベクトル`}
+      values={Array.from({ length: count }, (_, index) => (
+        <CoefficientName index={index + 1} />
+      ))}
+    />
+  );
+}
+
 function SolutionExample({
   heading,
   coefficients,
@@ -1304,22 +1356,31 @@ function SolutionExample({
       <h3>{heading}</h3>
       <div className="coefficient-vector-equation">
         <MathVectorName name="c" />
+        <span aria-hidden="true">=</span>
+        <SymbolicCoefficientVector count={coefficients.length} />
         <span aria-hidden="true">{isApproximate ? '≈' : '='}</span>
-        <MathColumnVector values={formatted.map((coefficient) => coefficient.text)} />
+        <MathColumnVector
+          ariaLabel={`係数の値 ${formatted.map((coefficient) => coefficient.text).join('、')}`}
+          values={formatted.map((coefficient) => coefficient.text)}
+        />
       </div>
-      <p className="expanded-linear-combination">
-        <MathVectorName name="x" />
-        <span aria-hidden="true">{isApproximate ? '≈' : '='}</span>
-        {vectors.length === 0 ? (
-          <MathVectorName name="0" />
-        ) : vectors.map((vector, index) => (
-          <span className="linear-combination-term" key={vector.id}>
-            {index > 0 ? <span className="term-plus"> + </span> : null}
-            <span>({formatted[index]?.text ?? '0'})</span>
-            <MathVectorName name={vector.name} />
-          </span>
-        ))}
-      </p>
+      <div className="expanded-linear-combination">
+        <div className="expanded-equation-line">
+          <MathVectorName name="v" />
+          <span aria-hidden="true">=</span>
+          <LinearCombinationTerms vectors={vectors} />
+        </div>
+        {vectors.length > 0 ? (
+          <div className="expanded-equation-line is-continuation">
+            <span className="equation-lhs-placeholder" aria-hidden="true" />
+            <span aria-hidden="true">{isApproximate ? '≈' : '='}</span>
+            <LinearCombinationTerms
+              vectors={vectors}
+              coefficientTexts={formatted.map((coefficient) => coefficient.text)}
+            />
+          </div>
+        ) : null}
+      </div>
       {vectors.length === 0 ? (
         <p className="empty-sum-note">空和は零ベクトルです。係数を必要としない表し方だけが存在します。</p>
       ) : null}
@@ -1327,7 +1388,41 @@ function SolutionExample({
   );
 }
 
-function GeneralSolution({ analysis }: { readonly analysis: LinearCombinationAnalysis }) {
+function LinearCombinationTerms({
+  vectors,
+  coefficientTexts,
+}: {
+  readonly vectors: readonly VectorValue[];
+  readonly coefficientTexts?: readonly string[];
+}) {
+  if (vectors.length === 0) {
+    return <MathVectorName name="0" />;
+  }
+
+  return (
+    <span className="linear-combination-terms">
+      {vectors.map((vector, index) => (
+        <span className="linear-combination-term" key={vector.id}>
+          {index > 0 ? <span className="term-plus"> + </span> : null}
+          {coefficientTexts ? (
+            <span>({coefficientTexts[index] ?? '0'})</span>
+          ) : (
+            <CoefficientName index={index + 1} />
+          )}
+          <MathVectorName name={vector.name} />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function GeneralSolution({
+  analysis,
+  vectors,
+}: {
+  readonly analysis: LinearCombinationAnalysis;
+  readonly vectors: readonly VectorValue[];
+}) {
   const particular = (analysis.particularSolution ?? []).map((value) => formatMathNumber(value));
   const basis = analysis.nullspaceBasis.map((direction) =>
     direction.map((value) => formatMathNumber(value)),
@@ -1344,17 +1439,73 @@ function GeneralSolution({ analysis }: { readonly analysis: LinearCombinationAna
         自由係数は{analysis.freeParameterCount}個です。任意の実数
         {analysis.freeParameterCount === 1 ? 'を動かすと、すべての表し方が得られます。' : 'の組を動かすと、すべての表し方が得られます。'}
       </p>
+      <ol className="general-solution-derivation">
+        <li>
+          <strong>特解を1つ求める：</strong>
+          自由係数をすべて0として <MathMatrixName name="A" /><MathVectorName name="c" />
+          {' = '}<MathVectorName name="v" /> を解き、
+          <MathVectorSymbol base="c" subscript="p" /> を得ます。
+        </li>
+        <li>
+          <strong>ターゲットを変えない方向を求める：</strong>
+          <MathMatrixName name="A" /><MathVectorSymbol base="n" subscript="j" />
+          {' = '}<MathVectorName name="0" /> を満たす
+          <MathVectorSymbol base="n" subscript="j" /> を同次方程式から求めます。
+        </li>
+      </ol>
+      <p className="general-solution-reason">
+        すると <MathMatrixName name="A" />(<MathVectorSymbol base="c" subscript="p" />
+        {' + '}<span className="math-sum">Σ<sub>j</sub></span>
+        <MathScalarSymbol base="t" subscript="j" /><MathVectorSymbol base="n" subscript="j" />)
+        {' = '}<MathVectorName name="v" /> となるため、次がすべての解です。
+      </p>
       <div className="general-solution-equation">
         <MathVectorName name="c" />
+        <span aria-hidden="true">=</span>
+        <MathVectorSymbol base="c" subscript="p" />
+        {basis.map((_, index) => (
+          <span className="symbolic-nullspace-term" key={`symbolic-nullspace-${index}`}>
+            <span aria-hidden="true">+</span>
+            <CoefficientName base="t" index={index + 1} />
+            <MathVectorSymbol base="n" subscript={String(index + 1)} />
+          </span>
+        ))}
+      </div>
+      <div className="general-solution-equation is-values">
+        <span className="equation-lhs-placeholder" aria-hidden="true" />
         <span aria-hidden="true">{isApproximate ? '≈' : '='}</span>
-        <MathColumnVector values={particular.map((value) => value.text)} />
+        <MathColumnVector
+          ariaLabel={`特解 ${particular.map((value) => value.text).join('、')}`}
+          values={particular.map((value) => value.text)}
+        />
         {basis.map((direction, index) => (
           <span className="nullspace-term" key={`nullspace-${index}`}>
             <span aria-hidden="true">+</span>
             <CoefficientName base="t" index={index + 1} />
-            <MathColumnVector values={direction.map((value) => value.text)} />
+            <MathColumnVector
+              ariaLabel={`同次解の方向 ${index + 1}、${direction.map((value) => value.text).join('、')}`}
+              values={direction.map((value) => value.text)}
+            />
           </span>
         ))}
+      </div>
+      <div className="expanded-general-combination">
+        <MathVectorName name="v" />
+        <span aria-hidden="true">{isApproximate ? '≈' : '='}</span>
+        <span className="linear-combination-terms">
+          {vectors.map((vector, coefficientIndex) => (
+            <span className="linear-combination-term" key={vector.id}>
+              {coefficientIndex > 0 ? <span className="term-plus"> + </span> : null}
+              <span className="affine-coefficient">
+                (<AffineCoefficientExpression
+                  particular={analysis.particularSolution?.[coefficientIndex] ?? 0}
+                  directions={analysis.nullspaceBasis.map((direction) => direction[coefficientIndex] ?? 0)}
+                />)
+              </span>
+              <MathVectorName name={vector.name} />
+            </span>
+          ))}
+        </span>
       </div>
       <p className="parameter-domain">
         {basis.map((_, index) => (
@@ -1364,6 +1515,33 @@ function GeneralSolution({ analysis }: { readonly analysis: LinearCombinationAna
         ))}
       </p>
     </section>
+  );
+}
+
+function AffineCoefficientExpression({
+  particular,
+  directions,
+}: {
+  readonly particular: number;
+  readonly directions: readonly number[];
+}) {
+  return (
+    <>
+      {formatMathNumber(particular).text}
+      {directions.map((direction, index) => {
+        if (direction === 0) {
+          return null;
+        }
+        const magnitude = Math.abs(direction);
+        const magnitudeText = magnitude === 1 ? '' : formatMathNumber(magnitude).text;
+        return (
+          <span key={`affine-${index}`}>
+            {direction < 0 ? ' − ' : ' + '}
+            {magnitudeText}<CoefficientName base="t" index={index + 1} />
+          </span>
+        );
+      })}
+    </>
   );
 }
 
@@ -1381,11 +1559,19 @@ function GeneralTargetFormula({
 
   return (
     <details className="general-target-formula">
-      <summary>一般の [a; b] に対する係数公式</summary>
+      <summary>
+        一般の <MathTransposedRowVector values={[
+          <MathScalarSymbol base="a" />,
+          <MathScalarSymbol base="b" />,
+        ]} ariaLabel="a、b の転置列ベクトル" /> に対する係数公式
+      </summary>
       <div className="general-target-content">
         <p>
-          <MathVectorName name="x" /> = [a; b] とすると、<MathMatrixName name="B" /> の行列式は
-          {' '}<span className="math-scalar">det</span>(<MathMatrixName name="B" />)
+          <MathVectorName name="v" /> = <MathTransposedRowVector values={[
+            <MathScalarSymbol base="a" />,
+            <MathScalarSymbol base="b" />,
+          ]} ariaLabel="a、b の転置列ベクトル" /> とすると、<MathMatrixName name="A" /> の行列式は
+          {' '}<MathOperator name="det" />(<MathMatrixName name="A" />)
           {displayedValues[4].approximate ? ' ≈ ' : ' = '}{displayedValues[4].text} ≠ 0 です。
           したがって係数は常に一意に定まります。
         </p>
@@ -1399,7 +1585,10 @@ function GeneralTargetFormula({
               [displayedValues[2].text, displayedValues[3].text],
             ]}
           />
-          <MathColumnVector values={['a', 'b']} />
+          <MathTransposedRowVector values={[
+            <MathScalarSymbol base="a" />,
+            <MathScalarSymbol base="b" />,
+          ]} ariaLabel="a、b の転置列ベクトル" />
         </div>
         {isApproximate ? (
           <p className="approximation-note">座標の表示を有効数字6桁に丸めているため、式には近似記号を使っています。</p>
@@ -1409,12 +1598,40 @@ function GeneralTargetFormula({
   );
 }
 
-function MathColumnVector({ values }: { readonly values: readonly string[] }) {
+function MathColumnVector({
+  values,
+  ariaLabel,
+}: {
+  readonly values: readonly ReactNode[];
+  readonly ariaLabel: string;
+}) {
   return (
-    <span className="display-column-vector" aria-label={`列ベクトル ${values.join('、')}`}>
+    <span className="display-column-vector" aria-label={ariaLabel}>
       {values.map((value, index) => (
-        <span key={`${value}-${index}`}>{value}</span>
+        <span key={index}>{value}</span>
       ))}
+    </span>
+  );
+}
+
+function MathTransposedRowVector({
+  values,
+  ariaLabel,
+}: {
+  readonly values: readonly ReactNode[];
+  readonly ariaLabel: string;
+}) {
+  return (
+    <span className="transposed-row-vector" aria-label={ariaLabel}>
+      <sup aria-hidden="true">t</sup>
+      <span aria-hidden="true">[</span>
+      {values.map((value, index) => (
+        <span key={index}>
+          {index > 0 ? <span aria-hidden="true">, </span> : null}
+          {value}
+        </span>
+      ))}
+      <span aria-hidden="true">]</span>
     </span>
   );
 }
@@ -1438,10 +1655,20 @@ function CoefficientName({
   readonly base?: string;
   readonly index: number;
 }) {
+  return <MathScalarSymbol base={base} subscript={String(index)} />;
+}
+
+function MathScalarSymbol({
+  base,
+  subscript,
+}: {
+  readonly base: string;
+  readonly subscript?: string;
+}) {
   return (
     <span className="math-scalar">
       <span className="math-scalar-base">{base}</span>
-      <sub>{index}</sub>
+      {subscript ? <sub>{subscript}</sub> : null}
     </span>
   );
 }
@@ -1449,11 +1676,24 @@ function CoefficientName({
 function MathVectorName({ name }: { readonly name: string }) {
   const { base, subscript } = splitVectorName(name);
 
+  return <MathVectorSymbol base={base} subscript={subscript} ariaLabel={formatVectorSpokenName(name)} />;
+}
+
+function MathVectorSymbol({
+  base,
+  subscript,
+  ariaLabel,
+}: {
+  readonly base: string;
+  readonly subscript?: string;
+  readonly ariaLabel?: string;
+}) {
+
   return (
-    <span className="math-symbol math-vector" aria-label={formatVectorSpokenName(name)}>
-      <span className="math-vector-base" aria-hidden="true">{base}</span>
+    <span className="math-symbol math-vector" aria-label={ariaLabel}>
+      <span className="math-vector-base" aria-hidden={ariaLabel ? true : undefined}>{base}</span>
       {subscript ? (
-        <sub className="math-vector-subscript" aria-hidden="true">{subscript}</sub>
+        <sub className="math-vector-subscript" aria-hidden={ariaLabel ? true : undefined}>{subscript}</sub>
       ) : null}
     </span>
   );
@@ -1517,9 +1757,9 @@ function VectorSetDefinition({ vectors }: { readonly vectors: readonly VectorVal
   return (
     <p
       className="span-set-definition"
-      aria-label={vectors.length === 0 ? '集合 X は空集合です。' : `集合 X は ${names} からなる集合です。`}
+      aria-label={vectors.length === 0 ? '集合 S は空集合です。' : `集合 S は ${names} からなる集合です。`}
     >
-      <span className="math-set-name" aria-hidden="true">X</span>
+      <span className="math-set-name" aria-hidden="true">S</span>
       <span className="math-equals" aria-hidden="true">=</span>
       <span aria-hidden="true">{vectors.length === 0 ? '∅' : '{'}</span>
       {vectors.map((vector, index) => (
@@ -1540,10 +1780,10 @@ function SelectedMatrixDefinition({ vectors }: { readonly vectors: readonly Vect
     <p
       className="span-matrix-definition"
       aria-label={vectors.length === 0
-        ? '行列 B は列を持たない空行列です。'
-        : `行列 B は ${names} を列に並べた行列です。`}
+        ? '行列 A は列を持たない空行列です。'
+        : `行列 A は ${names} を列に並べた行列です。`}
     >
-      <MathMatrixName name="B" />
+      <MathMatrixName name="A" />
       <span className="math-equals" aria-hidden="true">=</span>
       <span aria-hidden="true">[</span>
       {vectors.map((vector, index) => (
