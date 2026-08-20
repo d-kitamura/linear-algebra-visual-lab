@@ -142,15 +142,20 @@
 
 .lab-actions button:hover:not(:disabled),
 .page-alert button:hover,
-.share-dialog-actions button:hover {
+.share-dialog-actions button:hover:not(:disabled) {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 8%, var(--paper));
 }
 
 .lab-actions button:active:not(:disabled),
 .page-alert button:active,
-.share-dialog-actions button:active {
+.share-dialog-actions button:active:not(:disabled) {
   transform: translateY(1px);
+}
+
+.share-dialog-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .lab-actions button:focus-visible,
@@ -2019,6 +2024,60 @@
   line-height: 1.75;
 }
 
+.share-qr-code {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+}
+
+.share-qr-code h3 {
+  margin: 0;
+  font-family: var(--body-font);
+  font-size: 0.82rem;
+  font-weight: 780;
+}
+
+.share-qr-code-frame {
+  display: grid;
+  width: min(320px, 100%);
+  aspect-ratio: 1;
+  place-items: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--muted);
+  background: white;
+}
+
+.share-qr-code-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.share-qr-code-frame p {
+  margin: 0;
+  padding: 20px;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.share-qr-code.has-error .share-qr-code-frame {
+  color: var(--accent-strong);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 5%, white);
+}
+
+.share-qr-code-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .share-url-field {
   display: grid;
   gap: 8px;
@@ -2058,7 +2117,8 @@
 
 .share-dialog-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.72fr);
+  grid-template-columns:
+    minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.72fr);
   gap: 10px;
 }
 

@@ -35,3 +35,8 @@ export type {
   ShareUrlErrorCode,
   ShareUrlReadResult,
 } from './shareUrl';
+
+export {
+  createShareQrCodeDataUrl,
+  createShareQrCodeFileName,
+} from './shareQrCode';

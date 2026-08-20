@@ -17,6 +17,8 @@ import {
   MAX_ABSOLUTE_COORDINATE,
   MAX_SHARE_VECTORS,
   buildShareUrl,
+  createShareQrCodeDataUrl,
+  createShareQrCodeFileName,
   createShareTextFileContents,
   createShareTextFileName,
   type ShareState,
@@ -100,7 +102,11 @@ export function App() {
   const [loadErrorMessage, setLoadErrorMessage] = useState(initialization.errorMessage);
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState('');
+  const [shareQrCodeDataUrl, setShareQrCodeDataUrl] = useState('');
+  const [shareQrCodeErrorMessage, setShareQrCodeErrorMessage] = useState<string | null>(null);
+  const [isShareQrCodeLoading, setIsShareQrCodeLoading] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<ShareFeedback>(null);
+  const shareQrCodeRequestIdRef = useRef(0);
   const shareDialogRef = useRef<HTMLDialogElement>(null);
   const shareUrlFieldRef = useRef<HTMLTextAreaElement>(null);
   const addVectorButtonRef = useRef<HTMLButtonElement>(null);
@@ -399,6 +405,10 @@ export function App() {
     setActiveInspectorTab(initialState.linearCombination.visible ? 'combination' : 'edit');
     setExportErrorMessage(null);
     setShareUrl('');
+    shareQrCodeRequestIdRef.current += 1;
+    setShareQrCodeDataUrl('');
+    setShareQrCodeErrorMessage(null);
+    setIsShareQrCodeLoading(false);
     setShareFeedback(null);
     shareDialogRef.current?.close();
   }
@@ -410,10 +420,34 @@ export function App() {
 
     try {
       const nextShareUrl = buildShareUrl(window.location.href, state);
+      const qrCodeRequestId = shareQrCodeRequestIdRef.current + 1;
+      shareQrCodeRequestIdRef.current = qrCodeRequestId;
       setShareUrl(nextShareUrl);
+      setShareQrCodeDataUrl('');
+      setShareQrCodeErrorMessage(null);
+      setIsShareQrCodeLoading(true);
       setShareFeedback(null);
       setExportErrorMessage(null);
       shareDialogRef.current?.showModal();
+      void createShareQrCodeDataUrl(nextShareUrl)
+        .then((dataUrl) => {
+          if (shareQrCodeRequestIdRef.current !== qrCodeRequestId) {
+            return;
+          }
+          setShareQrCodeDataUrl(dataUrl);
+          setIsShareQrCodeLoading(false);
+        })
+        .catch((error: unknown) => {
+          if (shareQrCodeRequestIdRef.current !== qrCodeRequestId) {
+            return;
+          }
+          setShareQrCodeErrorMessage(
+            error instanceof Error
+              ? error.message
+              : '共有URLからQRコードを生成できませんでした。',
+          );
+          setIsShareQrCodeLoading(false);
+        });
       window.requestAnimationFrame(() => {
         shareUrlFieldRef.current?.focus();
         shareUrlFieldRef.current?.select();
@@ -471,6 +505,27 @@ export function App() {
     setShareFeedback({
       kind: 'success',
       message: 'URLを記載したテキストファイルのダウンロードを開始しました。',
+    });
+  }
+
+  function handleDownloadShareQrCode(): void {
+    if (!shareQrCodeDataUrl) {
+      setShareFeedback({
+        kind: 'error',
+        message: 'QRコードを保存できませんでした。URLのコピーまたはテキスト保存をご利用ください。',
+      });
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = shareQrCodeDataUrl;
+    link.download = createShareQrCodeFileName();
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setShareFeedback({
+      kind: 'success',
+      message: 'QRコードのPNG画像のダウンロードを開始しました。',
     });
   }
 
@@ -1050,6 +1105,30 @@ export function App() {
             このURLを開くと、ベクトル、spanの選択、幾何表示、一次結合のターゲットが復元されます。
             表示範囲はベクトルと表示中のターゲット全体が見えるように自動調整されます。
           </p>
+          <section
+            className={`share-qr-code ${shareQrCodeErrorMessage ? 'has-error' : ''}`}
+            aria-labelledby="share-qr-code-title"
+            aria-busy={isShareQrCodeLoading}
+          >
+            <h3 id="share-qr-code-title">共有URLのQRコード</h3>
+            <div className="share-qr-code-frame">
+              {shareQrCodeDataUrl ? (
+                <img
+                  src={shareQrCodeDataUrl}
+                  alt="現在の共有URLを表すQRコード"
+                  width="768"
+                  height="768"
+                />
+              ) : (
+                <p role={shareQrCodeErrorMessage ? 'alert' : 'status'}>
+                  {shareQrCodeErrorMessage ?? 'QRコードを生成しています。'}
+                </p>
+              )}
+            </div>
+            <p className="share-qr-code-help">
+              スマートフォンのカメラで読み取ると、同じ教材状態を開けます。
+            </p>
+          </section>
           <label className="share-url-field">
             <span>共有URL</span>
             <textarea
@@ -1073,6 +1152,13 @@ export function App() {
           <div className="share-dialog-actions">
             <button className="copy-share-button" type="button" onClick={handleCopyShareUrl}>
               クリップボードにコピー
+            </button>
+            <button
+              type="button"
+              disabled={!shareQrCodeDataUrl}
+              onClick={handleDownloadShareQrCode}
+            >
+              QRコードを保存
             </button>
             <button type="button" onClick={handleDownloadShareUrl}>
               テキストで保存
