@@ -1,3 +1,4 @@
+import type { LinearCombinationStatus } from '../domain';
 import type { ShareState } from '../sharing';
 
 export interface TeachingScenario {
@@ -9,6 +10,14 @@ export interface TeachingScenario {
     readonly vectorCount: number;
     readonly rank: number;
     readonly isLinearlyIndependent: boolean;
+  };
+}
+
+export interface LinearCombinationTeachingScenario extends TeachingScenario {
+  readonly linearCombinationExpected: {
+    readonly status: LinearCombinationStatus;
+    readonly rank: number;
+    readonly augmentedRank: number;
   };
 }
 
@@ -72,9 +81,72 @@ export const TWO_DIMENSIONAL_TEACHING_SCENARIOS: readonly TeachingScenario[] = [
   },
 ];
 
+export const LINEAR_COMBINATION_TEACHING_SCENARIOS:
+  readonly LinearCombinationTeachingScenario[] = [
+  {
+    id: 'one-vector-unique',
+    title: '1本で一意に表す',
+    learningPoint: '零ベクトルでない1本では、生成する直線上のターゲットを一意な係数で表せる。',
+    state: createScenarioState(
+      [{ id: 'a1', name: 'a₁', coordinates: [2, 1] }],
+      ['a1'],
+      [4, 2],
+    ),
+    expected: { vectorCount: 1, rank: 1, isLinearlyIndependent: true },
+    linearCombinationExpected: { status: 'unique', rank: 1, augmentedRank: 1 },
+  },
+  {
+    id: 'dependent-pair-none',
+    title: '一次従属な2本では表現不能',
+    learningPoint: '生成する直線の外にあるターゲットは、一次従属な2本の一次結合では表せない。',
+    state: createScenarioState(
+      [
+        { id: 'a1', name: 'a₁', coordinates: [1, 0] },
+        { id: 'a2', name: 'a₂', coordinates: [2, 0] },
+      ],
+      ['a1', 'a2'],
+      [0, 1],
+    ),
+    expected: { vectorCount: 2, rank: 1, isLinearlyIndependent: false },
+    linearCombinationExpected: { status: 'none', rank: 1, augmentedRank: 2 },
+  },
+  {
+    id: 'independent-pair-unique',
+    title: '一次独立な2本で唯一解',
+    learningPoint: '一次独立な2本は任意のターゲットを表し、その係数の組は一意に定まる。',
+    state: createScenarioState(
+      [
+        { id: 'a1', name: 'a₁', coordinates: [1, 0] },
+        { id: 'a2', name: 'a₂', coordinates: [0, 1] },
+      ],
+      ['a1', 'a2'],
+      [0.5, 0.25],
+    ),
+    expected: { vectorCount: 2, rank: 2, isLinearlyIndependent: true },
+    linearCombinationExpected: { status: 'unique', rank: 2, augmentedRank: 2 },
+  },
+  {
+    id: 'three-vectors-infinite',
+    title: '3本では表し方が無数',
+    learningPoint: '2次元を生成する3本ではターゲットを表せるが、係数の組は一意に定まらない。',
+    state: createScenarioState(
+      [
+        { id: 'a1', name: 'a₁', coordinates: [1, 0] },
+        { id: 'a2', name: 'a₂', coordinates: [0, 1] },
+        { id: 'a3', name: 'a₃', coordinates: [1, 1] },
+      ],
+      ['a1', 'a2', 'a3'],
+      [0.5, 0.25],
+    ),
+    expected: { vectorCount: 3, rank: 2, isLinearlyIndependent: false },
+    linearCombinationExpected: { status: 'infinite', rank: 2, augmentedRank: 2 },
+  },
+];
+
 function createScenarioState(
   vectors: ShareState['vectors'],
   spanSelection: ShareState['spanSelection'],
+  target: readonly number[] | null = null,
 ): ShareState {
   return {
     v: 2,
@@ -83,6 +155,6 @@ function createScenarioState(
     vectors,
     spanSelection,
     visualization: { showSpan: true },
-    linearCombination: { visible: false, target: null },
+    linearCombination: { visible: target !== null, target },
   };
 }

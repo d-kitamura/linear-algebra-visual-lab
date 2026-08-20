@@ -1,5 +1,5 @@
 export const projectInfo = {
   name: 'Linear Algebra Visual Lab',
-  phase: 'フェーズ 4.4',
-  status: '一次結合の係数・一般解・平行四辺形表示',
+  phase: 'フェーズ 4 完了',
+  status: '2D一次結合エクスプローラ',
 } as const;
