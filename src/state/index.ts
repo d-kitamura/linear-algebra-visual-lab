@@ -1,4 +1,4 @@
-export { DEFAULT_2D_SHARE_STATE } from './defaultState';
+export { DEFAULT_2D_SHARE_STATE, DEFAULT_3D_SHARE_STATE } from './defaultState';
 export { createAppInitialization } from './appInitialization';
 export { parseCoordinateInput } from './vectorEditing';
 export { addDefaultVector, removeVector } from './vectorCollection';
@@ -15,3 +15,4 @@ export type { ParallelSnapResult } from './vectorSnapping';
 export { snapTargetToSelectedSpan } from './targetSnapping';
 export type { TargetSnapKind, TargetSnapResult } from './targetSnapping';
 export type { AppInitialization } from './appInitialization';
+export type { AppDimension, InitialStatesByDimension } from './appInitialization';

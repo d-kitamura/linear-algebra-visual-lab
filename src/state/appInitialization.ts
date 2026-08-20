@@ -1,8 +1,16 @@
 import { readShareStateFromUrl, type ShareState } from '../sharing';
-import { DEFAULT_2D_SHARE_STATE } from './defaultState';
+import { DEFAULT_2D_SHARE_STATE, DEFAULT_3D_SHARE_STATE } from './defaultState';
+
+export type AppDimension = 2 | 3;
+
+export interface InitialStatesByDimension {
+  readonly 2: ShareState;
+  readonly 3: ShareState;
+}
 
 export interface AppInitialization {
-  readonly initialState: ShareState;
+  readonly initialStates: InitialStatesByDimension;
+  readonly activeDimension: AppDimension;
   readonly source: 'default' | 'shared' | 'fallback';
   readonly errorMessage: string | null;
 }
@@ -12,7 +20,8 @@ export function createAppInitialization(href: string): AppInitialization {
 
   if (result.status === 'absent') {
     return {
-      initialState: DEFAULT_2D_SHARE_STATE,
+      initialStates: createInitialStates(),
+      activeDimension: 2,
       source: 'default',
       errorMessage: null,
     };
@@ -20,23 +29,26 @@ export function createAppInitialization(href: string): AppInitialization {
 
   if (result.status === 'error') {
     return {
-      initialState: DEFAULT_2D_SHARE_STATE,
+      initialStates: createInitialStates(),
+      activeDimension: 2,
       source: 'fallback',
       errorMessage: `共有URLを復元できませんでした。既定例を表示しています。理由：${result.error.message}`,
     };
   }
 
-  if (result.state.dim !== 2) {
-    return {
-      initialState: DEFAULT_2D_SHARE_STATE,
-      source: 'fallback',
-      errorMessage: 'このURLには3次元の状態が含まれています。現在の2D画面では開けないため、既定例を表示しています。',
-    };
-  }
+  const initialStates = createInitialStates(result.state);
 
   return {
-    initialState: result.state,
+    initialStates,
+    activeDimension: result.state.dim,
     source: 'shared',
     errorMessage: null,
+  };
+}
+
+function createInitialStates(sharedState?: ShareState): InitialStatesByDimension {
+  return {
+    2: sharedState?.dim === 2 ? sharedState : DEFAULT_2D_SHARE_STATE,
+    3: sharedState?.dim === 3 ? sharedState : DEFAULT_3D_SHARE_STATE,
   };
 }

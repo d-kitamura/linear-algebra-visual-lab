@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { buildShareUrl, type ShareState, type ShareStateV1 } from '../../src/sharing';
-import { createAppInitialization, DEFAULT_2D_SHARE_STATE } from '../../src/state';
+import {
+  createAppInitialization,
+  DEFAULT_2D_SHARE_STATE,
+  DEFAULT_3D_SHARE_STATE,
+} from '../../src/state';
 
 describe('アプリ初期状態', () => {
   it('stateがない場合は既定の2D例をInitialStateにする', () => {
     const initialization = createAppInitialization('https://example.jp/lab/');
 
     expect(initialization).toEqual({
-      initialState: DEFAULT_2D_SHARE_STATE,
+      initialStates: { 2: DEFAULT_2D_SHARE_STATE, 3: DEFAULT_3D_SHARE_STATE },
+      activeDimension: 2,
       source: 'default',
       errorMessage: null,
     });
@@ -25,7 +30,11 @@ describe('アプリ初期状態', () => {
       buildShareUrl('https://example.jp/lab/', shared),
     );
 
-    expect(initialization.initialState).toEqual(shared);
+    expect(initialization.initialStates).toEqual({
+      2: shared,
+      3: DEFAULT_3D_SHARE_STATE,
+    });
+    expect(initialization.activeDimension).toBe(2);
     expect(initialization.source).toBe('shared');
     expect(initialization.errorMessage).toBeNull();
   });
@@ -33,12 +42,16 @@ describe('アプリ初期状態', () => {
   it('壊れた共有URLでは既定例へ安全にフォールバックする', () => {
     const initialization = createAppInitialization('https://example.jp/lab/?state=broken');
 
-    expect(initialization.initialState).toEqual(DEFAULT_2D_SHARE_STATE);
+    expect(initialization.initialStates).toEqual({
+      2: DEFAULT_2D_SHARE_STATE,
+      3: DEFAULT_3D_SHARE_STATE,
+    });
+    expect(initialization.activeDimension).toBe(2);
     expect(initialization.source).toBe('fallback');
     expect(initialization.errorMessage).toContain('共有URLを復元できませんでした');
   });
 
-  it('未実装の3D共有状態では既定例と明示的な案内を返す', () => {
+  it('有効な3D共有状態を3D側のInitialStateにして3Dタブを選ぶ', () => {
     const shared3d: ShareState = {
       ...DEFAULT_2D_SHARE_STATE,
       dim: 3,
@@ -50,9 +63,13 @@ describe('アプリ初期状態', () => {
       buildShareUrl('https://example.jp/lab/', shared3d),
     );
 
-    expect(initialization.initialState).toEqual(DEFAULT_2D_SHARE_STATE);
-    expect(initialization.source).toBe('fallback');
-    expect(initialization.errorMessage).toContain('3次元');
+    expect(initialization.initialStates).toEqual({
+      2: DEFAULT_2D_SHARE_STATE,
+      3: shared3d,
+    });
+    expect(initialization.activeDimension).toBe(3);
+    expect(initialization.source).toBe('shared');
+    expect(initialization.errorMessage).toBeNull();
   });
 
   it('v1共有URLをv2へ移行してInitialStateにする', () => {
@@ -67,11 +84,12 @@ describe('アプリ初期状態', () => {
     const encoded = encodeRawValue(legacy);
     const initialization = createAppInitialization(`https://example.jp/lab/?state=${encoded}`);
 
-    expect(initialization.initialState).toEqual({
+    expect(initialization.initialStates[2]).toEqual({
       ...legacy,
       v: 2,
       linearCombination: { visible: false, target: null },
     });
+    expect(initialization.activeDimension).toBe(2);
     expect(initialization.source).toBe('shared');
   });
 });

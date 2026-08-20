@@ -76,6 +76,60 @@
   padding: 52px 0 88px;
 }
 
+.dimension-switcher {
+  margin: 0 0 34px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dimension-tablist {
+  min-width: min(100%, 390px);
+  padding: 5px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--ink) 5%, var(--paper));
+}
+
+.dimension-tablist button {
+  min-height: 44px;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dimension-tablist button[aria-selected='true'] {
+  color: var(--ink);
+  border-color: var(--line);
+  background: var(--paper);
+  box-shadow: 0 5px 15px rgba(18, 28, 36, 0.08);
+}
+
+.dimension-tablist button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  outline-offset: 2px;
+}
+
+.dimension-switcher > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.dimension-tab-label-short {
+  display: none;
+}
+
 .lab-intro {
   margin-bottom: 36px;
   display: grid;
@@ -255,6 +309,73 @@
 .lab-workspace > *,
 .analysis-column > * {
   min-width: 0;
+}
+
+.lab-workspace[hidden],
+.three-dimensional-placeholder[hidden] {
+  display: none;
+}
+
+.three-dimensional-placeholder {
+  min-height: 440px;
+  padding: clamp(24px, 5vw, 52px);
+  display: grid;
+  align-content: center;
+  gap: 28px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, #2f6690 7%, var(--paper)), var(--paper));
+  box-shadow: 0 24px 70px rgba(28, 36, 44, 0.08);
+}
+
+.three-dimensional-placeholder h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  letter-spacing: -0.04em;
+}
+
+.three-dimensional-placeholder > div > p:last-child,
+.three-dimensional-axis-note {
+  max-width: 720px;
+  margin: 14px 0 0;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.three-dimensional-state-summary {
+  max-width: 720px;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.three-dimensional-state-summary div {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid color-mix(in srgb, #2f6690 20%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--paper) 80%, transparent);
+}
+
+.three-dimensional-state-summary dt {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.three-dimensional-state-summary dd {
+  margin: 7px 0 0;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.three-dimensional-axis-note {
+  margin-top: 0;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  font-size: 0.82rem;
 }
 
 .plot-card,
@@ -2169,6 +2290,28 @@
     padding-bottom: 60px;
   }
 
+  .dimension-switcher {
+    display: grid;
+    gap: 9px;
+  }
+
+  .dimension-tablist {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .dimension-switcher > p {
+    text-align: center;
+  }
+
+  .dimension-tab-label-wide {
+    display: none;
+  }
+
+  .dimension-tab-label-short {
+    display: inline;
+  }
+
   .lab-intro {
     margin-bottom: 26px;
   }
@@ -2217,6 +2360,15 @@
   }
 
   .analysis-column {
+    grid-template-columns: 1fr;
+  }
+
+  .three-dimensional-placeholder {
+    min-height: 380px;
+    padding: 24px 19px;
+  }
+
+  .three-dimensional-state-summary {
     grid-template-columns: 1fr;
   }
 

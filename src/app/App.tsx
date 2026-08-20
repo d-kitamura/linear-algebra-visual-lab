@@ -33,6 +33,7 @@ import {
   snapDraggedVectorToParallel,
   updateSpanSelection,
   removeVector as removeVectorFromState,
+  type AppDimension,
   type TargetSnapKind,
 } from '../state';
 import {
@@ -67,6 +68,10 @@ const inspectorTabs = [
   { id: 'combination', label: '一次結合', shortLabel: '一次結合' },
   { id: 'all', label: '全ベクトル', shortLabel: '全体' },
 ] as const;
+const dimensionTabs = [
+  { dimension: 2, label: '2D座標平面', shortLabel: '2D' },
+  { dimension: 3, label: '3D座標空間', shortLabel: '3D' },
+] as const;
 
 type CoordinateDrafts = Readonly<Record<string, readonly string[]>>;
 type TargetCoordinateDrafts = readonly [string, string];
@@ -83,13 +88,20 @@ interface CoordinateInputIssue {
 
 export function App() {
   const [initialization] = useState(() => createAppInitialization(window.location.href));
-  const initialState = initialization.initialState;
-  const [state, setState] = useState<ShareState>(initialState);
+  const initial2DState = initialization.initialStates[2];
+  const initial3DState = initialization.initialStates[3];
+  const [activeDimension, setActiveDimension] = useState<AppDimension>(
+    initialization.activeDimension,
+  );
+  const [state, setState] = useState<ShareState>(initial2DState);
+  const [threeDimensionalState, setThreeDimensionalState] = useState<ShareState>(
+    initial3DState,
+  );
   const [coordinateDrafts, setCoordinateDrafts] = useState<CoordinateDrafts>(() =>
-    createCoordinateDrafts(initialState.vectors),
+    createCoordinateDrafts(initial2DState.vectors),
   );
   const [targetCoordinateDrafts, setTargetCoordinateDrafts] = useState<TargetCoordinateDrafts>(
-    () => createTargetCoordinateDrafts(initialState.linearCombination.target),
+    () => createTargetCoordinateDrafts(initial2DState.linearCombination.target),
   );
   const [viewMode, setViewMode] = useState<ViewMode>('auto');
   const [manualViewport, setManualViewport] = useState<PlaneViewport | null>(null);
@@ -97,7 +109,7 @@ export function App() {
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
   const [targetSnapKind, setTargetSnapKind] = useState<TargetSnapKind>(null);
   const [activeInspectorTab, setActiveInspectorTab] = useState<InspectorTabId>(
-    initialState.linearCombination.visible ? 'combination' : 'edit',
+    initial2DState.linearCombination.visible ? 'combination' : 'edit',
   );
   const [loadErrorMessage, setLoadErrorMessage] = useState(initialization.errorMessage);
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
@@ -124,7 +136,9 @@ export function App() {
       targetCoordinateDrafts,
     ],
   );
-  const hasInvalidCoordinateDraft = coordinateInputIssues.length > 0;
+  const hasInvalid2DCoordinateDraft = coordinateInputIssues.length > 0;
+  const hasInvalidCoordinateDraft = activeDimension === 2 && hasInvalid2DCoordinateDraft;
+  const activeShareState = activeDimension === 2 ? state : threeDimensionalState;
   const analysis = useMemo(
     () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
     [state],
@@ -394,15 +408,28 @@ export function App() {
   }
 
   function handleReset(): void {
-    setState(initialState);
-    setCoordinateDrafts(createCoordinateDrafts(initialState.vectors));
-    setTargetCoordinateDrafts(createTargetCoordinateDrafts(initialState.linearCombination.target));
+    if (activeDimension === 3) {
+      setThreeDimensionalState(initial3DState);
+      setExportErrorMessage(null);
+      setShareUrl('');
+      shareQrCodeRequestIdRef.current += 1;
+      setShareQrCodeDataUrl('');
+      setShareQrCodeErrorMessage(null);
+      setIsShareQrCodeLoading(false);
+      setShareFeedback(null);
+      shareDialogRef.current?.close();
+      return;
+    }
+
+    setState(initial2DState);
+    setCoordinateDrafts(createCoordinateDrafts(initial2DState.vectors));
+    setTargetCoordinateDrafts(createTargetCoordinateDrafts(initial2DState.linearCombination.target));
     setViewMode('auto');
     setManualViewport(null);
     setDragViewport(null);
     setParallelSnapTargetId(null);
     setTargetSnapKind(null);
-    setActiveInspectorTab(initialState.linearCombination.visible ? 'combination' : 'edit');
+    setActiveInspectorTab(initial2DState.linearCombination.visible ? 'combination' : 'edit');
     setExportErrorMessage(null);
     setShareUrl('');
     shareQrCodeRequestIdRef.current += 1;
@@ -419,7 +446,7 @@ export function App() {
     }
 
     try {
-      const nextShareUrl = buildShareUrl(window.location.href, state);
+      const nextShareUrl = buildShareUrl(window.location.href, activeShareState);
       const qrCodeRequestId = shareQrCodeRequestIdRef.current + 1;
       shareQrCodeRequestIdRef.current = qrCodeRequestId;
       setShareUrl(nextShareUrl);
@@ -563,6 +590,32 @@ export function App() {
     document.getElementById(`inspector-tab-${nextTab.id}`)?.focus();
   }
 
+  function handleDimensionTabKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+  ): void {
+    const currentIndex = dimensionTabs.findIndex(
+      (tab) => tab.dimension === activeDimension,
+    );
+    let nextIndex = currentIndex;
+
+    if (event.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % dimensionTabs.length;
+    } else if (event.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + dimensionTabs.length) % dimensionTabs.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = dimensionTabs.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    const nextTab = dimensionTabs[nextIndex];
+    setActiveDimension(nextTab.dimension);
+    document.getElementById(`dimension-tab-${nextTab.dimension}`)?.focus();
+  }
+
   function handleCoordinateChange(
     vectorId: string,
     coordinateIndex: number,
@@ -599,7 +652,9 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#lab-workspace">教材の操作領域へ移動</a>
+      <a className="skip-link" href={`#dimension-panel-${activeDimension}`}>
+        教材の操作領域へ移動
+      </a>
       <header className="site-header">
         <a
           className="brand"
@@ -615,15 +670,50 @@ export function App() {
       </header>
 
       <main className="lab-page">
+        <nav className="dimension-switcher" aria-label="教材の次元">
+          <div className="dimension-tablist" role="tablist" aria-label="2Dと3Dの切替">
+            {dimensionTabs.map((tab) => (
+              <button
+                key={tab.dimension}
+                id={`dimension-tab-${tab.dimension}`}
+                type="button"
+                role="tab"
+                aria-selected={activeDimension === tab.dimension}
+                aria-controls={`dimension-panel-${tab.dimension}`}
+                tabIndex={activeDimension === tab.dimension ? 0 : -1}
+                onClick={() => setActiveDimension(tab.dimension)}
+                onKeyDown={handleDimensionTabKeyDown}
+              >
+                <span className="dimension-tab-label-wide">{tab.label}</span>
+                <span className="dimension-tab-label-short">{tab.shortLabel}</span>
+              </button>
+            ))}
+          </div>
+          <p aria-live="polite">
+            {activeDimension === 2
+              ? '2次元の教材状態を表示しています。'
+              : '3次元の教材状態を表示しています。'}
+          </p>
+        </nav>
+
         <section className="lab-intro" aria-labelledby="page-title">
           <div>
-            <p className="eyebrow">ベクトル空間 / 2D</p>
+            <p className="eyebrow">ベクトル空間 / {activeDimension}D</p>
             <h1 id="page-title">ベクトルを変えて、生成する空間を見る。</h1>
           </div>
           <div className="lab-intro-side">
             <p className="lab-intro-copy">
-              列ベクトルの成分を編集すると、座標平面と数学的な判定が連動します。
-              ベクトルを選ぶと、その集合が生成する空間を原点、直線、座標平面として比較できます。
+              {activeDimension === 2 ? (
+                <>
+                  列ベクトルの成分を編集すると、座標平面と数学的な判定が連動します。
+                  ベクトルを選ぶと、その集合が生成する空間を原点、直線、座標平面として比較できます。
+                </>
+              ) : (
+                <>
+                  3次元の教材状態は2次元とは独立して保持されます。
+                  3D座標空間とカメラ操作は次の作業単位5.2で接続します。
+                </>
+              )}
             </p>
             <div className="lab-actions" aria-label="教材状態の操作">
               <button
@@ -691,7 +781,14 @@ export function App() {
           </div>
         ) : null}
 
-        <div className="lab-workspace" id="lab-workspace" tabIndex={-1}>
+        <div
+          className="lab-workspace"
+          id="dimension-panel-2"
+          role="tabpanel"
+          aria-labelledby="dimension-tab-2"
+          hidden={activeDimension !== 2}
+          tabIndex={-1}
+        >
           <section className="plot-card" aria-labelledby="plot-title">
             <div className="card-heading">
               <div>
@@ -1084,10 +1181,49 @@ export function App() {
             </p>
           </aside>
         </div>
+        <section
+          className="three-dimensional-placeholder"
+          id="dimension-panel-3"
+          role="tabpanel"
+          aria-labelledby="dimension-tab-3"
+          hidden={activeDimension !== 3}
+          tabIndex={-1}
+        >
+          <div>
+            <p className="panel-kicker">3D coordinate space</p>
+            <h2>3次元座標空間</h2>
+            <p>
+              3D表示は作業単位5.2で実装します。このタブには専用のInitialStateとCurrentStateがあり、
+              2Dへ切り替えて戻っても状態は失われません。
+            </p>
+          </div>
+          <dl className="three-dimensional-state-summary">
+            <div>
+              <dt>現在の3Dベクトル</dt>
+              <dd>{threeDimensionalState.vectors.length} 本</dd>
+            </div>
+            <div>
+              <dt>spanの選択</dt>
+              <dd>{threeDimensionalState.spanSelection.length} 本</dd>
+            </div>
+            <div>
+              <dt>次の実装</dt>
+              <dd>固定3D表示とカメラ</dd>
+            </div>
+          </dl>
+          <p className="three-dimensional-axis-note">
+            右手座標系を用い、x軸は右向き、y軸は左下（手前）から右上（奥）、
+            z軸は鉛直上向きをそれぞれ正方向とします。
+          </p>
+        </section>
       </main>
 
       <footer className="site-footer">
-        <p>{projectInfo.status} — 有効な成分は座標平面と判定へ即時反映されます。</p>
+        <p>
+          {projectInfo.status} — {activeDimension === 2
+            ? '有効な成分は座標平面と判定へ即時反映されます。'
+            : '3D表示は作業単位5.2で接続します。'}
+        </p>
       </footer>
 
       <dialog
@@ -1103,7 +1239,9 @@ export function App() {
           <h2 id="share-dialog-title">共有URLをエクスポート</h2>
           <p className="share-dialog-description" id="share-dialog-description">
             このURLを開くと、ベクトル、spanの選択、幾何表示、一次結合のターゲットが復元されます。
-            表示範囲はベクトルと表示中のターゲット全体が見えるように自動調整されます。
+            {activeDimension === 2
+              ? '表示範囲はベクトルと表示中のターゲット全体が見えるように自動調整されます。'
+              : '3Dカメラ状態は作業単位5.3で共有状態へ追加します。'}
           </p>
           <section
             className={`share-qr-code ${shareQrCodeErrorMessage ? 'has-error' : ''}`}

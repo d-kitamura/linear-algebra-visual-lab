@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeVectorSet } from '../../src/domain';
 import { validateShareState } from '../../src/sharing';
-import { DEFAULT_2D_SHARE_STATE } from '../../src/state';
+import { DEFAULT_2D_SHARE_STATE, DEFAULT_3D_SHARE_STATE } from '../../src/state';
 
 describe('DEFAULT_2D_SHARE_STATE', () => {
   it('is a valid shareable 2D state', () => {
@@ -27,5 +27,25 @@ describe('DEFAULT_2D_SHARE_STATE', () => {
     });
     expect(DEFAULT_2D_SHARE_STATE.spanSelection).toEqual(['a1', 'a2']);
     expect(DEFAULT_2D_SHARE_STATE.visualization.showSpan).toBe(true);
+  });
+});
+
+describe('DEFAULT_3D_SHARE_STATE', () => {
+  it('is a valid shareable 3D state with three independent vectors', () => {
+    expect(validateShareState(DEFAULT_3D_SHARE_STATE)).toEqual(DEFAULT_3D_SHARE_STATE);
+    expect(DEFAULT_3D_SHARE_STATE.dim).toBe(3);
+
+    const analysis = analyzeVectorSet({
+      dimension: DEFAULT_3D_SHARE_STATE.dim,
+      vectors: DEFAULT_3D_SHARE_STATE.vectors,
+    });
+
+    expect(analysis).toMatchObject({
+      vectorCount: 3,
+      rank: 3,
+      spanDimension: 3,
+      isLinearlyIndependent: true,
+    });
+    expect(DEFAULT_3D_SHARE_STATE.spanSelection).toEqual(['a1', 'a2', 'a3']);
   });
 });
