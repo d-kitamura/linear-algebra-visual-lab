@@ -1628,7 +1628,32 @@ function ThreeDimensionalInspector({
         <SelectedMatrixDefinition vectors={spanVectors} />
         <div className="span-shape-result">
           <span className="span-shape-symbol" aria-hidden="true">
-            {spanAnalysis.rank === 0 ? '⊙' : spanAnalysis.rank === 1 ? '━' : spanAnalysis.rank === 2 ? '▱' : '▦'}
+            {spanAnalysis.rank === 3 ? (
+              <svg
+                className="span-cube-icon"
+                viewBox="0 0 48 48"
+                focusable="false"
+              >
+                <polygon
+                  className="span-cube-face span-cube-face-top"
+                  points="24,4 42,14 24,24 6,14"
+                />
+                <polygon
+                  className="span-cube-face span-cube-face-left"
+                  points="6,14 24,24 24,44 6,34"
+                />
+                <polygon
+                  className="span-cube-face span-cube-face-right"
+                  points="24,24 42,14 42,34 24,44"
+                />
+                <circle className="span-cube-pip" cx="24" cy="13.5" r="1.6" />
+                <circle className="span-cube-pip" cx="12.5" cy="23.5" r="1.6" />
+                <circle className="span-cube-pip" cx="18" cy="35" r="1.6" />
+                <circle className="span-cube-pip" cx="34" cy="23" r="1.6" />
+                <circle className="span-cube-pip" cx="29" cy="34.5" r="1.6" />
+                <circle className="span-cube-pip" cx="37" cy="31" r="1.6" />
+              </svg>
+            ) : spanAnalysis.rank === 0 ? '⊙' : spanAnalysis.rank === 1 ? '━' : '▱'}
           </span>
           <div>
             <strong>{spanShape.heading}</strong>

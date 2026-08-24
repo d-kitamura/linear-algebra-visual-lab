@@ -65,4 +65,11 @@ describe('固定3D表示とカメラ操作', () => {
     expect(appSource).toContain('threeDimensionalSpanAnalysis');
     expect(appSource).toContain('threeDimensionalAnalysis');
   });
+
+  it('rank 3の生成空間を立方体アイコンで表す', () => {
+    expect(appSource).toContain('spanAnalysis.rank === 3');
+    expect(appSource).toContain('className="span-cube-icon"');
+    expect(appSource).toContain('className="span-cube-face span-cube-face-top"');
+    expect(cssSource).toMatch(/\.span-cube-icon\s*\{[^}]*width:\s*46px;/su);
+  });
 });

@@ -1646,6 +1646,35 @@
   text-align: center;
 }
 
+.span-cube-icon {
+  display: block;
+  width: 46px;
+  height: 46px;
+  overflow: visible;
+}
+
+.span-cube-face {
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.span-cube-face-top {
+  fill: color-mix(in srgb, currentColor 8%, #fffdf8);
+}
+
+.span-cube-face-left {
+  fill: color-mix(in srgb, currentColor 14%, #fffdf8);
+}
+
+.span-cube-face-right {
+  fill: color-mix(in srgb, currentColor 22%, #fffdf8);
+}
+
+.span-cube-pip {
+  fill: currentColor;
+}
+
 .span-shape-result strong {
   display: block;
   font-family: var(--display-font);
