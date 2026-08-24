@@ -39,6 +39,7 @@ describe('teaching scenarios', () => {
 
     expect(documentedUrls).toHaveLength(scenarios.length);
     scenarios.forEach((scenario, index) => {
+      expect(documentedUrls[index]).toBe(buildShareUrl(PRODUCTION_BASE_URL, scenario.state));
       expect(readShareStateFromUrl(documentedUrls[index])).toEqual({
         status: 'success',
         state: scenario.state,

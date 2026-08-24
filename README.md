@@ -2,7 +2,7 @@
 
 線形代数を学ぶ学生が、2D/3D のベクトル、一次独立・一次従属、ベクトルが張る空間をブラウザ上で視覚的・対話的に理解するための教材アプリです。
 
-フェーズ5「3D教材版」までの実装・利用者確認・統合棚卸しが完了しています。2D/3D切替、右手座標系・正投影カメラ、数値編集・解析・共有、rankに応じたspan幾何、一次結合、モードなしの矢先ドラッグ、平行・同一平面上への吸着、spanと係数幾何のドラッグ中更新を利用できます。2D・3D合わせて16件の代表例、本番共有URL、QR表示・PNG保存、授業手順、Canvasを利用できない場合の代替導線も整備済みです。現在は初版候補 `1.0.0-rc.1` で、フェーズ6「共有と配布の仕上げ」は6.6の配布情報・利用条件まで完了しています。公開版は [Linear Algebra Visual Lab](https://d-kitamura.github.io/linear-algebra-visual-lab/) です。
+フェーズ5「3D教材版」までの実装・利用者確認・統合棚卸しが完了しています。2D/3D切替、右手座標系・正投影カメラ、数値編集・解析・共有、rankに応じたspan幾何、一次結合、モードなしの矢先ドラッグ、平行・同一平面上への吸着、spanと係数幾何のドラッグ中更新を利用できます。2D・3D合わせて16件の代表例、本番共有URL、QR表示・PNG保存、授業手順、Canvasを利用できない場合の代替導線も整備済みです。現在は初版候補 `1.0.0-rc.1` で、フェーズ6「共有と配布の仕上げ」の技術確認と棚卸しが完了し、利用者の終了確認待ちです。公開版は [Linear Algebra Visual Lab](https://d-kitamura.github.io/linear-algebra-visual-lab/) です。
 
 ## 文書の役割
 
@@ -17,6 +17,7 @@
 - [`docs/TEACHING_SCENARIOS.md`](./docs/TEACHING_SCENARIOS.md): 2Dの代表例、本番共有URL、授業内の確認手順、3Dへ再利用する境界
 - [`docs/CLASSROOM_DISTRIBUTION.md`](./docs/CLASSROOM_DISTRIBUTION.md): 授業前チェック、対応環境、URL・QR配布、学生操作、失敗時の復旧手順
 - [`docs/USAGE_AND_PRIVACY.md`](./docs/USAGE_AND_PRIVACY.md): 学生・教員向けの利用上の注意、共有状態、保存、配信基盤の案内
+- [`docs/PHASE6_ACCEPTANCE.md`](./docs/PHASE6_ACCEPTANCE.md): 初版候補の自動・公開版回帰、配布・文書棚卸し、残る授業前確認
 - [`CHANGELOG.md`](./CHANGELOG.md): 配布版ごとの主要機能と既知の境界
 - [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md): 公開アプリが利用する第三者ライブラリの著作権・ライセンス
 - [`math-writing-rules.txt`](./math-writing-rules.txt): 学生向け画面で使う数学用語・数式表記の基準
