@@ -46,6 +46,7 @@ interface VectorPlane2DProps {
   readonly onTargetDragStart?: () => void;
   readonly onTargetChange?: (coordinates: readonly [number, number]) => void;
   readonly onTargetDragEnd?: () => void;
+  readonly idPrefix?: string;
 }
 
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
@@ -72,6 +73,7 @@ export function VectorPlane2D({
   onTargetDragStart,
   onTargetChange,
   onTargetDragEnd,
+  idPrefix = 'vector-plane',
 }: VectorPlane2DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportRef = useRef(viewport);
@@ -115,6 +117,8 @@ export function VectorPlane2D({
       ? '原点を通る直線'
       : '2次元座標平面全体';
   const spanGeometryLabel = `生成する空間：${spanShapeLabel}`;
+  const plotClipId = `${idPrefix}-plot-clip`;
+  const spanPatternId = `${idPrefix}-span-pattern`;
   const spanGeometryLabelWidth = Math.min(
     plotRight - plotLeft - 24,
     Math.max(160, Array.from(spanGeometryLabel).length * 14 + 28),
@@ -429,14 +433,14 @@ export function VectorPlane2D({
       className="vector-plane"
       viewBox={`0 0 ${viewport.width} ${viewport.height}`}
       role="img"
-      aria-labelledby="vector-plane-title vector-plane-description"
+      aria-labelledby={`${idPrefix}-title ${idPrefix}-description`}
     >
-      <title id="vector-plane-title">2次元数ベクトルの座標表示</title>
-      <desc id="vector-plane-description">
+      <title id={`${idPrefix}-title`}>2次元数ベクトルの座標表示</title>
+      <desc id={`${idPrefix}-description`}>
         {`${vectorDescription}${spanDescription}${targetDescription}`}
       </desc>
       <defs>
-        <clipPath id="vector-plane-plot-clip">
+        <clipPath id={plotClipId}>
           <rect
             x={plotLeft}
             y={plotTop}
@@ -446,7 +450,7 @@ export function VectorPlane2D({
           />
         </clipPath>
         <pattern
-          id="span-plane-pattern"
+          id={spanPatternId}
           width="18"
           height="18"
           patternUnits="userSpaceOnUse"
@@ -473,7 +477,7 @@ export function VectorPlane2D({
       {showSpan ? (
         <g
           className={`span-layer span-dimension-${spanDimension}`}
-          clipPath="url(#vector-plane-plot-clip)"
+          clipPath={`url(#${plotClipId})`}
           aria-hidden="true"
         >
           {spanDimension === 2 ? (
@@ -487,6 +491,7 @@ export function VectorPlane2D({
               />
               <rect
                 className="span-plane-pattern"
+                style={{ fill: `url(#${spanPatternId})` }}
                 x={plotLeft}
                 y={plotTop}
                 width={plotRight - plotLeft}
@@ -587,12 +592,13 @@ export function VectorPlane2D({
           ]}
           viewport={viewport}
           origin={origin}
+          clipId={plotClipId}
         />
       ) : null}
 
       <g
         className={`vector-arrows ${showSpan ? 'is-showing-span' : ''}`}
-        clipPath="url(#vector-plane-plot-clip)"
+        clipPath={`url(#${plotClipId})`}
       >
         {vectors.map((vector, index) => {
           const coordinates = vector.coordinates as readonly [number, number];
@@ -669,6 +675,7 @@ export function VectorPlane2D({
           onPointerDown={handleTargetPointerDown}
           onPointerMove={handleTargetPointerMove}
           onPointerEnd={handleTargetPointerEnd}
+          clipId={plotClipId}
         />
       ) : null}
 
@@ -677,7 +684,7 @@ export function VectorPlane2D({
         cx={origin[0]}
         cy={origin[1]}
         r="4"
-        clipPath="url(#vector-plane-plot-clip)"
+        clipPath={`url(#${plotClipId})`}
         aria-hidden="true"
       />
     </svg>
@@ -700,6 +707,7 @@ function CombinationParallelogram({
   colors,
   viewport,
   origin,
+  clipId,
 }: {
   readonly vectors: readonly [VectorValue, VectorValue];
   readonly coefficients: readonly [number, number];
@@ -707,6 +715,7 @@ function CombinationParallelogram({
   readonly colors: readonly [string, string];
   readonly viewport: PlaneViewport;
   readonly origin: SvgPoint;
+  readonly clipId: string;
 }) {
   const scaledCoordinates: readonly [SvgPoint, SvgPoint] = [
     [
@@ -731,7 +740,7 @@ function CombinationParallelogram({
   const arrowHeads = scaledEnds.map((end) => createArrowHeadPoints(origin, end));
 
   return (
-    <g className="combination-parallelogram" clipPath="url(#vector-plane-plot-clip)" aria-hidden="true">
+    <g className="combination-parallelogram" clipPath={`url(#${clipId})`} aria-hidden="true">
       <line
         className="parallelogram-opposite-edge"
         x1={scaledEnds[0][0]}
@@ -819,6 +828,7 @@ function TargetVector({
   onPointerDown,
   onPointerMove,
   onPointerEnd,
+  clipId,
 }: {
   readonly target: readonly [number, number];
   readonly viewport: PlaneViewport;
@@ -827,6 +837,7 @@ function TargetVector({
   readonly onPointerDown: (event: ReactPointerEvent<SVGCircleElement>) => void;
   readonly onPointerMove: (event: ReactPointerEvent<SVGCircleElement>) => void;
   readonly onPointerEnd: (event: ReactPointerEvent<SVGCircleElement>) => void;
+  readonly clipId: string;
 }) {
   const end = toSvgPoint(target, viewport);
   const arrowHead = createArrowHeadPoints(origin, end);
@@ -836,7 +847,7 @@ function TargetVector({
   return (
     <g
       className={`target-vector ${snapKind ? 'is-snapped' : ''}`}
-      clipPath="url(#vector-plane-plot-clip)"
+      clipPath={`url(#${clipId})`}
     >
       <title>{`ターゲット v は第1成分 ${target[0]}、第2成分 ${target[1]} の列ベクトル`}</title>
       <line x1={origin[0]} y1={origin[1]} x2={end[0]} y2={end[1]} />

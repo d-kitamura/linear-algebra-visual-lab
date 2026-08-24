@@ -15,7 +15,7 @@ describe('フェーズ8開始後の棚卸し記録', () => {
     expect(roadmap).toContain('### 8.2a 3Dターゲットの原点・直線span吸着');
     expect(roadmap).toContain('### 8.2b 3D共通吸着距離の調整');
     expect(roadmap).toContain('### 8.2c フェーズ8開始後の統合棚卸し');
-    expect(roadmap).toContain('8.1→8.1a→8.2→8.2a→8.2b→8.2cまで完了');
+    expect(roadmap).toContain('8.1→8.1a→8.2→8.2a→8.2b→8.2c→8.3まで利用者確認済み');
   });
 
   it('D-059とD-060を利用者確認済みとして記録する', () => {
@@ -28,11 +28,12 @@ describe('フェーズ8開始後の棚卸し記録', () => {
     expect(projectStatus).not.toContain('D-060の表示幅3%について');
   });
 
-  it('仕様書版と8.3の実装状態を現在地へ揃える', () => {
-    expect(specification).toContain('| 文書バージョン | 0.67 |');
-    expect(specification).toContain('フェーズ8.3実装・自動検証済み、利用者確認待ち');
+  it('仕様書版と8.4の実装状態を現在地へ揃える', () => {
+    expect(specification).toContain('| 文書バージョン | 0.68 |');
+    expect(specification).toContain('フェーズ8.4実装・自動検証済み、利用者確認待ち');
     expect(decisions).toContain('### D-061 フェーズ8開始後の棚卸しと8.3への引渡し');
     expect(decisions).toContain('### D-062 基底・次元の対象空間、判定API、数式表記');
-    expect(projectStatus).toContain('D-062の数学仕様と表記を利用者が確認する');
+    expect(decisions).toContain('### D-063 2D/3D基底エクスプローラの画面と段階的共有境界');
+    expect(projectStatus).toContain('D-063の2D/3D基底エクスプローラを公開版で利用者が確認する');
   });
 });

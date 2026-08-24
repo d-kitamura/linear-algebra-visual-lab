@@ -110,7 +110,11 @@ interface SpanShapeDescription {
   readonly summary: string;
 }
 
-export function VectorSpaceLab() {
+interface VectorSpaceLabProps {
+  readonly active?: boolean;
+}
+
+export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   const [initialization] = useState(() => createAppInitialization(window.location.href));
   const initial2DState = initialization.initialStates[2];
   const initial3DState = initialization.initialStates[3];
@@ -1543,7 +1547,7 @@ export function VectorSpaceLab() {
                   linearCombinationCoefficients={
                     threeDimensionalLinearCombinationAnalysis?.particularSolution ?? null
                   }
-                  active={activeDimension === 3}
+                  active={active && activeDimension === 3}
                   resetKey={threeDimensionalCameraResetKey}
                   camera={threeDimensionalState.visualization.camera}
                   onCameraChange={handleThreeDimensionalCameraChange}

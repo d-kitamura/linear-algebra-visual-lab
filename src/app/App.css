@@ -4,6 +4,10 @@
   flex-direction: column;
 }
 
+.lab-host[hidden] {
+  display: none;
+}
+
 .skip-link {
   position: fixed;
   z-index: 100;
@@ -151,6 +155,12 @@
   border-radius: 11px;
   color: var(--ink);
   text-decoration: none;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .lab-menu-item > span:first-child {
@@ -174,12 +184,18 @@
 }
 
 .lab-menu-current,
-.lab-menu-soon {
+.lab-menu-soon,
+.lab-menu-open {
   flex: 0 0 auto;
   padding: 5px 7px;
   border-radius: 999px;
   font-size: 0.67rem;
   font-weight: 800;
+}
+
+.lab-menu-open {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 
 .lab-menu-current {
@@ -2889,6 +2905,354 @@
   gap: 10px;
 }
 
+.basis-dimension-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.42fr) minmax(330px, 0.72fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.basis-visual-column,
+.basis-analysis-column {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.basis-source-card,
+.basis-candidate-card,
+.basis-result-card {
+  min-width: 0;
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  box-shadow: 0 18px 52px rgba(28, 36, 44, 0.075);
+}
+
+.basis-source-card h2,
+.basis-candidate-card h2,
+.basis-result-card h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+  letter-spacing: -0.03em;
+}
+
+.basis-fit-button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #2f6690;
+  border-radius: 10px;
+  color: white;
+  background: #2f6690;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.basis-fit-button:hover,
+.basis-fit-button:focus-visible {
+  background: color-mix(in srgb, #2f6690 88%, black);
+}
+
+.basis-fit-button:focus-visible,
+.basis-candidate-option input:focus-visible,
+.basis-order-controls button:focus-visible,
+.basis-coordinate-inputs input:focus-visible {
+  outline: 3px solid color-mix(in srgb, #2f6690 28%, transparent);
+  outline-offset: 2px;
+}
+
+.basis-vector-input-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.basis-vector-input {
+  min-width: 0;
+  padding: 11px;
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fffdf8;
+}
+
+.basis-vector-number {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 850;
+}
+
+.basis-coordinate-inputs {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 5px 9px;
+  border-left: 1.5px solid var(--ink);
+  border-right: 1.5px solid var(--ink);
+}
+
+.basis-coordinate-inputs input {
+  min-width: 0;
+  width: 100%;
+  height: 33px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  background: white;
+  font: 0.8rem var(--mono-font);
+  text-align: center;
+}
+
+.basis-coordinate-inputs input[aria-invalid='true'] {
+  border-color: #a33a35;
+  background: #fff2ef;
+}
+
+.basis-card-note,
+.basis-maximum-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.basis-tuple {
+  margin: 14px 0;
+  padding: 12px 14px;
+  overflow-wrap: anywhere;
+  border: 1px solid color-mix(in srgb, #2f6690 24%, var(--line));
+  border-radius: 12px;
+  color: #244e70;
+  background: color-mix(in srgb, #2f6690 6%, #fffdf8);
+  font-size: 1.1rem;
+}
+
+.basis-candidate-options {
+  display: grid;
+  gap: 8px;
+}
+
+.basis-candidate-option {
+  min-width: 0;
+  min-height: 58px;
+  padding: 9px 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.basis-candidate-option.is-selected {
+  border-color: color-mix(in srgb, #2f6690 42%, var(--line));
+  background: color-mix(in srgb, #2f6690 5%, #fffdf8);
+}
+
+.basis-candidate-option label {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.basis-candidate-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: #2f6690;
+}
+
+.basis-candidate-option small {
+  min-width: 0;
+  color: var(--muted);
+  font: 0.68rem var(--mono-font);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.basis-order-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.basis-order-controls span {
+  margin-right: 3px;
+  color: #2f6690;
+  font-size: 0.63rem;
+  font-weight: 800;
+}
+
+.basis-order-controls button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: white;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.basis-order-controls button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.basis-result-card.is-basis {
+  border-color: color-mix(in srgb, #2d756b 42%, var(--line));
+  background: color-mix(in srgb, #e9f4ef 46%, var(--paper));
+}
+
+.basis-result-card.is-not-basis {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+}
+
+.basis-target-summary {
+  margin: 16px 0;
+  padding: 14px;
+  display: grid;
+  gap: 7px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--ink) 5%, #fffdf8);
+}
+
+.basis-target-summary p,
+.basis-example p {
+  margin: 0;
+  line-height: 1.65;
+}
+
+.basis-target-summary p {
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+
+.basis-target-summary small,
+.basis-example small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.basis-condition-list {
+  display: grid;
+  gap: 9px;
+}
+
+.basis-condition {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.basis-condition-icon {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  font-weight: 900;
+}
+
+.basis-condition.is-success .basis-condition-icon {
+  background: #2d756b;
+}
+
+.basis-condition.is-failure .basis-condition-icon {
+  background: #b5493d;
+}
+
+.basis-condition strong,
+.basis-condition small {
+  display: block;
+}
+
+.basis-condition strong {
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.basis-condition strong,
+.basis-condition small {
+  font-family: "Cambria Math", "STIX Two Math", var(--body-font);
+}
+
+.basis-condition small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.basis-failure-reasons {
+  margin: 12px 0 0;
+  padding: 12px 14px 12px 32px;
+  border-radius: 12px;
+  color: #8d352f;
+  background: #fff0ec;
+  font-size: 0.74rem;
+  line-height: 1.65;
+}
+
+.basis-example {
+  margin-top: 14px;
+  padding-top: 14px;
+  display: grid;
+  gap: 5px;
+  border-top: 1px solid var(--line);
+}
+
+.basis-math {
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+
+.basis-vector-symbol > span,
+.basis-matrix-symbol {
+  font-style: italic;
+  font-weight: 800;
+}
+
+.basis-vector-symbol sub {
+  margin-left: 0.04em;
+  font-style: normal;
+  font-weight: 400;
+  vertical-align: -0.25em;
+}
+
+.basis-set-symbol,
+.basis-script-symbol {
+  font-style: italic;
+  font-weight: 400;
+}
+
+.basis-vector-tuple .basis-vector-symbol {
+  white-space: nowrap;
+}
+
 @media (max-width: 980px) {
   .lab-intro {
     grid-template-columns: 1fr;
@@ -2908,6 +3272,10 @@
   }
 
   .analysis-column {
+    grid-template-columns: 1fr;
+  }
+
+  .basis-dimension-workspace {
     grid-template-columns: 1fr;
   }
 }
@@ -3142,6 +3510,18 @@
 
   .vector-label {
     font-size: 20px;
+  }
+
+  .basis-vector-input-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .basis-candidate-option {
+    grid-template-columns: 1fr;
+  }
+
+  .basis-order-controls {
+    justify-content: flex-end;
   }
 
 }

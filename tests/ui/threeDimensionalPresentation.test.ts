@@ -51,8 +51,8 @@ describe('固定3D表示とカメラ操作', () => {
   });
 
   it('Canvasを利用できない場合も数値と解析結果へ案内する', () => {
-    expect(componentSource).toContain('id="space-3d-canvas-alternative"');
-    expect(componentSource).toContain('aria-describedby="space-3d-canvas-alternative"');
+    expect(componentSource).toContain('id={`${idPrefix}-canvas-alternative`}');
+    expect(componentSource).toContain('aria-describedby={`${idPrefix}-canvas-alternative`}');
     expect(componentSource).toContain('3D図形は補助的な可視化です。');
     expect(componentSource).toContain('数値入力と解析カード、共有URL、Resetはそのまま利用できます。');
   });

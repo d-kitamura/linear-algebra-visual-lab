@@ -1,11 +1,13 @@
-import { useRef, type MouseEvent as ReactMouseEvent } from 'react';
+import { useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { BasisDimensionLab } from '../labs/basis-dimension/BasisDimensionLab';
 import { VectorSpaceLab } from '../labs/vector-space/VectorSpaceLab';
-import { LabMenu } from './LabMenu';
+import { LabMenu, type LabId } from './LabMenu';
 import { projectInfo } from './projectInfo';
 import './App.css';
 
 export function App() {
   const usageDialogRef = useRef<HTMLDialogElement>(null);
+  const [activeLabId, setActiveLabId] = useState<LabId>('vector-space');
 
   function handleOpenUsageDialog(): void {
     usageDialogRef.current?.showModal();
@@ -32,15 +34,20 @@ export function App() {
           <span className="brand-mark" aria-hidden="true">LA</span>
           <span>{projectInfo.name}</span>
         </a>
-        <LabMenu />
+        <LabMenu activeLabId={activeLabId} onLabChange={setActiveLabId} />
         <span className="phase-badge">{projectInfo.phase}</span>
       </header>
 
-      <VectorSpaceLab />
+      <div className="lab-host" hidden={activeLabId !== 'vector-space'}>
+        <VectorSpaceLab active={activeLabId === 'vector-space'} />
+      </div>
+      <div className="lab-host" hidden={activeLabId !== 'basis-dimension'}>
+        <BasisDimensionLab active={activeLabId === 'basis-dimension'} />
+      </div>
 
       <footer className="site-footer">
         <div className="site-footer-inner">
-          <p>{projectInfo.status} — 現在のLabだけを共有・Resetします。</p>
+          <p>{projectInfo.status} — 教材状態はLabごとに保持し、ResetもLabごとに行います。</p>
           <div className="site-footer-meta">
             <span>v{projectInfo.version}</span>
             <button type="button" onClick={handleOpenUsageDialog}>
