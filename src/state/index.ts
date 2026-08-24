@@ -12,6 +12,11 @@ export {
 export type { CoordinateInputErrorCode, CoordinateInputResult } from './vectorEditing';
 export type { AddDefaultVectorResult } from './vectorCollection';
 export type { ParallelSnapResult } from './vectorSnapping';
+export { snapDraggedSpaceVectorToDependentPosition } from './spaceVectorSnapping';
+export type {
+  SpaceVectorSnapKind,
+  SpaceVectorSnapResult,
+} from './spaceVectorSnapping';
 export { snapTargetToSelectedSpan } from './targetSnapping';
 export type { TargetSnapKind, TargetSnapResult } from './targetSnapping';
 export type { AppInitialization } from './appInitialization';
