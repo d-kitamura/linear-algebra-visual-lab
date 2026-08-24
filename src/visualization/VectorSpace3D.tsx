@@ -28,10 +28,8 @@ import {
   type SpaceSpanGeometry,
 } from './spaceGeometry';
 import {
-  coordinateFromAxisConstrainedDrag,
-  nudgeCoordinate,
-  type ScreenPoint,
-  type ThreeDimensionalInteractionMode,
+  coordinatesFromScreenPlaneDrag,
+  vectorTipHitRadius,
 } from './spaceVectorEditing';
 
 interface VectorSpace3DProps {
@@ -46,15 +44,10 @@ interface VectorSpace3DProps {
   readonly active: boolean;
   readonly resetKey: number;
   readonly camera: SharedCameraState | null;
-  readonly interactionMode: ThreeDimensionalInteractionMode;
-  readonly selectedVectorId: string | null;
   readonly onCameraChange: (camera: SharedCameraState) => void;
-  readonly onInteractionModeChange: (mode: ThreeDimensionalInteractionMode) => void;
-  readonly onSelectedVectorChange: (vectorId: string) => void;
-  readonly onVectorCoordinateCommit: (
+  readonly onVectorCoordinatesCommit: (
     vectorId: string,
-    coordinateIndex: number,
-    value: number,
+    coordinates: readonly [number, number, number],
   ) => void;
   readonly onLinearCombinationVisibility: () => void;
 }
@@ -67,19 +60,20 @@ interface ThreeSpaceRuntime {
   readonly dispose: () => void;
 }
 
-interface VectorEditHandles {
-  readonly group: THREE.Group;
-  readonly pickTargets: THREE.Mesh[];
-  readonly handleLength: number;
+interface RenderedVector {
+  readonly object: THREE.Object3D;
+  readonly label: CSS2DObject;
+  readonly tipIndicator: THREE.Group;
 }
 
-interface ActiveAxisDrag {
+interface ActiveScreenPlaneDrag {
   readonly pointerId: number;
-  readonly coordinateIndex: number;
-  readonly initialCoordinate: number;
-  readonly startPointer: ScreenPoint;
-  readonly pixelsPerCoordinate: ScreenPoint;
-  readonly coordinates: [number, number, number];
+  readonly vector: VectorValue;
+  readonly renderedVector: RenderedVector;
+  readonly initialCoordinates: [number, number, number];
+  readonly startPoint: THREE.Vector3;
+  readonly interactionPlane: THREE.Plane;
+  coordinates: [number, number, number];
 }
 
 const ORIGIN = new THREE.Vector3(0, 0, 0);
@@ -116,28 +110,29 @@ export function VectorSpace3D({
   active,
   resetKey,
   camera,
-  interactionMode,
-  selectedVectorId,
   onCameraChange,
-  onInteractionModeChange,
-  onSelectedVectorChange,
-  onVectorCoordinateCommit,
+  onVectorCoordinatesCommit,
   onLinearCombinationVisibility,
 }: VectorSpace3DProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<ThreeSpaceRuntime | null>(null);
   const cameraRef = useRef(camera);
   const onCameraChangeRef = useRef(onCameraChange);
-  const onVectorCoordinateCommitRef = useRef(onVectorCoordinateCommit);
+  const onVectorCoordinatesCommitRef = useRef(onVectorCoordinatesCommit);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [interactionMessage, setInteractionMessage] = useState<string | null>(null);
-  const selectedVector = vectors.find((vector) => vector.id === selectedVectorId)
-    ?? vectors[0]
-    ?? null;
 
   cameraRef.current = camera;
   onCameraChangeRef.current = onCameraChange;
-  onVectorCoordinateCommitRef.current = onVectorCoordinateCommit;
+  onVectorCoordinatesCommitRef.current = onVectorCoordinatesCommit;
+
+  useEffect(() => {
+    if (!interactionMessage) {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => setInteractionMessage(null), 2800);
+    return () => window.clearTimeout(timeoutId);
+  }, [interactionMessage]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -146,7 +141,6 @@ export function VectorSpace3D({
     }
 
     setErrorMessage(null);
-    setInteractionMessage(null);
     let disposed = false;
 
     try {
@@ -160,12 +154,10 @@ export function VectorSpace3D({
         linearCombinationVisible,
         linearCombinationTarget,
         linearCombinationCoefficients,
-        interactionMode,
-        selectedVector?.id ?? null,
         cameraRef.current,
         (nextCamera) => onCameraChangeRef.current(nextCamera),
-        (vectorId, coordinateIndex, value) => {
-          onVectorCoordinateCommitRef.current(vectorId, coordinateIndex, value);
+        (vectorId, coordinates) => {
+          onVectorCoordinatesCommitRef.current(vectorId, coordinates);
         },
         (message) => {
           if (!disposed) {
@@ -196,8 +188,6 @@ export function VectorSpace3D({
     linearCombinationCoefficients,
     linearCombinationTarget,
     linearCombinationVisible,
-    interactionMode,
-    selectedVector?.id,
     showSpan,
     spanRank,
     spanVectors,
@@ -253,83 +243,9 @@ export function VectorSpace3D({
         </div>
       </div>
 
-      <div className="three-dimensional-interaction-panel">
-        <div className="three-dimensional-mode-switch">
-          <div>
-            <strong>3D表示の操作</strong>
-            <span>カメラとベクトルの誤操作を防ぐため、先に操作対象を選びます。</span>
-          </div>
-          <div className="three-dimensional-mode-buttons" role="group" aria-label="3D操作モード">
-            <button
-              type="button"
-              aria-pressed={interactionMode === 'camera'}
-              onClick={() => onInteractionModeChange('camera')}
-            >
-              視点を操作
-            </button>
-            <button
-              type="button"
-              aria-pressed={interactionMode === 'vector'}
-              onClick={() => onInteractionModeChange('vector')}
-              disabled={vectors.length === 0}
-            >
-              ベクトルを操作
-            </button>
-          </div>
-        </div>
-
-        {interactionMode === 'vector' && selectedVector ? (
-          <div className="three-dimensional-vector-direct-editor">
-            <label>
-              <span>操作するベクトル</span>
-              <select
-                value={selectedVector.id}
-                onChange={(event) => onSelectedVectorChange(event.target.value)}
-              >
-                {vectors.map((vector) => (
-                  <option key={vector.id} value={vector.id}>{vector.name}</option>
-                ))}
-              </select>
-            </label>
-            <div className="three-dimensional-axis-nudges" aria-label={`${selectedVector.name}の成分微調整`}>
-              {(['x', 'y', 'z'] as const).map((axis, coordinateIndex) => {
-                const coordinate = selectedVector.coordinates[coordinateIndex] ?? 0;
-                return (
-                  <div className={`three-dimensional-axis-nudge axis-${axis}`} key={axis}>
-                    <span className="three-dimensional-axis-name">{axis}</span>
-                    <output aria-label={`${axis}成分の現在値`}>{formatDirectCoordinate(coordinate)}</output>
-                    <button
-                      type="button"
-                      aria-label={`${selectedVector.name}の${axis}成分を0.1減らす`}
-                      onClick={() => onVectorCoordinateCommit(
-                        selectedVector.id,
-                        coordinateIndex,
-                        nudgeCoordinate(coordinate, -0.1),
-                      )}
-                    >
-                      −0.1
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`${selectedVector.name}の${axis}成分を0.1増やす`}
-                      onClick={() => onVectorCoordinateCommit(
-                        selectedVector.id,
-                        coordinateIndex,
-                        nudgeCoordinate(coordinate, 0.1),
-                      )}
-                    >
-                      ＋0.1
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            <p>
-              矢先の色付きハンドルをドラッグすると、その軸の成分だけが変わります。
-              数値入力は右側の「ベクトル編集」でも利用できます。
-            </p>
-          </div>
-        ) : null}
+      <div className="three-dimensional-gesture-guide" aria-label="3D表示の操作方法">
+        <span><i className="vector-tip-gesture-mark" aria-hidden="true" />矢先をドラッグ：画面に平行な面内で移動</span>
+        <span><i className="camera-gesture-mark" aria-hidden="true" />背景をドラッグ：視点を回転</span>
       </div>
 
       <div
@@ -352,9 +268,8 @@ export function VectorSpace3D({
       </div>
 
       <p className="three-dimensional-help">
-        {interactionMode === 'camera'
-          ? '「視点を操作」では、ドラッグで回転、ホイールまたは2本指で拡大・縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。'
-          : '「ベクトルを操作」では、選択したベクトルの矢先にあるx・y・zハンドルをマウス、指、ペンでドラッグできます。背景のドラッグでは視点は動きません。'}
+        矢先をドラッグすると、ドラッグ開始時の画面に平行な面内でベクトルを変更できます。
+        それ以外の場所では、ドラッグで視点を回転、ホイールまたは2本指で拡大・縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。
         {showSpan ? ' 灰色の形状は、選択したベクトルが生成する空間です。' : ''}
         {linearCombinationVisible
           ? ' ターゲットは数値入力で変更し、係数の幾何表示を視点回転して確認できます。'
@@ -375,14 +290,11 @@ function createThreeSpaceRuntime(
   linearCombinationVisible: boolean,
   linearCombinationTarget: readonly [number, number, number] | null,
   linearCombinationCoefficients: readonly number[] | null,
-  interactionMode: ThreeDimensionalInteractionMode,
-  selectedVectorId: string | null,
   initialCamera: SharedCameraState | null,
   onCameraChange: (camera: SharedCameraState) => void,
-  onVectorCoordinateCommit: (
+  onVectorCoordinatesCommit: (
     vectorId: string,
-    coordinateIndex: number,
-    value: number,
+    coordinates: readonly [number, number, number],
   ) => void,
   onInteractionMessage: (message: string | null) => void,
   onError: (message: string) => void,
@@ -427,9 +339,7 @@ function createThreeSpaceRuntime(
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute(
     'aria-label',
-    interactionMode === 'camera'
-      ? '3D座標空間。視点操作モードです。ドラッグで回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで移動できます。'
-      : '3D座標空間。ベクトル操作モードです。選択したベクトルの矢先にあるx、y、zハンドルをドラッグすると、その成分だけを変更できます。',
+    '3D座標空間。ベクトルの矢先をドラッグすると画面に平行な面内で移動できます。背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。',
   );
   host.append(renderer.domElement);
 
@@ -447,7 +357,7 @@ function createThreeSpaceRuntime(
   if (combinationGeometry) {
     addSpaceCombinationGeometry(scene, combinationGeometry, spanVectors, vectors, colors, extent);
   }
-  addVectors(
+  const renderedVectors = addVectors(
     scene,
     vectors,
     colors,
@@ -458,13 +368,9 @@ function createThreeSpaceRuntime(
   if (linearCombinationVisible && linearCombinationTarget) {
     addTargetVector(scene, linearCombinationTarget, extent);
   }
-  const selectedVector = vectors.find((vector) => vector.id === selectedVectorId) ?? null;
-  const editHandles = interactionMode === 'vector' && selectedVector
-    ? addVectorEditHandles(scene, selectedVector, extent)
-    : null;
-  const editPreview = new THREE.Group();
-  editPreview.renderOrder = 10;
-  scene.add(editPreview);
+  const dragPreview = new THREE.Group();
+  dragPreview.renderOrder = 10;
+  scene.add(dragPreview);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = false;
@@ -480,11 +386,10 @@ function createThreeSpaceRuntime(
   controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
   controls.minZoom = MIN_CAMERA_ZOOM;
   controls.maxZoom = MAX_CAMERA_ZOOM;
-  controls.enabled = interactionMode === 'camera';
 
   let disposed = false;
   let resizeObserver: ResizeObserver | null = null;
-  let activeAxisDrag: ActiveAxisDrag | null = null;
+  let activeScreenPlaneDrag: ActiveScreenPlaneDrag | null = null;
 
   const render = () => {
     if (disposed) {
@@ -577,131 +482,180 @@ function createThreeSpaceRuntime(
   const raycaster = new THREE.Raycaster();
   const pointerPosition = new THREE.Vector2();
 
-  const handlePointerDown = (event: PointerEvent) => {
-    if (activeAxisDrag || !editHandles || !selectedVector || event.button !== 0) {
-      return;
-    }
-    const rect = renderer.domElement.getBoundingClientRect();
+  const updateRayFromPointer = (event: PointerEvent, rect: DOMRect) => {
     pointerPosition.set(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
       -((event.clientY - rect.top) / rect.height) * 2 + 1,
     );
     raycaster.setFromCamera(pointerPosition, camera);
-    const intersection = raycaster.intersectObjects(editHandles.pickTargets, false)[0];
-    const coordinateIndex = intersection?.object.userData.coordinateIndex;
-    if (typeof coordinateIndex !== 'number') {
+  };
+
+  const handlePointerDown = (event: PointerEvent) => {
+    if (activeScreenPlaneDrag) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
       return;
     }
-
-    const pixelsPerCoordinate = projectedAxisPixelsPerCoordinate(
-      editHandles.group.position,
-      coordinateIndex,
-      editHandles.handleLength,
+    if (event.button !== 0) {
+      return;
+    }
+    const rect = renderer.domElement.getBoundingClientRect();
+    const vector = findVectorTipAtPointer(
+      vectors,
+      event,
       camera,
       rect,
     );
-    const projectedHandleLength = Math.hypot(
-      pixelsPerCoordinate.x * editHandles.handleLength,
-      pixelsPerCoordinate.y * editHandles.handleLength,
+    const renderedVector = vector ? renderedVectors.get(vector.id) : null;
+    if (!vector || !renderedVector) {
+      return;
+    }
+
+    const initialCoordinates: [number, number, number] = [
+      vector.coordinates[0] ?? 0,
+      vector.coordinates[1] ?? 0,
+      vector.coordinates[2] ?? 0,
+    ];
+    const initialTip = new THREE.Vector3(...initialCoordinates);
+    const viewDirection = new THREE.Vector3();
+    camera.getWorldDirection(viewDirection);
+    const interactionPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+      viewDirection,
+      initialTip,
     );
-    if (projectedHandleLength < 10) {
-      onInteractionMessage(
-        'この視点では選んだ軸が画面の奥行き方向を向いています。視点プリセットを変えてください。',
-      );
+    updateRayFromPointer(event, rect);
+    const startPoint = raycaster.ray.intersectPlane(interactionPlane, new THREE.Vector3());
+    if (!startPoint) {
       return;
     }
 
     event.preventDefault();
+    event.stopImmediatePropagation();
+    controls.enabled = false;
     renderer.domElement.setPointerCapture(event.pointerId);
-    activeAxisDrag = {
+    renderer.domElement.classList.add('is-vector-tip-dragging');
+    renderedVector.object.visible = false;
+    renderedVector.label.visible = false;
+    renderedVector.tipIndicator.scale.setScalar(1.22);
+    activeScreenPlaneDrag = {
       pointerId: event.pointerId,
-      coordinateIndex,
-      initialCoordinate: selectedVector.coordinates[coordinateIndex] ?? 0,
-      startPointer: { x: event.clientX, y: event.clientY },
-      pixelsPerCoordinate,
-      coordinates: [
-        selectedVector.coordinates[0] ?? 0,
-        selectedVector.coordinates[1] ?? 0,
-        selectedVector.coordinates[2] ?? 0,
-      ],
+      vector,
+      renderedVector,
+      initialCoordinates,
+      startPoint,
+      interactionPlane,
+      coordinates: [...initialCoordinates],
     };
-    const axisName = ['x', 'y', 'z'][coordinateIndex];
-    onInteractionMessage(`${selectedVector.name} の ${axisName} 成分を編集中です。`);
-  };
-
-  const handlePointerMove = (event: PointerEvent) => {
-    if (!activeAxisDrag || activeAxisDrag.pointerId !== event.pointerId || !selectedVector) {
-      return;
-    }
-    event.preventDefault();
-    const nextCoordinate = coordinateFromAxisConstrainedDrag(
-      activeAxisDrag.initialCoordinate,
-      activeAxisDrag.startPointer,
-      { x: event.clientX, y: event.clientY },
-      activeAxisDrag.pixelsPerCoordinate,
-    );
-    if (nextCoordinate === null) {
-      return;
-    }
-    activeAxisDrag.coordinates[activeAxisDrag.coordinateIndex] = nextCoordinate;
-    const tip = new THREE.Vector3(...activeAxisDrag.coordinates);
-    editHandles?.group.position.copy(tip);
-    updateVectorEditPreview(
-      editPreview,
-      tip,
-      selectedVector,
+    updateVectorScreenPlanePreview(
+      dragPreview,
+      initialTip,
+      initialTip,
+      vector,
       vectors,
       colors,
       extent,
+      camera,
     );
-    const axisName = ['x', 'y', 'z'][activeAxisDrag.coordinateIndex];
+    onInteractionMessage(`${vector.name} を画面に平行な面内で移動しています。`);
+    render();
+  };
+
+  const handlePointerMove = (event: PointerEvent) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    if (!activeScreenPlaneDrag) {
+      const hoverVector = findVectorTipAtPointer(vectors, event, camera, rect);
+      renderer.domElement.classList.toggle('is-vector-tip-hover', Boolean(hoverVector));
+      return;
+    }
+    event.stopImmediatePropagation();
+    if (activeScreenPlaneDrag.pointerId !== event.pointerId) {
+      event.preventDefault();
+      return;
+    }
+    event.preventDefault();
+    updateRayFromPointer(event, rect);
+    const currentPoint = raycaster.ray.intersectPlane(
+      activeScreenPlaneDrag.interactionPlane,
+      new THREE.Vector3(),
+    );
+    if (!currentPoint) {
+      return;
+    }
+    activeScreenPlaneDrag.coordinates = coordinatesFromScreenPlaneDrag(
+      activeScreenPlaneDrag.initialCoordinates,
+      activeScreenPlaneDrag.startPoint,
+      currentPoint,
+    );
+    const tip = new THREE.Vector3(...activeScreenPlaneDrag.coordinates);
+    activeScreenPlaneDrag.renderedVector.tipIndicator.position.copy(tip);
+    updateVectorScreenPlanePreview(
+      dragPreview,
+      new THREE.Vector3(...activeScreenPlaneDrag.initialCoordinates),
+      tip,
+      activeScreenPlaneDrag.vector,
+      vectors,
+      colors,
+      extent,
+      camera,
+    );
     onInteractionMessage(
-      `${selectedVector.name} の ${axisName} 成分：${formatDirectCoordinate(nextCoordinate)}`,
+      `${activeScreenPlaneDrag.vector.name} の成分：${formatCoordinateStatus(activeScreenPlaneDrag.coordinates)}　画面に平行な面内で移動`,
     );
     render();
   };
 
-  const finishAxisDrag = (event: PointerEvent, commit: boolean) => {
-    if (!activeAxisDrag || activeAxisDrag.pointerId !== event.pointerId || !selectedVector) {
+  const finishScreenPlaneDrag = (event: PointerEvent, commit: boolean) => {
+    if (!activeScreenPlaneDrag) {
+      return;
+    }
+    event.stopImmediatePropagation();
+    if (activeScreenPlaneDrag.pointerId !== event.pointerId) {
+      event.preventDefault();
       return;
     }
     event.preventDefault();
-    const completedDrag = activeAxisDrag;
-    activeAxisDrag = null;
+    const completedDrag = activeScreenPlaneDrag;
+    activeScreenPlaneDrag = null;
+    controls.enabled = true;
+    renderer.domElement.classList.remove('is-vector-tip-dragging', 'is-vector-tip-hover');
     if (renderer.domElement.hasPointerCapture(event.pointerId)) {
       renderer.domElement.releasePointerCapture(event.pointerId);
     }
     if (commit) {
-      const value = completedDrag.coordinates[completedDrag.coordinateIndex];
       onInteractionMessage(
-        `${selectedVector.name} の ${['x', 'y', 'z'][completedDrag.coordinateIndex]} 成分を ${formatDirectCoordinate(value)} に変更しました。`,
+        `${completedDrag.vector.name} を変更しました。${formatCoordinateStatus(completedDrag.coordinates)}`,
       );
-      onVectorCoordinateCommit(selectedVector.id, completedDrag.coordinateIndex, value);
+      onVectorCoordinatesCommit(completedDrag.vector.id, completedDrag.coordinates);
       return;
     }
-    editHandles?.group.position.set(
-      selectedVector.coordinates[0] ?? 0,
-      selectedVector.coordinates[1] ?? 0,
-      selectedVector.coordinates[2] ?? 0,
-    );
-    clearObjectGroup(editPreview);
+    completedDrag.renderedVector.object.visible = true;
+    completedDrag.renderedVector.label.visible = true;
+    completedDrag.renderedVector.tipIndicator.position.set(...completedDrag.initialCoordinates);
+    completedDrag.renderedVector.tipIndicator.scale.setScalar(1);
+    clearObjectGroup(dragPreview);
     onInteractionMessage('ベクトルの変更を取り消しました。');
     render();
   };
-  const handlePointerUp = (event: PointerEvent) => finishAxisDrag(event, true);
-  const handlePointerCancel = (event: PointerEvent) => finishAxisDrag(event, false);
-  const handleLostPointerCapture = (event: PointerEvent) => finishAxisDrag(event, false);
+  const handlePointerUp = (event: PointerEvent) => finishScreenPlaneDrag(event, true);
+  const handlePointerCancel = (event: PointerEvent) => finishScreenPlaneDrag(event, false);
+  const handleLostPointerCapture = (event: PointerEvent) => finishScreenPlaneDrag(event, false);
+  const handlePointerLeave = () => {
+    if (!activeScreenPlaneDrag) {
+      renderer.domElement.classList.remove('is-vector-tip-hover');
+    }
+  };
 
   const handleContextLost = (event: Event) => {
     event.preventDefault();
     onError('3D描画の接続が失われました。ページを再読み込みしてください。');
   };
   renderer.domElement.addEventListener('webglcontextlost', handleContextLost);
-  renderer.domElement.addEventListener('pointerdown', handlePointerDown);
-  renderer.domElement.addEventListener('pointermove', handlePointerMove);
-  renderer.domElement.addEventListener('pointerup', handlePointerUp);
-  renderer.domElement.addEventListener('pointercancel', handlePointerCancel);
-  renderer.domElement.addEventListener('lostpointercapture', handleLostPointerCapture);
+  renderer.domElement.addEventListener('pointerdown', handlePointerDown, true);
+  renderer.domElement.addEventListener('pointermove', handlePointerMove, true);
+  renderer.domElement.addEventListener('pointerup', handlePointerUp, true);
+  renderer.domElement.addEventListener('pointercancel', handlePointerCancel, true);
+  renderer.domElement.addEventListener('lostpointercapture', handleLostPointerCapture, true);
+  renderer.domElement.addEventListener('pointerleave', handlePointerLeave);
   controls.addEventListener('change', handleControlsChange);
   controls.addEventListener('end', emitCameraChange);
 
@@ -724,11 +678,12 @@ function createThreeSpaceRuntime(
       controls.removeEventListener('change', handleControlsChange);
       controls.removeEventListener('end', emitCameraChange);
       controls.dispose();
-      renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
-      renderer.domElement.removeEventListener('pointermove', handlePointerMove);
-      renderer.domElement.removeEventListener('pointerup', handlePointerUp);
-      renderer.domElement.removeEventListener('pointercancel', handlePointerCancel);
-      renderer.domElement.removeEventListener('lostpointercapture', handleLostPointerCapture);
+      renderer.domElement.removeEventListener('pointerdown', handlePointerDown, true);
+      renderer.domElement.removeEventListener('pointermove', handlePointerMove, true);
+      renderer.domElement.removeEventListener('pointerup', handlePointerUp, true);
+      renderer.domElement.removeEventListener('pointercancel', handlePointerCancel, true);
+      renderer.domElement.removeEventListener('lostpointercapture', handleLostPointerCapture, true);
+      renderer.domElement.removeEventListener('pointerleave', handlePointerLeave);
       renderer.domElement.removeEventListener('webglcontextlost', handleContextLost);
       disposeScene(scene);
       renderer.dispose();
@@ -977,7 +932,8 @@ function addVectors(
   extent: SpaceExtent,
   spanVectorIds: ReadonlySet<string>,
   showSpan: boolean,
-): void {
+): Map<string, RenderedVector> {
+  const renderedVectors = new Map<string, RenderedVector>();
   vectors.forEach((vector, index) => {
     const tip = new THREE.Vector3(
       vector.coordinates[0] ?? 0,
@@ -1019,128 +975,115 @@ function addVectors(
 
     applyVectorSpanAppearance(vectorObject, showSpan, isSpanSelected);
 
-    scene.add(createVectorLabel(
+    const label = createVectorLabel(
       vector.name,
       color.getStyle(),
       tip,
       index,
       showSpan && !isSpanSelected,
-    ));
+    );
+    scene.add(label);
+    const tipIndicator = createVectorTipIndicator(
+      tip,
+      color,
+      extent,
+      showSpan && !isSpanSelected,
+    );
+    scene.add(tipIndicator);
+    renderedVectors.set(vector.id, { object: vectorObject, label, tipIndicator });
   });
+  return renderedVectors;
 }
 
-function addVectorEditHandles(
-  scene: THREE.Scene,
-  vector: VectorValue,
+function createVectorTipIndicator(
+  tip: THREE.Vector3,
+  color: THREE.Color,
   extent: SpaceExtent,
-): VectorEditHandles {
+  muted: boolean,
+): THREE.Group {
   const group = new THREE.Group();
-  group.name = 'vector-edit-handles';
-  group.position.set(
-    vector.coordinates[0] ?? 0,
-    vector.coordinates[1] ?? 0,
-    vector.coordinates[2] ?? 0,
-  );
-  const handleLength = Math.max(0.72, extent.halfRange * 0.18);
-  const visibleRadius = Math.max(0.065, extent.halfRange * 0.015);
-  const pickRadius = visibleRadius * 2.4;
-  const pickTargets: THREE.Mesh[] = [];
-  const directions = [
-    new THREE.Vector3(1, 0, 0),
-    new THREE.Vector3(0, 1, 0),
-    new THREE.Vector3(0, 0, 1),
-  ];
-
-  (['x', 'y', 'z'] as const).forEach((axis, coordinateIndex) => {
-    const color = new THREE.Color(AXIS_COLORS[axis]);
-    const direction = directions[coordinateIndex];
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-      direction.clone().multiplyScalar(-handleLength),
-      direction.clone().multiplyScalar(handleLength),
-    ]);
-    const lineMaterial = new THREE.LineBasicMaterial({
+  group.name = 'vector-tip-indicator';
+  group.position.copy(tip);
+  const innerRadius = Math.max(0.052, extent.halfRange * 0.011);
+  const outerRadius = Math.max(0.09, extent.halfRange * 0.018);
+  const inner = new THREE.Mesh(
+    new THREE.SphereGeometry(innerRadius, 14, 9),
+    new THREE.MeshBasicMaterial({
       color,
       transparent: true,
-      opacity: 0.86,
+      opacity: muted ? 0.25 : 0.82,
       depthTest: false,
       depthWrite: false,
-    });
-    const line = new THREE.Line(lineGeometry, lineMaterial);
-    line.renderOrder = 9;
-    group.add(line);
-
-    for (const sign of [-1, 1]) {
-      const position = direction.clone().multiplyScalar(handleLength * sign);
-      const endpointGeometry = new THREE.SphereGeometry(visibleRadius, 16, 10);
-      const endpointMaterial = new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: 0.92,
-        depthTest: false,
-        depthWrite: false,
-      });
-      const endpoint = new THREE.Mesh(endpointGeometry, endpointMaterial);
-      endpoint.position.copy(position);
-      endpoint.renderOrder = 10;
-      group.add(endpoint);
-
-      const pickGeometry = new THREE.SphereGeometry(pickRadius, 12, 8);
-      const pickMaterial = new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: 0.001,
-        depthTest: false,
-        depthWrite: false,
-      });
-      const pickTarget = new THREE.Mesh(pickGeometry, pickMaterial);
-      pickTarget.position.copy(position);
-      pickTarget.userData.coordinateIndex = coordinateIndex;
-      pickTarget.renderOrder = 11;
-      group.add(pickTarget);
-      pickTargets.push(pickTarget);
-    }
-
-    const label = createTextLabel(
-      axis,
-      `space-edit-axis-label axis-${axis}`,
-      direction.clone().multiplyScalar(handleLength * 1.2),
-    );
-    group.add(label);
-  });
-
-  scene.add(group);
-  return { group, pickTargets, handleLength };
+    }),
+  );
+  inner.renderOrder = 8;
+  group.add(inner);
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(outerRadius, 12, 8),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: muted ? 0.12 : 0.34,
+      wireframe: true,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
+  halo.renderOrder = 8;
+  group.add(halo);
+  return group;
 }
 
-function projectedAxisPixelsPerCoordinate(
-  tip: THREE.Vector3,
-  coordinateIndex: number,
-  handleLength: number,
+function findVectorTipAtPointer(
+  vectors: readonly VectorValue[],
+  event: PointerEvent,
   camera: THREE.Camera,
   rect: DOMRect,
-): ScreenPoint {
-  const axisDirection = [
-    new THREE.Vector3(1, 0, 0),
-    new THREE.Vector3(0, 1, 0),
-    new THREE.Vector3(0, 0, 1),
-  ][coordinateIndex];
-  const projectedTip = projectWorldPointToScreen(tip, camera, rect);
-  const projectedHandle = projectWorldPointToScreen(
-    tip.clone().addScaledVector(axisDirection, handleLength),
-    camera,
-    rect,
-  );
-  return {
-    x: (projectedHandle.x - projectedTip.x) / handleLength,
-    y: (projectedHandle.y - projectedTip.y) / handleLength,
-  };
+): VectorValue | null {
+  const hitRadius = vectorTipHitRadius(event.pointerType);
+  let bestMatch: {
+    readonly vector: VectorValue;
+    readonly screenDistanceSquared: number;
+    readonly cameraDistance: number;
+  } | null = null;
+
+  for (const vector of vectors) {
+    const tip = new THREE.Vector3(
+      vector.coordinates[0] ?? 0,
+      vector.coordinates[1] ?? 0,
+      vector.coordinates[2] ?? 0,
+    );
+    const projected = tip.clone().project(camera);
+    if (projected.z < -1 || projected.z > 1) {
+      continue;
+    }
+    const screen = projectWorldPointToScreen(tip, camera, rect);
+    const screenDistanceSquared = (event.clientX - screen.x) ** 2
+      + (event.clientY - screen.y) ** 2;
+    if (screenDistanceSquared > hitRadius ** 2) {
+      continue;
+    }
+    const cameraDistance = tip.distanceTo(camera.position);
+    if (
+      !bestMatch
+      || screenDistanceSquared < bestMatch.screenDistanceSquared - 1
+      || (
+        Math.abs(screenDistanceSquared - bestMatch.screenDistanceSquared) <= 1
+        && cameraDistance < bestMatch.cameraDistance
+      )
+    ) {
+      bestMatch = { vector, screenDistanceSquared, cameraDistance };
+    }
+  }
+
+  return bestMatch?.vector ?? null;
 }
 
 function projectWorldPointToScreen(
   point: THREE.Vector3,
   camera: THREE.Camera,
   rect: DOMRect,
-): ScreenPoint {
+): { readonly x: number; readonly y: number } {
   const projected = point.clone().project(camera);
   return {
     x: rect.left + ((projected.x + 1) / 2) * rect.width,
@@ -1148,30 +1091,86 @@ function projectWorldPointToScreen(
   };
 }
 
-function updateVectorEditPreview(
+function updateVectorScreenPlanePreview(
   group: THREE.Group,
+  initialTip: THREE.Vector3,
   tip: THREE.Vector3,
   vector: VectorValue,
   vectors: readonly VectorValue[],
   colors: readonly string[],
   extent: SpaceExtent,
+  camera: THREE.Camera,
 ): void {
   clearObjectGroup(group);
   const vectorIndex = vectors.findIndex((candidate) => candidate.id === vector.id);
   const color = new THREE.Color(colors[Math.max(0, vectorIndex) % colors.length] ?? '#2f6690');
-  const length = tip.length();
+  addPreviewArrow(group, initialTip, color, extent, 0.22, 8);
+  addPreviewArrow(group, tip, color, extent, 0.86, 10);
 
+  const guideLength = Math.max(0.9, extent.halfRange * 0.28);
+  const screenRight = new THREE.Vector3(1, 0, 0)
+    .applyQuaternion(camera.quaternion)
+    .normalize();
+  const screenUp = new THREE.Vector3(0, 1, 0)
+    .applyQuaternion(camera.quaternion)
+    .normalize();
+  const guideGeometry = new THREE.BufferGeometry().setFromPoints([
+    initialTip.clone().addScaledVector(screenRight, -guideLength),
+    initialTip.clone().addScaledVector(screenRight, guideLength),
+    initialTip.clone().addScaledVector(screenUp, -guideLength),
+    initialTip.clone().addScaledVector(screenUp, guideLength),
+  ]);
+  const guideMaterial = new THREE.LineDashedMaterial({
+    color: '#2f6690',
+    dashSize: guideLength * 0.12,
+    gapSize: guideLength * 0.08,
+    transparent: true,
+    opacity: 0.34,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const guides = new THREE.LineSegments(guideGeometry, guideMaterial);
+  guides.computeLineDistances();
+  guides.renderOrder = 9;
+  group.add(guides);
+
+  if (!initialTip.equals(tip)) {
+    const movementGeometry = new THREE.BufferGeometry().setFromPoints([initialTip, tip]);
+    const movementMaterial = new THREE.LineDashedMaterial({
+      color,
+      dashSize: guideLength * 0.08,
+      gapSize: guideLength * 0.055,
+      transparent: true,
+      opacity: 0.6,
+      depthTest: false,
+      depthWrite: false,
+    });
+    const movement = new THREE.Line(movementGeometry, movementMaterial);
+    movement.computeLineDistances();
+    movement.renderOrder = 9;
+    group.add(movement);
+  }
+}
+
+function addPreviewArrow(
+  group: THREE.Group,
+  tip: THREE.Vector3,
+  color: THREE.Color,
+  extent: SpaceExtent,
+  opacity: number,
+  renderOrder: number,
+): void {
+  const length = tip.length();
   if (length === 0) {
     const marker = new THREE.Mesh(
       new THREE.RingGeometry(extent.halfRange * 0.025, extent.halfRange * 0.044, 24),
       new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }),
     );
     marker.lookAt(new THREE.Vector3(0, -1, 0));
-    applyForegroundAppearance(marker, 0.78, 9);
+    applyForegroundAppearance(marker, opacity, renderOrder);
     group.add(marker);
     return;
   }
-
   const headLength = Math.min(length * 0.28, Math.max(0.22, extent.halfRange * 0.075));
   const arrow = new THREE.ArrowHelper(
     tip.clone().normalize(),
@@ -1181,7 +1180,7 @@ function updateVectorEditPreview(
     headLength,
     Math.min(length * 0.16, headLength * 0.55),
   );
-  applyForegroundAppearance(arrow, 0.74, 9);
+  applyForegroundAppearance(arrow, opacity, renderOrder);
   group.add(arrow);
 }
 
@@ -1529,6 +1528,12 @@ function formatDirectCoordinate(value: number): string {
     maximumFractionDigits: 6,
     useGrouping: false,
   }).format(Object.is(value, -0) ? 0 : value);
+}
+
+function formatCoordinateStatus(coordinates: readonly [number, number, number]): string {
+  return coordinates
+    .map((coordinate, index) => `${['x', 'y', 'z'][index]} = ${formatDirectCoordinate(coordinate)}`)
+    .join('、');
 }
 
 function adaptiveGridStep(gridHalfSize: number): number {

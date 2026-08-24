@@ -120,23 +120,25 @@ describe('固定3D表示とカメラ操作', () => {
     expect(cssSource).toMatch(/\.space-combination-term-label\s*\{[^}]*background:\s*color-mix\([^;]*62%/su);
   });
 
-  it('視点操作と軸拘束ベクトル操作を明示的に切り替える', () => {
-    expect(componentSource).toContain('視点を操作');
-    expect(componentSource).toContain('ベクトルを操作');
-    expect(componentSource).toContain("controls.enabled = interactionMode === 'camera'");
-    expect(componentSource).toContain('addVectorEditHandles');
-    expect(componentSource).toContain('raycaster.intersectObjects');
-    expect(componentSource).toContain("addEventListener('pointerdown', handlePointerDown)");
-    expect(componentSource).toContain("addEventListener('pointercancel', handlePointerCancel)");
+  it('矢先と背景を起点にベクトル移動と視点操作を自動で分ける', () => {
+    expect(componentSource).toContain('矢先をドラッグ：画面に平行な面内で移動');
+    expect(componentSource).toContain('背景をドラッグ：視点を回転');
+    expect(componentSource).toContain('findVectorTipAtPointer');
+    expect(componentSource).toContain('setFromNormalAndCoplanarPoint');
+    expect(componentSource).toContain('controls.enabled = false');
+    expect(componentSource).toContain('controls.enabled = true');
+    expect(componentSource).toContain("addEventListener('pointerdown', handlePointerDown, true)");
+    expect(componentSource).toContain("addEventListener('pointercancel', handlePointerCancel, true)");
+    expect(componentSource).not.toContain('3D操作モード');
   });
 
-  it('選択ベクトルと微調整を一時UI状態として数値編集へ接続する', () => {
-    expect(appSource).toContain('threeDimensionalInteractionMode');
-    expect(appSource).toContain('threeDimensionalSelectedVectorId');
-    expect(appSource).toContain('handleThreeDimensionalDirectCoordinateCommit');
-    expect(componentSource).toContain('操作するベクトル');
-    expect(componentSource).toContain('−0.1');
-    expect(componentSource).toContain('＋0.1');
-    expect(cssSource).toMatch(/\.three-dimensional-axis-nudges\s*\{/su);
+  it('画面平行面のプレビューを全3成分の数値編集へ接続する', () => {
+    expect(appSource).toContain('handleThreeDimensionalDirectCoordinatesCommit');
+    expect(componentSource).toContain('coordinatesFromScreenPlaneDrag');
+    expect(componentSource).toContain('updateVectorScreenPlanePreview');
+    expect(componentSource).toContain('onVectorCoordinatesCommit');
+    expect(cssSource).toMatch(/\.three-dimensional-gesture-guide\s*\{/su);
+    expect(cssSource).toMatch(/\.three-dimensional-canvas\.is-vector-tip-dragging\s*\{/su);
+    expect(appSource).not.toContain('threeDimensionalInteractionMode');
   });
 });
