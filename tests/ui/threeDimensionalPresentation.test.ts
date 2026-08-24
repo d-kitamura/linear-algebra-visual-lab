@@ -111,4 +111,12 @@ describe('固定3D表示とカメラ操作', () => {
     expect(appSource).toContain('平行六面体');
     expect(appSource).toContain('4本以上の係数は3D図形へ一意に対応させず');
   });
+
+  it('通常ベクトルと係数付きベクトルのラベルを矢先の反対側へ離して配置する', () => {
+    expect(componentSource).toContain('VECTOR_LABEL_CENTERS');
+    expect(componentSource).toContain('COMBINATION_LABEL_CENTERS');
+    expect(componentSource).toContain('label.center.set(centerX, centerY)');
+    expect(cssSource).toMatch(/\.space-vector-label\s*\{[^}]*background:\s*color-mix\([^;]*66%/su);
+    expect(cssSource).toMatch(/\.space-combination-term-label\s*\{[^}]*background:\s*color-mix\([^;]*62%/su);
+  });
 });

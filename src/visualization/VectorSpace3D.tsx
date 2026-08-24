@@ -61,6 +61,18 @@ const AXIS_COLORS = {
 const SPAN_COLOR = '#737b82';
 const TARGET_COLOR = '#245b8d';
 const COMBINATION_HELPER_COLOR = '#596b78';
+const VECTOR_LABEL_CENTERS = [
+  [-0.42, 1.42],
+  [1.42, 1.42],
+  [-0.42, -0.42],
+  [1.42, -0.42],
+] as const;
+const COMBINATION_LABEL_CENTERS = [
+  [1.42, -0.42],
+  [-0.42, -0.42],
+  [1.42, 1.42],
+  [-0.42, 1.42],
+] as const;
 
 export function VectorSpace3D({
   vectors,
@@ -721,13 +733,10 @@ function addVectors(
 
     applyVectorSpanAppearance(vectorObject, showSpan, isSpanSelected);
 
-    const labelOffset = length === 0
-      ? new THREE.Vector3(0.18, 0, 0.18)
-      : tip.clone().normalize().multiplyScalar(Math.max(0.16, extent.halfRange * 0.045));
     scene.add(createVectorLabel(
       vector.name,
       color.getStyle(),
-      tip.clone().add(labelOffset),
+      tip,
       index,
       showSpan && !isSpanSelected,
     ));
@@ -794,14 +803,11 @@ function addSpaceCombinationGeometry(
       colors[(sourceIndex >= 0 ? sourceIndex : index) % colors.length] ?? '#2f6690',
     );
     addCombinationTermArrow(scene, tip, color, extent);
-    const labelOffset = tip.length() === 0
-      ? new THREE.Vector3(extent.halfRange * 0.045, 0, extent.halfRange * 0.045)
-      : tip.clone().normalize().multiplyScalar(extent.halfRange * 0.055);
     scene.add(createCombinationTermLabel(
       index + 1,
       sourceVector?.name ?? `a${index + 1}`,
       color.getStyle(),
-      tip.clone().add(labelOffset),
+      tip,
     ));
   });
 
@@ -897,10 +903,7 @@ function addTargetVector(
     scene.add(arrow);
   }
 
-  const labelOffset = length === 0
-    ? new THREE.Vector3(extent.halfRange * 0.06, 0, extent.halfRange * 0.06)
-    : tip.clone().normalize().multiplyScalar(extent.halfRange * 0.065);
-  scene.add(createTargetLabel(tip.clone().add(labelOffset)));
+  scene.add(createTargetLabel(tip));
 }
 
 function applyForegroundAppearance(
@@ -990,7 +993,8 @@ function createVectorLabel(
 
   const label = new CSS2DObject(element);
   label.position.copy(position);
-  label.center.set(vectorIndex % 2 === 0 ? -0.08 : 1.08, 0.5);
+  const [centerX, centerY] = VECTOR_LABEL_CENTERS[vectorIndex % VECTOR_LABEL_CENTERS.length];
+  label.center.set(centerX, centerY);
   return label;
 }
 
@@ -1000,7 +1004,7 @@ function createTargetLabel(position: THREE.Vector3): CSS2DObject {
   element.textContent = 'v';
   const label = new CSS2DObject(element);
   label.position.copy(position);
-  label.center.set(-0.08, 0.5);
+  label.center.set(-0.42, 1.42);
   return label;
 }
 
@@ -1035,7 +1039,9 @@ function createCombinationTermLabel(
 
   const label = new CSS2DObject(element);
   label.position.copy(position);
-  label.center.set(-0.08, 0.5);
+  const patternIndex = (coefficientIndex - 1) % COMBINATION_LABEL_CENTERS.length;
+  const [centerX, centerY] = COMBINATION_LABEL_CENTERS[patternIndex];
+  label.center.set(centerX, centerY);
   return label;
 }
 

@@ -501,10 +501,15 @@
 }
 
 .space-vector-label {
+  padding: 1px 4px;
   color: var(--space-vector-color);
-  border: 1px solid color-mix(in srgb, var(--space-vector-color) 30%, transparent);
-  background: color-mix(in srgb, #fffdf8 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--space-vector-color) 24%, transparent);
+  background: color-mix(in srgb, #fffdf8 66%, transparent);
+  box-shadow: 0 1px 3px rgba(25, 42, 52, 0.09);
   font-size: 1.05rem;
+  text-shadow:
+    0 0 2px #fffdf8,
+    0 0 4px #fffdf8;
 }
 
 .space-vector-label-base {
@@ -538,21 +543,31 @@
 }
 
 .space-target-label {
+  padding: 1px 4px;
   color: #245b8d;
-  border: 1px solid color-mix(in srgb, #245b8d 34%, transparent);
-  background: color-mix(in srgb, #fffdf8 92%, transparent);
+  border: 1px solid color-mix(in srgb, #245b8d 26%, transparent);
+  background: color-mix(in srgb, #fffdf8 66%, transparent);
+  box-shadow: 0 1px 3px rgba(25, 42, 52, 0.09);
   font-family: Cambria, "Times New Roman", serif;
   font-size: 1.12rem;
   font-style: italic;
   font-weight: 800;
+  text-shadow:
+    0 0 2px #fffdf8,
+    0 0 4px #fffdf8;
 }
 
 .space-combination-term-label {
+  padding: 1px 4px;
   color: var(--space-combination-color);
-  border: 1px dashed color-mix(in srgb, var(--space-combination-color) 38%, transparent);
-  background: color-mix(in srgb, #fffdf8 90%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--space-combination-color) 30%, transparent);
+  background: color-mix(in srgb, #fffdf8 62%, transparent);
+  box-shadow: 0 1px 3px rgba(25, 42, 52, 0.08);
   font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
   font-size: 0.9rem;
+  text-shadow:
+    0 0 2px #fffdf8,
+    0 0 4px #fffdf8;
 }
 
 .space-coefficient-base {
