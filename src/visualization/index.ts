@@ -26,9 +26,12 @@ export {
   DEFAULT_SPACE_HALF_RANGE,
   SPACE_CAMERA_DISTANCE_FACTOR,
   SPACE_FIT_PADDING,
+  SPACE_SPAN_BOUNDARY_PADDING,
+  SPACE_SPAN_PLANE_SIZE_FACTOR,
   createCameraPose,
   createSharedCameraState,
   createSpaceExtent,
+  createSpaceSpanGeometry,
   orthographicHalfHeight,
 } from './spaceGeometry';
 export type {
@@ -36,5 +39,6 @@ export type {
   CameraStateSource,
   CameraPreset,
   SpaceExtent,
+  SpaceSpanGeometry,
   ThreeDimensionalPoint,
 } from './spaceGeometry';

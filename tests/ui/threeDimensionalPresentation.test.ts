@@ -64,12 +64,29 @@ describe('固定3D表示とカメラ操作', () => {
     expect(appSource).toContain('handleThreeDimensionalRemoveVector');
     expect(appSource).toContain('threeDimensionalSpanAnalysis');
     expect(appSource).toContain('threeDimensionalAnalysis');
+    expect(appSource).toContain('handleThreeDimensionalShowSpan');
+    expect(appSource).toContain('showSpan={threeDimensionalState.visualization.showSpan}');
   });
 
-  it('rank 3の生成空間を立方体アイコンで表す', () => {
+  it('rank 3の生成空間を半透明の立方体アイコンで表す', () => {
     expect(appSource).toContain('spanAnalysis.rank === 3');
     expect(appSource).toContain('className="span-cube-icon"');
     expect(appSource).toContain('className="span-cube-face span-cube-face-top"');
+    expect(appSource).toContain('className="span-cube-hidden-edges"');
+    expect(appSource).not.toContain('className="span-cube-pip"');
     expect(cssSource).toMatch(/\.span-cube-icon\s*\{[^}]*width:\s*46px;/su);
+    expect(cssSource).toMatch(/\.span-cube-hidden-edges\s*\{[^}]*stroke-dasharray:/su);
+  });
+
+  it('rank 0〜3のspan幾何を中立色で描画する', () => {
+    expect(componentSource).toContain('addSpanGeometry(scene, spanVectors, spanRank, extent)');
+    expect(componentSource).toContain("case 'origin'");
+    expect(componentSource).toContain("case 'line'");
+    expect(componentSource).toContain("case 'plane'");
+    expect(componentSource).toContain("case 'space'");
+    expect(componentSource).toContain("const SPAN_COLOR = '#737b82'");
+    expect(componentSource).toContain('side: THREE.DoubleSide');
+    expect(componentSource).toContain('new THREE.LineDashedMaterial');
+    expect(componentSource).toContain('space-span-rank-three-label');
   });
 });

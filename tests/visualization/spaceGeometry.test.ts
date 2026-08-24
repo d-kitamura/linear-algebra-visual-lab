@@ -5,6 +5,7 @@ import {
   createCameraPose,
   createSharedCameraState,
   createSpaceExtent,
+  createSpaceSpanGeometry,
   orthographicHalfHeight,
 } from '../../src/visualization';
 
@@ -80,5 +81,63 @@ describe('3D視点プリセット', () => {
       up: [0, 0, 1],
       zoom: 2.5,
     });
+  });
+});
+
+describe('3Dで生成する空間の幾何', () => {
+  it('rank 0を原点として扱う', () => {
+    expect(createSpaceSpanGeometry([], 0, 5)).toEqual({ kind: 'origin' });
+  });
+
+  it('rank 1の直線を表示立方体の境界まで延ばす', () => {
+    const geometry = createSpaceSpanGeometry([
+      { id: 'a1', name: 'a₁', coordinates: [2, -1, 4] },
+      { id: 'a2', name: 'a₂', coordinates: [-4, 2, -8] },
+    ], 1, 5);
+
+    expect(geometry.kind).toBe('line');
+    if (geometry.kind !== 'line') {
+      return;
+    }
+    expect(Math.hypot(geometry.direction.x, geometry.direction.y, geometry.direction.z))
+      .toBeCloseTo(1);
+    expect(Math.max(...Object.values(geometry.end).map(Math.abs))).toBeCloseTo(5.4);
+    expect(geometry.start).toEqual({
+      x: -geometry.end.x,
+      y: -geometry.end.y,
+      z: -geometry.end.z,
+    });
+  });
+
+  it('rank 2の平面に正規直交基底と法線を与える', () => {
+    const geometry = createSpaceSpanGeometry([
+      { id: 'a1', name: 'a₁', coordinates: [1, 0, 1] },
+      { id: 'a2', name: 'a₂', coordinates: [0, 1, 1] },
+      { id: 'a3', name: 'a₃', coordinates: [1, 1, 2] },
+    ], 2, 5);
+
+    expect(geometry.kind).toBe('plane');
+    if (geometry.kind !== 'plane') {
+      return;
+    }
+    const dot = (
+      first: { x: number; y: number; z: number },
+      second: { x: number; y: number; z: number }
+    ) => first.x * second.x + first.y * second.y + first.z * second.z;
+    expect(dot(geometry.basisU, geometry.basisV)).toBeCloseTo(0);
+    expect(dot(geometry.basisU, geometry.normal)).toBeCloseTo(0);
+    expect(dot(geometry.basisV, geometry.normal)).toBeCloseTo(0);
+    expect(Math.hypot(geometry.normal.x, geometry.normal.y, geometry.normal.z))
+      .toBeCloseTo(1);
+    expect(geometry.halfSize).toBeGreaterThan(5);
+  });
+
+  it('rank 3を境界補助付きの空間として扱い、不正な入力を拒否する', () => {
+    expect(createSpaceSpanGeometry([], 3, 5)).toEqual({
+      kind: 'space',
+      halfSize: 5.4,
+    });
+    expect(() => createSpaceSpanGeometry([], 4, 5)).toThrow(RangeError);
+    expect(() => createSpaceSpanGeometry([], 0, 0)).toThrow(RangeError);
   });
 });

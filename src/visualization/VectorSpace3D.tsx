@@ -17,14 +17,19 @@ import {
   createCameraPose,
   createSharedCameraState,
   createSpaceExtent,
+  createSpaceSpanGeometry,
   orthographicHalfHeight,
   type CameraPreset,
   type SpaceExtent,
+  type SpaceSpanGeometry,
 } from './spaceGeometry';
 
 interface VectorSpace3DProps {
   readonly vectors: readonly VectorValue[];
   readonly colors: readonly string[];
+  readonly spanVectors: readonly VectorValue[];
+  readonly spanRank: number;
+  readonly showSpan: boolean;
   readonly active: boolean;
   readonly resetKey: number;
   readonly camera: SharedCameraState | null;
@@ -45,10 +50,14 @@ const AXIS_COLORS = {
   y: '#3f756b',
   z: '#3e6687',
 } as const;
+const SPAN_COLOR = '#737b82';
 
 export function VectorSpace3D({
   vectors,
   colors,
+  spanVectors,
+  spanRank,
+  showSpan,
   active,
   resetKey,
   camera,
@@ -77,6 +86,9 @@ export function VectorSpace3D({
         host,
         vectors,
         colors,
+        spanVectors,
+        spanRank,
+        showSpan,
         cameraRef.current,
         (nextCamera) => onCameraChangeRef.current(nextCamera),
         (message) => {
@@ -98,7 +110,7 @@ export function VectorSpace3D({
       );
       return undefined;
     }
-  }, [colors, vectors]);
+  }, [colors, showSpan, spanRank, spanVectors, vectors]);
 
   useEffect(() => {
     if (!active) {
@@ -142,7 +154,7 @@ export function VectorSpace3D({
       <div
         className={`three-dimensional-render-frame ${errorMessage ? 'has-error' : ''}`}
         role="group"
-        aria-label={`右手座標系の3次元座標空間。x軸、y軸、z軸と${vectors.length}本のベクトルを表示しています。`}
+        aria-label={`右手座標系の3次元座標空間。x軸、y軸、z軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `選択したベクトルが生成する${describeSpaceSpan(spanRank)}を灰色の幾何形状で表示しています。` : '生成する空間の幾何表示はオフです。'}`}
       >
         <div className="three-dimensional-render-host" ref={hostRef} />
         {errorMessage ? (
@@ -156,6 +168,7 @@ export function VectorSpace3D({
       <p className="three-dimensional-help">
         ドラッグで視点を回転し、ホイールまたは2本指で拡大・縮小できます。
         右ドラッグまたは2本指ドラッグで表示位置を移動できます。
+        {showSpan ? ' 灰色の形状は、選択したベクトルが生成する空間です。' : ''}
         ページをスクロールするときは3D表示の外側を操作してください。
       </p>
     </section>
@@ -166,6 +179,9 @@ function createThreeSpaceRuntime(
   host: HTMLDivElement,
   vectors: readonly VectorValue[],
   colors: readonly string[],
+  spanVectors: readonly VectorValue[],
+  spanRank: number,
+  showSpan: boolean,
   initialCamera: SharedCameraState | null,
   onCameraChange: (camera: SharedCameraState) => void,
   onError: (message: string) => void,
@@ -200,9 +216,19 @@ function createThreeSpaceRuntime(
   host.append(labelRenderer.domElement);
 
   addGrid(scene, extent);
+  if (showSpan) {
+    addSpanGeometry(scene, spanVectors, spanRank, extent);
+  }
   addAxes(scene, extent);
   addOrigin(scene, extent);
-  addVectors(scene, vectors, colors, extent);
+  addVectors(
+    scene,
+    vectors,
+    colors,
+    extent,
+    new Set(spanVectors.map((vector) => vector.id)),
+    showSpan,
+  );
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = false;
@@ -365,6 +391,230 @@ function addGrid(scene: THREE.Scene, extent: SpaceExtent): void {
   scene.add(new THREE.LineSegments(geometry, material));
 }
 
+function addSpanGeometry(
+  scene: THREE.Scene,
+  spanVectors: readonly VectorValue[],
+  spanRank: number,
+  extent: SpaceExtent,
+): void {
+  const geometry = createSpaceSpanGeometry(spanVectors, spanRank, extent.halfRange);
+
+  switch (geometry.kind) {
+    case 'origin':
+      addSpanOrigin(scene, extent);
+      return;
+    case 'line':
+      addSpanLine(scene, geometry, extent);
+      return;
+    case 'plane':
+      addSpanPlane(scene, geometry, extent);
+      return;
+    case 'space':
+      addSpanSpace(scene, geometry, extent);
+  }
+}
+
+function addSpanOrigin(scene: THREE.Scene, extent: SpaceExtent): void {
+  const radius = Math.max(0.14, extent.halfRange * 0.035);
+  const fillGeometry = new THREE.SphereGeometry(radius, 20, 14);
+  const fillMaterial = new THREE.MeshBasicMaterial({
+    color: SPAN_COLOR,
+    transparent: true,
+    opacity: 0.22,
+    depthWrite: false,
+  });
+  const fill = new THREE.Mesh(fillGeometry, fillMaterial);
+  fill.renderOrder = -2;
+  scene.add(fill);
+
+  const outlineGeometry = new THREE.SphereGeometry(radius * 1.45, 14, 10);
+  const outlineMaterial = new THREE.MeshBasicMaterial({
+    color: SPAN_COLOR,
+    transparent: true,
+    opacity: 0.72,
+    wireframe: true,
+    depthWrite: false,
+  });
+  const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
+  outline.renderOrder = -1;
+  scene.add(outline);
+  scene.add(createTextLabel(
+    '生成する空間：原点',
+    'space-span-label',
+    new THREE.Vector3(radius * 1.6, radius * 0.5, radius * 1.8),
+  ));
+}
+
+function addSpanLine(
+  scene: THREE.Scene,
+  geometry: Extract<SpaceSpanGeometry, { readonly kind: 'line' }>,
+  extent: SpaceExtent,
+): void {
+  const start = pointToVector3(geometry.start);
+  const end = pointToVector3(geometry.end);
+  const direction = pointToVector3(geometry.direction);
+  const fullLength = start.distanceTo(end);
+  const dashLength = Math.max(0.22, extent.halfRange * 0.16);
+  const gapLength = dashLength * 0.62;
+  const radius = Math.max(0.035, extent.halfRange * 0.009);
+  const material = new THREE.MeshBasicMaterial({
+    color: SPAN_COLOR,
+    transparent: true,
+    opacity: 0.58,
+    depthWrite: false,
+  });
+
+  for (let offset = 0; offset < fullLength; offset += dashLength + gapLength) {
+    const segmentLength = Math.min(dashLength, fullLength - offset);
+    const center = start.clone().addScaledVector(direction, offset + segmentLength / 2);
+    const dashGeometry = new THREE.CylinderGeometry(radius, radius, segmentLength, 10);
+    const dash = new THREE.Mesh(dashGeometry, material);
+    dash.position.copy(center);
+    dash.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+    dash.renderOrder = -2;
+    scene.add(dash);
+  }
+
+  const labelPosition = end.clone().multiplyScalar(0.78)
+    .add(new THREE.Vector3(0, 0, extent.halfRange * 0.06));
+  scene.add(createTextLabel(
+    '生成する空間：原点を通る直線',
+    'space-span-label',
+    labelPosition,
+  ));
+}
+
+function addSpanPlane(
+  scene: THREE.Scene,
+  geometry: Extract<SpaceSpanGeometry, { readonly kind: 'plane' }>,
+  extent: SpaceExtent,
+): void {
+  const normal = pointToVector3(geometry.normal);
+  const planeGeometry = new THREE.PlaneGeometry(geometry.halfSize * 2, geometry.halfSize * 2);
+  const planeMaterial = new THREE.MeshBasicMaterial({
+    color: SPAN_COLOR,
+    transparent: true,
+    opacity: 0.14,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+  plane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+  plane.renderOrder = -3;
+  scene.add(plane);
+
+  const basisU = pointToVector3(geometry.basisU);
+  const basisV = pointToVector3(geometry.basisV);
+  addSpanPlaneGrid(
+    scene,
+    basisU,
+    basisV,
+    geometry.halfSize,
+    adaptiveGridStep(extent.halfRange),
+    0.38,
+  );
+
+  const labelPosition = basisU.clone().add(basisV).normalize()
+    .multiplyScalar(extent.halfRange * 0.82)
+    .addScaledVector(normal, extent.halfRange * 0.035);
+  scene.add(createTextLabel(
+    '生成する空間：原点を通る平面',
+    'space-span-label',
+    labelPosition,
+  ));
+}
+
+function addSpanSpace(
+  scene: THREE.Scene,
+  geometry: Extract<SpaceSpanGeometry, { readonly kind: 'space' }>,
+  extent: SpaceExtent,
+): void {
+  const boxGeometry = new THREE.BoxGeometry(
+    geometry.halfSize * 2,
+    geometry.halfSize * 2,
+    geometry.halfSize * 2,
+  );
+  const edgeGeometry = new THREE.EdgesGeometry(boxGeometry);
+  boxGeometry.dispose();
+  const edgeMaterial = new THREE.LineDashedMaterial({
+    color: SPAN_COLOR,
+    dashSize: extent.halfRange * 0.08,
+    gapSize: extent.halfRange * 0.045,
+    transparent: true,
+    opacity: 0.42,
+    depthWrite: false,
+  });
+  const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+  edges.computeLineDistances();
+  edges.renderOrder = -3;
+  scene.add(edges);
+
+  const step = adaptiveGridStep(extent.halfRange);
+  addSpanPlaneGrid(
+    scene,
+    new THREE.Vector3(1, 0, 0),
+    new THREE.Vector3(0, 0, 1),
+    geometry.halfSize,
+    step,
+    0.2,
+  );
+  addSpanPlaneGrid(
+    scene,
+    new THREE.Vector3(0, 1, 0),
+    new THREE.Vector3(0, 0, 1),
+    geometry.halfSize,
+    step,
+    0.2,
+  );
+
+  scene.add(createTextLabel(
+    '生成する空間：3次元座標空間全体',
+    'space-span-label space-span-rank-three-label',
+    new THREE.Vector3(
+      -geometry.halfSize * 0.72,
+      geometry.halfSize * 0.72,
+      geometry.halfSize * 0.78,
+    ),
+  ));
+}
+
+function addSpanPlaneGrid(
+  scene: THREE.Scene,
+  basisU: THREE.Vector3,
+  basisV: THREE.Vector3,
+  halfSize: number,
+  step: number,
+  opacity: number,
+): void {
+  const positions: number[] = [];
+  const lineCount = Math.max(1, Math.ceil(halfSize / step));
+
+  for (let index = -lineCount; index <= lineCount; index += 1) {
+    const coordinate = Math.max(-halfSize, Math.min(halfSize, index * step));
+    const uStart = basisU.clone().multiplyScalar(-halfSize)
+      .addScaledVector(basisV, coordinate);
+    const uEnd = basisU.clone().multiplyScalar(halfSize)
+      .addScaledVector(basisV, coordinate);
+    const vStart = basisV.clone().multiplyScalar(-halfSize)
+      .addScaledVector(basisU, coordinate);
+    const vEnd = basisV.clone().multiplyScalar(halfSize)
+      .addScaledVector(basisU, coordinate);
+    positions.push(...uStart.toArray(), ...uEnd.toArray(), ...vStart.toArray(), ...vEnd.toArray());
+  }
+
+  const gridGeometry = new THREE.BufferGeometry();
+  gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const gridMaterial = new THREE.LineBasicMaterial({
+    color: SPAN_COLOR,
+    transparent: true,
+    opacity,
+    depthWrite: false,
+  });
+  const grid = new THREE.LineSegments(gridGeometry, gridMaterial);
+  grid.renderOrder = -2;
+  scene.add(grid);
+}
+
 function addAxes(scene: THREE.Scene, extent: SpaceExtent): void {
   const length = extent.halfRange * 1.08;
   const headLength = Math.max(0.24, extent.halfRange * 0.055);
@@ -416,6 +666,8 @@ function addVectors(
   vectors: readonly VectorValue[],
   colors: readonly string[],
   extent: SpaceExtent,
+  spanVectorIds: ReadonlySet<string>,
+  showSpan: boolean,
 ): void {
   vectors.forEach((vector, index) => {
     const tip = new THREE.Vector3(
@@ -425,6 +677,8 @@ function addVectors(
     );
     const length = tip.length();
     const color = new THREE.Color(colors[index % colors.length] ?? '#2f6690');
+    const isSpanSelected = spanVectorIds.has(vector.id);
+    let vectorObject: THREE.Object3D;
 
     if (length === 0) {
       const geometry = new THREE.RingGeometry(
@@ -437,12 +691,24 @@ function addVectors(
       marker.position.copy(ORIGIN);
       marker.lookAt(new THREE.Vector3(0, -1, 0));
       scene.add(marker);
+      vectorObject = marker;
     } else {
       const direction = tip.clone().normalize();
       const headLength = Math.min(length * 0.28, Math.max(0.22, extent.halfRange * 0.075));
       const headWidth = Math.min(length * 0.16, headLength * 0.55);
-      scene.add(new THREE.ArrowHelper(direction, ORIGIN, length, color, headLength, headWidth));
+      const arrow = new THREE.ArrowHelper(
+        direction,
+        ORIGIN,
+        length,
+        color,
+        headLength,
+        headWidth,
+      );
+      scene.add(arrow);
+      vectorObject = arrow;
     }
+
+    applyVectorSpanAppearance(vectorObject, showSpan, isSpanSelected);
 
     const labelOffset = length === 0
       ? new THREE.Vector3(0.18, 0, 0.18)
@@ -452,7 +718,36 @@ function addVectors(
       color.getStyle(),
       tip.clone().add(labelOffset),
       index,
+      showSpan && !isSpanSelected,
     ));
+  });
+}
+
+function applyVectorSpanAppearance(
+  object: THREE.Object3D,
+  showSpan: boolean,
+  selected: boolean,
+): void {
+  if (!showSpan) {
+    return;
+  }
+
+  object.traverse((child) => {
+    child.renderOrder = selected ? 5 : 1;
+    if (!('material' in child)) {
+      return;
+    }
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    materials.forEach((material) => {
+      if (!(material instanceof THREE.Material)) {
+        return;
+      }
+      material.transparent = true;
+      material.opacity = selected ? 1 : 0.28;
+      if (selected) {
+        material.depthTest = false;
+      }
+    });
   });
 }
 
@@ -474,9 +769,10 @@ function createVectorLabel(
   color: string,
   position: THREE.Vector3,
   vectorIndex: number,
+  muted: boolean,
 ): CSS2DObject {
   const element = document.createElement('span');
-  element.className = 'space-label space-vector-label';
+  element.className = `space-label space-vector-label${muted ? ' is-span-unselected' : ''}`;
   element.style.setProperty('--space-vector-color', color);
   const { base, subscript } = splitVectorName(name);
   const baseElement = document.createElement('span');
@@ -494,6 +790,23 @@ function createVectorLabel(
   label.position.copy(position);
   label.center.set(vectorIndex % 2 === 0 ? -0.08 : 1.08, 0.5);
   return label;
+}
+
+function pointToVector3(point: { readonly x: number; readonly y: number; readonly z: number }): THREE.Vector3 {
+  return new THREE.Vector3(point.x, point.y, point.z);
+}
+
+function describeSpaceSpan(rank: number): string {
+  if (rank === 0) {
+    return '原点';
+  }
+  if (rank === 1) {
+    return '原点を通る直線';
+  }
+  if (rank === 2) {
+    return '原点を通る平面';
+  }
+  return '3次元座標空間全体';
 }
 
 function adaptiveGridStep(gridHalfSize: number): number {

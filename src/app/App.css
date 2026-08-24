@@ -512,6 +512,21 @@
   vertical-align: -0.28em;
 }
 
+.space-vector-label.is-span-unselected {
+  opacity: 0.38;
+}
+
+.space-span-label {
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, #737b82 42%, transparent);
+  color: #505960;
+  background: color-mix(in srgb, #fffdf8 88%, transparent);
+  font-family: var(--body-font);
+  font-size: 0.68rem;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
 .three-dimensional-error {
   position: absolute;
   z-index: 5;
@@ -1654,25 +1669,33 @@
 }
 
 .span-cube-face {
+  fill: currentColor;
+  fill-opacity: 0.1;
   stroke: currentColor;
   stroke-width: 1.8;
   stroke-linejoin: round;
 }
 
 .span-cube-face-top {
-  fill: color-mix(in srgb, currentColor 8%, #fffdf8);
+  fill-opacity: 0.07;
 }
 
-.span-cube-face-left {
-  fill: color-mix(in srgb, currentColor 14%, #fffdf8);
+.span-cube-face-front {
+  fill-opacity: 0.11;
 }
 
 .span-cube-face-right {
-  fill: color-mix(in srgb, currentColor 22%, #fffdf8);
+  fill-opacity: 0.16;
 }
 
-.span-cube-pip {
-  fill: currentColor;
+.span-cube-hidden-edges {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-dasharray: 3 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.42;
 }
 
 .span-shape-result strong {

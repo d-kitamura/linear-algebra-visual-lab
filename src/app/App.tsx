@@ -497,6 +497,13 @@ export function App() {
     }));
   }
 
+  function handleThreeDimensionalShowSpan(showSpan: boolean): void {
+    setThreeDimensionalState((current) => ({
+      ...current,
+      visualization: { ...current.visualization, showSpan },
+    }));
+  }
+
   function handleThreeDimensionalAddVector(): void {
     const result = addDefaultVector(threeDimensionalState);
     if (!result.addedVector) {
@@ -1387,6 +1394,9 @@ export function App() {
                 <VectorSpace3D
                   vectors={threeDimensionalState.vectors}
                   colors={vectorColors}
+                  spanVectors={threeDimensionalSpanVectors}
+                  spanRank={threeDimensionalSpanAnalysis.rank}
+                  showSpan={threeDimensionalState.visualization.showSpan}
                   active={activeDimension === 3}
                   resetKey={threeDimensionalCameraResetKey}
                   camera={threeDimensionalState.visualization.camera}
@@ -1408,6 +1418,7 @@ export function App() {
               onTabKeyDown={handleThreeDimensionalInspectorTabKeyDown}
               onCoordinateChange={handleThreeDimensionalCoordinateChange}
               onSpanSelection={handleThreeDimensionalSpanSelection}
+              onShowSpan={handleThreeDimensionalShowSpan}
               onAddVector={handleThreeDimensionalAddVector}
               onRemoveVector={handleThreeDimensionalRemoveVector}
             />
@@ -1532,6 +1543,7 @@ function ThreeDimensionalInspector({
   onTabKeyDown,
   onCoordinateChange,
   onSpanSelection,
+  onShowSpan,
   onAddVector,
   onRemoveVector,
 }: {
@@ -1548,6 +1560,7 @@ function ThreeDimensionalInspector({
   readonly onTabKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => void;
   readonly onCoordinateChange: (vectorId: string, coordinateIndex: number, input: string) => void;
   readonly onSpanSelection: (vectorId: string, selected: boolean) => void;
+  readonly onShowSpan: (showSpan: boolean) => void;
   readonly onAddVector: () => void;
   readonly onRemoveVector: (vectorId: string) => void;
 }) {
@@ -1623,6 +1636,14 @@ function ThreeDimensionalInspector({
             <p className="panel-kicker">Selected span / 3D</p>
             <h2 id="3d-span-card-title">選択したベクトルが生成する空間</h2>
           </div>
+          <label className="span-visibility-control">
+            <input
+              type="checkbox"
+              checked={state.visualization.showSpan}
+              onChange={(event) => onShowSpan(event.target.checked)}
+            />
+            <span>3D座標空間に表示</span>
+          </label>
         </div>
         <VectorSetDefinition vectors={spanVectors} />
         <SelectedMatrixDefinition vectors={spanVectors} />
@@ -1636,22 +1657,20 @@ function ThreeDimensionalInspector({
               >
                 <polygon
                   className="span-cube-face span-cube-face-top"
-                  points="24,4 42,14 24,24 6,14"
+                  points="8,14 17,6 40,6 31,14"
                 />
                 <polygon
-                  className="span-cube-face span-cube-face-left"
-                  points="6,14 24,24 24,44 6,34"
+                  className="span-cube-face span-cube-face-front"
+                  points="8,14 31,14 31,39 8,39"
                 />
                 <polygon
                   className="span-cube-face span-cube-face-right"
-                  points="24,24 42,14 42,34 24,44"
+                  points="31,14 40,6 40,31 31,39"
                 />
-                <circle className="span-cube-pip" cx="24" cy="13.5" r="1.6" />
-                <circle className="span-cube-pip" cx="12.5" cy="23.5" r="1.6" />
-                <circle className="span-cube-pip" cx="18" cy="35" r="1.6" />
-                <circle className="span-cube-pip" cx="34" cy="23" r="1.6" />
-                <circle className="span-cube-pip" cx="29" cy="34.5" r="1.6" />
-                <circle className="span-cube-pip" cx="37" cy="31" r="1.6" />
+                <path
+                  className="span-cube-hidden-edges"
+                  d="M17 6 V31 H40 M17 31 L8 39"
+                />
               </svg>
             ) : spanAnalysis.rank === 0 ? '⊙' : spanAnalysis.rank === 1 ? '━' : '▱'}
           </span>
@@ -1676,7 +1695,8 @@ function ThreeDimensionalInspector({
           </div>
         </dl>
         <p className="three-dimensional-span-note">
-          直線・平面・3次元座標空間全体の幾何表示は、次の作業単位5.4で追加します。
+          灰色の原点・破線・半透明平面・空間格子で次元を区別します。
+          表示をオフにしても、選択集合と解析結果は維持されます。
         </p>
       </section>
 
