@@ -119,4 +119,24 @@ describe('固定3D表示とカメラ操作', () => {
     expect(cssSource).toMatch(/\.space-vector-label\s*\{[^}]*background:\s*color-mix\([^;]*66%/su);
     expect(cssSource).toMatch(/\.space-combination-term-label\s*\{[^}]*background:\s*color-mix\([^;]*62%/su);
   });
+
+  it('視点操作と軸拘束ベクトル操作を明示的に切り替える', () => {
+    expect(componentSource).toContain('視点を操作');
+    expect(componentSource).toContain('ベクトルを操作');
+    expect(componentSource).toContain("controls.enabled = interactionMode === 'camera'");
+    expect(componentSource).toContain('addVectorEditHandles');
+    expect(componentSource).toContain('raycaster.intersectObjects');
+    expect(componentSource).toContain("addEventListener('pointerdown', handlePointerDown)");
+    expect(componentSource).toContain("addEventListener('pointercancel', handlePointerCancel)");
+  });
+
+  it('選択ベクトルと微調整を一時UI状態として数値編集へ接続する', () => {
+    expect(appSource).toContain('threeDimensionalInteractionMode');
+    expect(appSource).toContain('threeDimensionalSelectedVectorId');
+    expect(appSource).toContain('handleThreeDimensionalDirectCoordinateCommit');
+    expect(componentSource).toContain('操作するベクトル');
+    expect(componentSource).toContain('−0.1');
+    expect(componentSource).toContain('＋0.1');
+    expect(cssSource).toMatch(/\.three-dimensional-axis-nudges\s*\{/su);
+  });
 });

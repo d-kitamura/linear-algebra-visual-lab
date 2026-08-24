@@ -47,3 +47,11 @@ export type {
   SpaceCombinationGeometry,
   SpaceCombinationGeometryKind,
 } from './spaceCombinationGeometry';
+export {
+  coordinateFromAxisConstrainedDrag,
+  nudgeCoordinate,
+} from './spaceVectorEditing';
+export type {
+  ScreenPoint,
+  ThreeDimensionalInteractionMode,
+} from './spaceVectorEditing';

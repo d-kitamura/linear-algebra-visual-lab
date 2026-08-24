@@ -429,6 +429,168 @@
   background: #2f6690;
 }
 
+.three-dimensional-interaction-panel {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, #2f6690 20%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, #2f6690 4%, var(--paper));
+}
+
+.three-dimensional-mode-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.three-dimensional-mode-switch > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.three-dimensional-mode-switch strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.three-dimensional-mode-switch span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.45;
+}
+
+.three-dimensional-mode-buttons {
+  flex: 0 0 auto;
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--paper);
+}
+
+.three-dimensional-mode-buttons button,
+.three-dimensional-axis-nudge button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.three-dimensional-mode-buttons button {
+  padding: 6px 12px;
+}
+
+.three-dimensional-mode-buttons button[aria-pressed='true'] {
+  color: white;
+  background: #2f6690;
+  box-shadow: 0 2px 7px rgba(47, 102, 144, 0.2);
+}
+
+.three-dimensional-mode-buttons button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.three-dimensional-mode-buttons button:focus-visible,
+.three-dimensional-vector-direct-editor select:focus-visible,
+.three-dimensional-axis-nudge button:focus-visible {
+  outline: 3px solid color-mix(in srgb, #2f6690 27%, transparent);
+  outline-offset: 2px;
+}
+
+.three-dimensional-vector-direct-editor {
+  margin-top: 11px;
+  padding-top: 11px;
+  display: grid;
+  grid-template-columns: minmax(132px, 0.7fr) minmax(360px, 2fr);
+  align-items: end;
+  gap: 9px 14px;
+  border-top: 1px solid color-mix(in srgb, #2f6690 15%, var(--line));
+}
+
+.three-dimensional-vector-direct-editor > label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 720;
+}
+
+.three-dimensional-vector-direct-editor select {
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: var(--paper);
+  font: inherit;
+  font-weight: 760;
+}
+
+.three-dimensional-axis-nudges {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.three-dimensional-axis-nudge {
+  min-width: 0;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: auto minmax(42px, 1fr) auto auto;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid color-mix(in srgb, currentColor 25%, var(--line));
+  border-radius: 9px;
+  background: var(--paper);
+}
+
+.three-dimensional-axis-name {
+  width: 22px;
+  font-family: Cambria, "Times New Roman", serif;
+  font-size: 0.95rem;
+  font-style: italic;
+  font-weight: 800;
+  text-align: center;
+}
+
+.three-dimensional-axis-nudge output {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 0.75rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.three-dimensional-axis-nudge button {
+  min-height: 30px;
+  padding: 3px 5px;
+  color: currentColor;
+  background: color-mix(in srgb, currentColor 7%, var(--paper));
+}
+
+.three-dimensional-axis-nudge button:hover {
+  background: color-mix(in srgb, currentColor 14%, var(--paper));
+}
+
+.three-dimensional-vector-direct-editor > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.64rem;
+  line-height: 1.5;
+}
+
 .three-dimensional-render-frame {
   position: relative;
   min-height: 360px;
@@ -590,6 +752,36 @@
   font-style: normal;
   font-weight: 400;
   vertical-align: -0.28em;
+}
+
+.space-edit-axis-label {
+  padding: 2px 5px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: color-mix(in srgb, #fffdf8 76%, transparent);
+  box-shadow: 0 1px 4px rgba(25, 42, 52, 0.12);
+  font-family: Cambria, "Times New Roman", serif;
+  font-size: 0.86rem;
+  font-style: italic;
+  font-weight: 800;
+}
+
+.three-dimensional-interaction-message {
+  position: absolute;
+  z-index: 4;
+  left: 12px;
+  bottom: 12px;
+  max-width: min(88%, 480px);
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, #2f6690 28%, transparent);
+  border-radius: 9px;
+  color: #245575;
+  background: color-mix(in srgb, #fffdf8 84%, transparent);
+  box-shadow: 0 3px 14px rgba(25, 42, 52, 0.1);
+  font-size: 0.68rem;
+  font-weight: 720;
+  line-height: 1.45;
+  pointer-events: none;
 }
 
 .three-dimensional-error {
@@ -2674,6 +2866,27 @@
   .three-dimensional-toolbar {
     width: 100%;
     justify-items: stretch;
+  }
+
+  .three-dimensional-mode-switch {
+    align-items: stretch;
+    display: grid;
+  }
+
+  .three-dimensional-mode-buttons {
+    width: 100%;
+  }
+
+  .three-dimensional-mode-buttons button {
+    flex: 1 1 50%;
+  }
+
+  .three-dimensional-vector-direct-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .three-dimensional-axis-nudges {
+    grid-template-columns: 1fr;
   }
 
   .camera-preset-controls {

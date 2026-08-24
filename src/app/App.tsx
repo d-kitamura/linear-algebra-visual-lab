@@ -52,6 +52,7 @@ import {
   createAutoFitViewport,
   zoomViewportAtCenter,
   type PlaneViewport,
+  type ThreeDimensionalInteractionMode,
 } from '../visualization';
 import { projectInfo } from './projectInfo';
 import './App.css';
@@ -126,6 +127,10 @@ export function App() {
   );
   const [threeDimensionalCameraResetKey, setThreeDimensionalCameraResetKey] =
     useState(0);
+  const [threeDimensionalInteractionMode, setThreeDimensionalInteractionMode] =
+    useState<ThreeDimensionalInteractionMode>('camera');
+  const [threeDimensionalSelectedVectorId, setThreeDimensionalSelectedVectorId] =
+    useState<string | null>(initial3DState.vectors[0]?.id ?? null);
   const [coordinateDrafts, setCoordinateDrafts] = useState<CoordinateDrafts>(() =>
     createCoordinateDrafts(initial2DState.vectors),
   );
@@ -614,13 +619,18 @@ export function App() {
       ...current,
       [addedVector.id]: addedVector.coordinates.map(String),
     }));
+    setThreeDimensionalSelectedVectorId((current) => current ?? addedVector.id);
     window.requestAnimationFrame(() => {
       document.getElementById(`3d-${addedVector.id}-coordinate-0`)?.focus();
     });
   }
 
   function handleThreeDimensionalRemoveVector(vectorId: string): void {
-    setThreeDimensionalState((current) => removeVectorFromState(current, vectorId));
+    const nextState = removeVectorFromState(threeDimensionalState, vectorId);
+    setThreeDimensionalState(nextState);
+    setThreeDimensionalSelectedVectorId((selectedId) => selectedId === vectorId
+      ? nextState.vectors[0]?.id ?? null
+      : selectedId);
     setThreeDimensionalCoordinateDrafts((current) => Object.fromEntries(
       Object.entries(current).filter(([id]) => id !== vectorId),
     ));
@@ -636,6 +646,35 @@ export function App() {
         });
   }
 
+  function handleThreeDimensionalDirectCoordinateCommit(
+    vectorId: string,
+    coordinateIndex: number,
+    value: number,
+  ): void {
+    const clamped = Math.min(
+      MAX_ABSOLUTE_COORDINATE,
+      Math.max(-MAX_ABSOLUTE_COORDINATE, value),
+    );
+    const normalized = Object.is(clamped, -0) ? 0 : clamped;
+    setThreeDimensionalState((current) => ({
+      ...current,
+      vectors: current.vectors.map((vector) => vector.id === vectorId
+        ? {
+            ...vector,
+            coordinates: vector.coordinates.map((coordinate, index) =>
+              index === coordinateIndex ? normalized : coordinate,
+            ),
+          }
+        : vector),
+    }));
+    setThreeDimensionalCoordinateDrafts((current) => ({
+      ...current,
+      [vectorId]: (current[vectorId] ?? []).map((coordinate, index) =>
+        index === coordinateIndex ? String(normalized) : coordinate,
+      ),
+    }));
+  }
+
   function handleReset(): void {
     if (activeDimension === 3) {
       setThreeDimensionalState(initial3DState);
@@ -647,6 +686,8 @@ export function App() {
       setActiveThreeDimensionalInspectorTab(
         initial3DState.linearCombination.visible ? 'combination' : 'edit',
       );
+      setThreeDimensionalInteractionMode('camera');
+      setThreeDimensionalSelectedVectorId(initial3DState.vectors[0]?.id ?? null);
       setThreeDimensionalCameraResetKey((current) => current + 1);
       setExportErrorMessage(null);
       setShareUrl('');
@@ -1524,7 +1565,12 @@ export function App() {
                   active={activeDimension === 3}
                   resetKey={threeDimensionalCameraResetKey}
                   camera={threeDimensionalState.visualization.camera}
+                  interactionMode={threeDimensionalInteractionMode}
+                  selectedVectorId={threeDimensionalSelectedVectorId}
                   onCameraChange={handleThreeDimensionalCameraChange}
+                  onInteractionModeChange={setThreeDimensionalInteractionMode}
+                  onSelectedVectorChange={setThreeDimensionalSelectedVectorId}
+                  onVectorCoordinateCommit={handleThreeDimensionalDirectCoordinateCommit}
                   onLinearCombinationVisibility={
                     handleThreeDimensionalLinearCombinationVisibility
                   }
