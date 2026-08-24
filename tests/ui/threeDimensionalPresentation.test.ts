@@ -102,6 +102,18 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain('一次結合を調べる');
   });
 
+  it('一次結合モードの短い背景タップから原点を通る画面平行面上へターゲットを配置する', () => {
+    expect(componentSource).toContain('TARGET_TAP_MOVEMENT_THRESHOLD = 8');
+    expect(componentSource).toContain('PendingTargetPlacement');
+    expect(componentSource).toContain('const finishTargetPlacement');
+    expect(componentSource).toContain('setFromNormalAndCoplanarPoint(\n      viewDirection,\n      ORIGIN');
+    expect(componentSource).toContain('coordinatesFromWorldPoint(targetPoint)');
+    expect(componentSource).toContain('背景を短くタップ：ターゲット v を配置');
+    expect(appSource).toContain('handleThreeDimensionalTargetPlacement');
+    expect(appSource).toContain('onLinearCombinationTargetPlacement');
+    expect(cssSource).toMatch(/\.three-dimensional-canvas\.is-target-placement-mode\s*\{[^}]*cursor:\s*crosshair;/su);
+  });
+
   it('3Dターゲットと2項・3項の係数幾何を描画する', () => {
     expect(componentSource).toContain('createSpaceCombinationGeometry');
     expect(componentSource).toContain('addSpaceCombinationGeometry');

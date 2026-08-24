@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   coordinatesFromScreenPlaneDrag,
+  coordinatesFromWorldPoint,
   createSpaceSpanDragPreview,
   vectorTipHitRadius,
 } from '../../src/visualization/spaceVectorEditing';
@@ -35,6 +36,23 @@ describe('3Dベクトルの画面平行面編集', () => {
     expect(vectorTipHitRadius('mouse')).toBe(15);
     expect(vectorTipHitRadius('pen')).toBe(19);
     expect(vectorTipHitRadius('touch')).toBe(24);
+  });
+
+  it('画面平行面との交点を共有可能な3Dターゲット座標へ変換する', () => {
+    expect(coordinatesFromWorldPoint(
+      { x: 1.23456789, y: -2.34567891, z: -1e-9 },
+    )).toEqual([1.234568, -2.345679, 0]);
+    expect(coordinatesFromWorldPoint(
+      { x: 12, y: -12, z: 3 },
+      10,
+    )).toEqual([10, -10, 3]);
+  });
+
+  it('3Dターゲット配置の不正な交点と座標上限を拒否する', () => {
+    expect(() => coordinatesFromWorldPoint({ x: Number.NaN, y: 0, z: 0 }))
+      .toThrow(TypeError);
+    expect(() => coordinatesFromWorldPoint({ x: 0, y: 0, z: 0 }, 0))
+      .toThrow(RangeError);
   });
 
   it('span対象の3本目を平面へ吸着したプレビューではrankを3から2へ更新する', () => {

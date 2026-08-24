@@ -44,6 +44,27 @@ export function coordinatesFromScreenPlaneDrag(
   }) as [number, number, number];
 }
 
+export function coordinatesFromWorldPoint(
+  point: WorldPoint3D,
+  maximumAbsoluteCoordinate = MAX_ABSOLUTE_COORDINATE,
+): [number, number, number] {
+  if (!Number.isFinite(maximumAbsoluteCoordinate) || maximumAbsoluteCoordinate <= 0) {
+    throw new RangeError('座標上限は 0 より大きい有限値である必要があります。');
+  }
+  const coordinates = [point.x, point.y, point.z];
+  if (coordinates.some((coordinate) => !Number.isFinite(coordinate))) {
+    throw new TypeError('3D座標は有限値である必要があります。');
+  }
+  return coordinates.map((coordinate) => {
+    const clamped = Math.min(
+      maximumAbsoluteCoordinate,
+      Math.max(-maximumAbsoluteCoordinate, coordinate),
+    );
+    const rounded = Number(clamped.toFixed(6));
+    return Object.is(rounded, -0) ? 0 : rounded;
+  }) as [number, number, number];
+}
+
 export function createSpaceSpanDragPreview(
   draggedVectorId: string,
   coordinates: readonly [number, number, number],

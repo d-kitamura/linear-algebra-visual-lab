@@ -595,6 +595,16 @@ export function App() {
     setThreeDimensionalTargetCoordinateDrafts(['', '', '']);
   }
 
+  function handleThreeDimensionalTargetPlacement(
+    coordinates: readonly [number, number, number],
+  ): void {
+    setThreeDimensionalState((current) => ({
+      ...current,
+      linearCombination: { ...current.linearCombination, target: coordinates },
+    }));
+    setThreeDimensionalTargetCoordinateDrafts(coordinates.map(String));
+  }
+
   function handleThreeDimensionalShowSpan(showSpan: boolean): void {
     setThreeDimensionalState((current) => ({
       ...current,
@@ -1553,6 +1563,9 @@ export function App() {
                   camera={threeDimensionalState.visualization.camera}
                   onCameraChange={handleThreeDimensionalCameraChange}
                   onVectorCoordinatesCommit={handleThreeDimensionalDirectCoordinatesCommit}
+                  onLinearCombinationTargetPlacement={
+                    handleThreeDimensionalTargetPlacement
+                  }
                   onLinearCombinationVisibility={
                     handleThreeDimensionalLinearCombinationVisibility
                   }
@@ -2100,7 +2113,7 @@ function TargetEditor({
         <p>
           {dimension === 2
             ? '座標面をクリックまたはタップして配置するか、成分を入力してください。'
-            : '3つの成分を入力してください。3Dでは曖昧なCanvasクリック配置を行いません。'}
+            : '3D表示を短くクリックまたはタップして、原点を通る現在の画面平行面上へ配置するか、3つの成分を入力してください。'}
           選択集合 <span className="math-set-name">S</span> の一次結合で表せるかを
           {dimension === 2 ? '右側の「一次結合」タブ' : 'このカード'}に表示します。
         </p>
@@ -2222,7 +2235,7 @@ function LinearCombinationExplorer({
             <p>
               {ambientDimension === 2
                 ? '座標面をクリック・タップするか、2つの成分を入力すると結果を表示します。'
-                : '3つの成分を入力すると結果を表示します。'}
+                : '3D表示を短くクリックまたはタップするか、3つの成分を入力すると結果を表示します。'}
             </p>
           </div>
         </div>

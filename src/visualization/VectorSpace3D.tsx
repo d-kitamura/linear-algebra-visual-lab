@@ -34,6 +34,7 @@ import {
 } from './spaceGeometry';
 import {
   coordinatesFromScreenPlaneDrag,
+  coordinatesFromWorldPoint,
   createSpaceSpanDragPreview,
   type SpaceSpanDragPreview,
   vectorTipHitRadius,
@@ -54,6 +55,9 @@ interface VectorSpace3DProps {
   readonly onCameraChange: (camera: SharedCameraState) => void;
   readonly onVectorCoordinatesCommit: (
     vectorId: string,
+    coordinates: readonly [number, number, number],
+  ) => void;
+  readonly onLinearCombinationTargetPlacement: (
     coordinates: readonly [number, number, number],
   ) => void;
   readonly onLinearCombinationVisibility: () => void;
@@ -86,6 +90,12 @@ interface ActiveScreenPlaneDrag {
   spanPreviewRank: number | null;
 }
 
+interface PendingTargetPlacement {
+  readonly pointerId: number;
+  readonly startClientX: number;
+  readonly startClientY: number;
+}
+
 const ORIGIN = new THREE.Vector3(0, 0, 0);
 const AXIS_COLORS = {
   x: '#9c4f45',
@@ -95,6 +105,7 @@ const AXIS_COLORS = {
 const SPAN_COLOR = '#737b82';
 const TARGET_COLOR = '#245b8d';
 const COMBINATION_HELPER_COLOR = '#596b78';
+const TARGET_TAP_MOVEMENT_THRESHOLD = 8;
 const VECTOR_LABEL_CENTERS = [
   [-0.42, 1.42],
   [1.42, 1.42],
@@ -122,6 +133,7 @@ export function VectorSpace3D({
   camera,
   onCameraChange,
   onVectorCoordinatesCommit,
+  onLinearCombinationTargetPlacement,
   onLinearCombinationVisibility,
 }: VectorSpace3DProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -129,12 +141,16 @@ export function VectorSpace3D({
   const cameraRef = useRef(camera);
   const onCameraChangeRef = useRef(onCameraChange);
   const onVectorCoordinatesCommitRef = useRef(onVectorCoordinatesCommit);
+  const onLinearCombinationTargetPlacementRef = useRef(
+    onLinearCombinationTargetPlacement,
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [interactionMessage, setInteractionMessage] = useState<string | null>(null);
 
   cameraRef.current = camera;
   onCameraChangeRef.current = onCameraChange;
   onVectorCoordinatesCommitRef.current = onVectorCoordinatesCommit;
+  onLinearCombinationTargetPlacementRef.current = onLinearCombinationTargetPlacement;
 
   useEffect(() => {
     if (!interactionMessage) {
@@ -168,6 +184,9 @@ export function VectorSpace3D({
         (nextCamera) => onCameraChangeRef.current(nextCamera),
         (vectorId, coordinates) => {
           onVectorCoordinatesCommitRef.current(vectorId, coordinates);
+        },
+        (coordinates) => {
+          onLinearCombinationTargetPlacementRef.current(coordinates);
         },
         (message) => {
           if (!disposed) {
@@ -255,6 +274,9 @@ export function VectorSpace3D({
 
       <div className="three-dimensional-gesture-guide" aria-label="3D表示の操作方法">
         <span><i className="vector-tip-gesture-mark" aria-hidden="true" />矢先をドラッグ：画面に平行な面内で移動・平行／同一平面へ吸着</span>
+        {linearCombinationVisible ? (
+          <span><i className="target-placement-gesture-mark" aria-hidden="true" />背景を短くタップ：ターゲット v を配置</span>
+        ) : null}
         <span><i className="camera-gesture-mark" aria-hidden="true" />背景をドラッグ：視点を回転</span>
       </div>
 
@@ -283,7 +305,7 @@ export function VectorSpace3D({
         それ以外の場所では、ドラッグで視点を回転、ホイールまたは2本指で拡大・縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。
         {showSpan ? ' 灰色の形状は、選択したベクトルが生成する空間です。' : ''}
         {linearCombinationVisible
-          ? ' ターゲットは数値入力で変更し、係数の幾何表示を視点回転して確認できます。'
+          ? ' 背景を短くクリックまたはタップすると、原点を通る現在の画面平行面上へターゲットを配置できます。数値入力でも変更できます。'
           : ''}
         ページをスクロールするときは3D表示の外側を操作してください。
       </p>
@@ -305,6 +327,9 @@ function createThreeSpaceRuntime(
   onCameraChange: (camera: SharedCameraState) => void,
   onVectorCoordinatesCommit: (
     vectorId: string,
+    coordinates: readonly [number, number, number],
+  ) => void,
+  onLinearCombinationTargetPlacement: (
     coordinates: readonly [number, number, number],
   ) => void,
   onInteractionMessage: (message: string | null) => void,
@@ -347,10 +372,14 @@ function createThreeSpaceRuntime(
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.domElement.className = 'three-dimensional-canvas';
+  renderer.domElement.classList.toggle(
+    'is-target-placement-mode',
+    linearCombinationVisible,
+  );
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute(
     'aria-label',
-    '3D座標空間。ベクトルの矢先をドラッグすると画面に平行な面内で移動し、平行または同一平面上へ吸着できます。背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。',
+    `3D座標空間。ベクトルの矢先をドラッグすると画面に平行な面内で移動し、平行または同一平面上へ吸着できます。${linearCombinationVisible ? '背景を短くクリックまたはタップするとターゲットvを配置できます。' : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
   );
   host.append(renderer.domElement);
 
@@ -405,6 +434,7 @@ function createThreeSpaceRuntime(
   let disposed = false;
   let resizeObserver: ResizeObserver | null = null;
   let activeScreenPlaneDrag: ActiveScreenPlaneDrag | null = null;
+  let pendingTargetPlacement: PendingTargetPlacement | null = null;
 
   const render = () => {
     if (disposed) {
@@ -506,6 +536,12 @@ function createThreeSpaceRuntime(
   };
 
   const handlePointerDown = (event: PointerEvent) => {
+    if (
+      pendingTargetPlacement
+      && pendingTargetPlacement.pointerId !== event.pointerId
+    ) {
+      pendingTargetPlacement = null;
+    }
     if (activeScreenPlaneDrag) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -523,8 +559,16 @@ function createThreeSpaceRuntime(
     );
     const renderedVector = vector ? renderedVectors.get(vector.id) : null;
     if (!vector || !renderedVector) {
+      if (linearCombinationVisible && event.isPrimary) {
+        pendingTargetPlacement = {
+          pointerId: event.pointerId,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+        };
+      }
       return;
     }
+    pendingTargetPlacement = null;
 
     const initialCoordinates: [number, number, number] = [
       vector.coordinates[0] ?? 0,
@@ -594,6 +638,15 @@ function createThreeSpaceRuntime(
   const handlePointerMove = (event: PointerEvent) => {
     const rect = renderer.domElement.getBoundingClientRect();
     if (!activeScreenPlaneDrag) {
+      if (
+        pendingTargetPlacement?.pointerId === event.pointerId
+        && Math.hypot(
+          event.clientX - pendingTargetPlacement.startClientX,
+          event.clientY - pendingTargetPlacement.startClientY,
+        ) > TARGET_TAP_MOVEMENT_THRESHOLD
+      ) {
+        pendingTargetPlacement = null;
+      }
       const hoverVector = findVectorTipAtPointer(vectors, event, camera, rect);
       renderer.domElement.classList.toggle('is-vector-tip-hover', Boolean(hoverVector));
       return;
@@ -707,12 +760,57 @@ function createThreeSpaceRuntime(
     onInteractionMessage('ベクトルの変更を取り消しました。');
     render();
   };
-  const handlePointerUp = (event: PointerEvent) => finishScreenPlaneDrag(event, true);
-  const handlePointerCancel = (event: PointerEvent) => finishScreenPlaneDrag(event, false);
+  const finishTargetPlacement = (event: PointerEvent) => {
+    const pending = pendingTargetPlacement;
+    pendingTargetPlacement = null;
+    if (
+      !pending
+      || pending.pointerId !== event.pointerId
+      || event.type !== 'pointerup'
+      || !linearCombinationVisible
+    ) {
+      return;
+    }
+    const rect = renderer.domElement.getBoundingClientRect();
+    updateRayFromPointer(event, rect);
+    const viewDirection = new THREE.Vector3();
+    camera.getWorldDirection(viewDirection);
+    const placementPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+      viewDirection,
+      ORIGIN,
+    );
+    const targetPoint = raycaster.ray.intersectPlane(
+      placementPlane,
+      new THREE.Vector3(),
+    );
+    if (!targetPoint) {
+      return;
+    }
+    const coordinates = coordinatesFromWorldPoint(targetPoint);
+    onLinearCombinationTargetPlacement(coordinates);
+    onInteractionMessage(
+      `ターゲット v を配置しました。${formatCoordinateStatus(coordinates)}　原点を通る画面平行面上`,
+    );
+  };
+  const handlePointerUp = (event: PointerEvent) => {
+    if (activeScreenPlaneDrag) {
+      finishScreenPlaneDrag(event, true);
+      return;
+    }
+    finishTargetPlacement(event);
+  };
+  const handlePointerCancel = (event: PointerEvent) => {
+    if (activeScreenPlaneDrag) {
+      finishScreenPlaneDrag(event, false);
+      return;
+    }
+    pendingTargetPlacement = null;
+  };
   const handleLostPointerCapture = (event: PointerEvent) => finishScreenPlaneDrag(event, false);
   const handlePointerLeave = () => {
     if (!activeScreenPlaneDrag) {
       renderer.domElement.classList.remove('is-vector-tip-hover');
+      pendingTargetPlacement = null;
     }
   };
 
