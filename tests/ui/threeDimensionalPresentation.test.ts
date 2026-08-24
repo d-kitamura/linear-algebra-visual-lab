@@ -180,10 +180,13 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain('clearObjectGroup(targetDragPreview)');
   });
 
-  it('ターゲットをrank 2のspan平面へ画面幅相対の距離で吸着する', () => {
+  it('ターゲットをrank 0〜2のspanへ画面幅相対の距離で吸着する', () => {
     expect(componentSource).toContain('snapSpaceTargetToSelectedSpan');
     expect(componentSource).toContain('activeTargetScreenPlaneDrag.snapKind = snapResult.snapKind');
-    expect(componentSource).toContain('平面spanへ吸着');
+    expect(componentSource).toContain('生成する空間へ吸着');
+    expect(componentSource).toContain('生成する原点・直線・平面へ近づけると吸着します');
+    expect(componentSource).toContain('原点にスナップ（零ベクトルとして一次結合で表現できます）');
+    expect(componentSource).toContain('が生成する直線にスナップ（一次結合で表現できます）');
     expect(componentSource).toContain('が生成する平面にスナップ（一次結合で表現できます）');
   });
 

@@ -104,7 +104,7 @@
 
 - [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjozLCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjMsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYeKCgSIsImNvb3JkaW5hdGVzIjpbMSwxLDBdfSx7ImlkIjoiYTIiLCJuYW1lIjoiYeKCgiIsImNvb3JkaW5hdGVzIjpbMiwyLDBdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiLCJhMiJdLCJ2aXN1YWxpemF0aW9uIjp7InNob3dTcGFuIjp0cnVlLCJjYW1lcmEiOnsiZGlyZWN0aW9uIjpbMCwtMSwwXSwidGFyZ2V0IjpbMCwwLDBdLCJ1cCI6WzAsMCwxXSwiem9vbSI6MX19LCJsaW5lYXJDb21iaW5hdGlvbiI6eyJ2aXNpYmxlIjp0cnVlLCJ0YXJnZXQiOlswLDAsMV19fQ)
 - 期待結果: `rank(A) = 1 < rank([A | v]) = 2`、不能（解なし）。
-- 観察点: 正面視点では重なりに注意し、等角視点へ変えてターゲットが灰色の直線外にあることを確認する。ターゲットを数値入力で直線上へ置くと不定へ変わる。
+- 観察点: 正面視点では重なりに注意し、等角視点へ変えてターゲットが灰色の直線外にあることを確認する。ターゲットの矢先を灰色の直線へ近づけると吸着して不定へ変わる。数値入力では操作用吸着を適用しないため、直線上の値を直接指定して同じ分類を確認できる。
 
 ### 16. 同一平面上の3本では表し方が無数
 

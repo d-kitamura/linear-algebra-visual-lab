@@ -2,7 +2,7 @@ import { analyzeVectorSet, type VectorValue } from '../domain';
 import { MAX_ABSOLUTE_COORDINATE } from '../sharing';
 import { DEFAULT_PARALLEL_SNAP_DISTANCE } from './vectorSnapping';
 
-export type SpaceTargetSnapKind = 'span-plane' | null;
+export type SpaceTargetSnapKind = 'origin' | 'span-line' | 'span-plane' | null;
 
 export interface SpaceTargetSnapResult {
   readonly coordinates: readonly [number, number, number];
@@ -22,7 +22,7 @@ export function snapSpaceTargetToSelectedSpan(
   if (!Number.isFinite(maximumDistance) || maximumDistance <= 0) {
     throw new RangeError('3Dターゲット吸着距離は 0 より大きい有限値である必要があります。');
   }
-  if (spanRank !== 2) {
+  if (spanRank < 0 || spanRank > 2) {
     return withoutSnap(coordinates);
   }
 
@@ -30,8 +30,43 @@ export function snapSpaceTargetToSelectedSpan(
     vector.coordinates.length === 3
     && vector.coordinates.every(Number.isFinite)
   ));
-  if (analyzeVectorSet({ dimension: 3, vectors: validVectors }).rank !== 2) {
+  const actualRank = analyzeVectorSet({ dimension: 3, vectors: validVectors }).rank;
+  if (actualRank !== spanRank) {
     return withoutSnap(coordinates);
+  }
+
+  if (spanRank === 0) {
+    if (length(coordinates) > maximumDistance) {
+      return withoutSnap(coordinates);
+    }
+    return {
+      coordinates: [0, 0, 0],
+      snapKind: 'origin',
+      basisVectorIds: [],
+    };
+  }
+
+  if (spanRank === 1) {
+    const basisVector = findNonzeroVector(validVectors);
+    if (!basisVector) {
+      return withoutSnap(coordinates);
+    }
+    const direction = asSpaceCoordinates(basisVector.coordinates);
+    const directionScale = Math.max(...direction.map(Math.abs));
+    const scaledDirection = multiply(direction, 1 / directionScale);
+    const directionSquaredLength = dot(scaledDirection, scaledDirection);
+    const projected = multiply(
+      scaledDirection,
+      dot(coordinates, scaledDirection) / directionSquaredLength,
+    );
+    if (length(subtract(coordinates, projected)) > maximumDistance) {
+      return withoutSnap(coordinates);
+    }
+    return {
+      coordinates: applyCoordinateSafetyLimit(projected),
+      snapKind: 'span-line',
+      basisVectorIds: [basisVector.id],
+    };
   }
 
   const basis = findIndependentPair(validVectors);
@@ -55,6 +90,12 @@ export function snapSpaceTargetToSelectedSpan(
     snapKind: 'span-plane',
     basisVectorIds: basis.map((vector) => vector.id),
   };
+}
+
+function findNonzeroVector(vectors: readonly VectorValue[]): VectorValue | null {
+  return vectors.find((vector) => (
+    analyzeVectorSet({ dimension: 3, vectors: [vector] }).rank === 1
+  )) ?? null;
 }
 
 function findIndependentPair(

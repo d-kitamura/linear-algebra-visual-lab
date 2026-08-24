@@ -7,7 +7,56 @@ const planeVectors: readonly VectorValue[] = [
   { id: 'a2', name: 'a₂', coordinates: [0, 1, 0] },
 ];
 
-describe('3D一次結合ターゲットの平面spanスナップ', () => {
+describe('3D一次結合ターゲットのspanスナップ', () => {
+  it('表示幅相対の距離内ではrank 0の原点へ吸着する', () => {
+    expect(snapSpaceTargetToSelectedSpan(
+      [0.04, -0.03, 0.02],
+      [],
+      0,
+      0.1,
+    )).toEqual({
+      coordinates: [0, 0, 0],
+      snapKind: 'origin',
+      basisVectorIds: [],
+    });
+
+    const outside = [0.08, 0.08, 0.08] as const;
+    expect(snapSpaceTargetToSelectedSpan(outside, [], 0, 0.1))
+      .toEqual({ coordinates: outside, snapKind: null, basisVectorIds: [] });
+  });
+
+  it('表示幅相対の距離内ではrank 1のspan直線へ直交射影する', () => {
+    const lineVectors: readonly VectorValue[] = [
+      { id: 'a1', name: 'a₁', coordinates: [1, 2, 2] },
+      { id: 'a2', name: 'a₂', coordinates: [2, 4, 4] },
+    ];
+    expect(snapSpaceTargetToSelectedSpan(
+      [2.02, 3.96, 4.03],
+      lineVectors,
+      1,
+      0.1,
+    )).toEqual({
+      coordinates: [2, 4, 4],
+      snapKind: 'span-line',
+      basisVectorIds: ['a1'],
+    });
+  });
+
+  it('極小の非零方向でも有限な直線射影を返す', () => {
+    const result = snapSpaceTargetToSelectedSpan(
+      [2, 0.05, 0],
+      [{ id: 'a1', name: 'a₁', coordinates: [1e-300, 0, 0] }],
+      1,
+      0.1,
+    );
+
+    expect(result).toEqual({
+      coordinates: [2, 0, 0],
+      snapKind: 'span-line',
+      basisVectorIds: ['a1'],
+    });
+  });
+
   it('表示幅相対の距離内ではrank 2のspan平面へ直交射影する', () => {
     expect(snapSpaceTargetToSelectedSpan(
       [2, 3, 0.08],
@@ -45,13 +94,13 @@ describe('3D一次結合ターゲットの平面spanスナップ', () => {
     }).rank).toBe(2);
   });
 
-  it('距離外、rank 1、rank 3ではターゲット座標を変更しない', () => {
+  it('距離外とrank 3ではターゲット座標を変更しない', () => {
     const outside = [2, 3, 0.2] as const;
     expect(snapSpaceTargetToSelectedSpan(outside, planeVectors, 2, 0.1))
       .toEqual({ coordinates: outside, snapKind: null, basisVectorIds: [] });
 
     const lineVectors = [planeVectors[0]];
-    expect(snapSpaceTargetToSelectedSpan([2, 0.05, 0], lineVectors, 1, 0.1).snapKind)
+    expect(snapSpaceTargetToSelectedSpan([2, 0.2, 0], lineVectors, 1, 0.1).snapKind)
       .toBeNull();
 
     const spaceVectors: readonly VectorValue[] = [
@@ -69,6 +118,10 @@ describe('3D一次結合ターゲットの平面spanスナップ', () => {
       2,
       0.1,
     ).snapKind).toBeNull();
+    expect(snapSpaceTargetToSelectedSpan([0.01, 0, 0], planeVectors, 0, 0.1).snapKind)
+      .toBeNull();
+    expect(snapSpaceTargetToSelectedSpan([1, 0.01, 0], planeVectors, 1, 0.1).snapKind)
+      .toBeNull();
   });
 
   it('座標上限を適用してもターゲットを同じspan平面上に保つ', () => {
