@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useMemo,
   useRef,
   useState,
@@ -51,6 +53,11 @@ import {
 import { projectInfo } from './projectInfo';
 import './App.css';
 
+const VectorSpace3D = lazy(async () => {
+  const module = await import('../visualization/VectorSpace3D');
+  return { default: module.VectorSpace3D };
+});
+
 const vectorColors = [
   '#c84c35',
   '#087f73',
@@ -93,10 +100,14 @@ export function App() {
   const [activeDimension, setActiveDimension] = useState<AppDimension>(
     initialization.activeDimension,
   );
+  const [hasActivatedThreeDimensions, setHasActivatedThreeDimensions] = useState(
+    initialization.activeDimension === 3,
+  );
   const [state, setState] = useState<ShareState>(initial2DState);
   const [threeDimensionalState, setThreeDimensionalState] = useState<ShareState>(
     initial3DState,
   );
+  const [threeDimensionalCameraResetKey, setThreeDimensionalCameraResetKey] = useState(0);
   const [coordinateDrafts, setCoordinateDrafts] = useState<CoordinateDrafts>(() =>
     createCoordinateDrafts(initial2DState.vectors),
   );
@@ -410,6 +421,7 @@ export function App() {
   function handleReset(): void {
     if (activeDimension === 3) {
       setThreeDimensionalState(initial3DState);
+      setThreeDimensionalCameraResetKey((current) => current + 1);
       setExportErrorMessage(null);
       setShareUrl('');
       shareQrCodeRequestIdRef.current += 1;
@@ -612,8 +624,15 @@ export function App() {
 
     event.preventDefault();
     const nextTab = dimensionTabs[nextIndex];
-    setActiveDimension(nextTab.dimension);
+    handleDimensionChange(nextTab.dimension);
     document.getElementById(`dimension-tab-${nextTab.dimension}`)?.focus();
+  }
+
+  function handleDimensionChange(dimension: AppDimension): void {
+    setActiveDimension(dimension);
+    if (dimension === 3) {
+      setHasActivatedThreeDimensions(true);
+    }
   }
 
   function handleCoordinateChange(
@@ -681,7 +700,7 @@ export function App() {
                 aria-selected={activeDimension === tab.dimension}
                 aria-controls={`dimension-panel-${tab.dimension}`}
                 tabIndex={activeDimension === tab.dimension ? 0 : -1}
-                onClick={() => setActiveDimension(tab.dimension)}
+                onClick={() => handleDimensionChange(tab.dimension)}
                 onKeyDown={handleDimensionTabKeyDown}
               >
                 <span className="dimension-tab-label-wide">{tab.label}</span>
@@ -711,7 +730,7 @@ export function App() {
               ) : (
                 <>
                   3次元の教材状態は2次元とは独立して保持されます。
-                  3D座標空間とカメラ操作は次の作業単位5.2で接続します。
+                  正投影の3D座標空間を回転・拡大・移動し、複数の視点からベクトルを観察できます。
                 </>
               )}
             </p>
@@ -1182,39 +1201,23 @@ export function App() {
           </aside>
         </div>
         <section
-          className="three-dimensional-placeholder"
+          className="three-dimensional-workspace"
           id="dimension-panel-3"
           role="tabpanel"
           aria-labelledby="dimension-tab-3"
           hidden={activeDimension !== 3}
           tabIndex={-1}
         >
-          <div>
-            <p className="panel-kicker">3D coordinate space</p>
-            <h2>3次元座標空間</h2>
-            <p>
-              3D表示は作業単位5.2で実装します。このタブには専用のInitialStateとCurrentStateがあり、
-              2Dへ切り替えて戻っても状態は失われません。
-            </p>
-          </div>
-          <dl className="three-dimensional-state-summary">
-            <div>
-              <dt>現在の3Dベクトル</dt>
-              <dd>{threeDimensionalState.vectors.length} 本</dd>
-            </div>
-            <div>
-              <dt>spanの選択</dt>
-              <dd>{threeDimensionalState.spanSelection.length} 本</dd>
-            </div>
-            <div>
-              <dt>次の実装</dt>
-              <dd>固定3D表示とカメラ</dd>
-            </div>
-          </dl>
-          <p className="three-dimensional-axis-note">
-            右手座標系を用い、x軸は右向き、y軸は左下（手前）から右上（奥）、
-            z軸は鉛直上向きをそれぞれ正方向とします。
-          </p>
+          {hasActivatedThreeDimensions ? (
+            <Suspense fallback={<ThreeDimensionalLoading />}>
+              <VectorSpace3D
+                vectors={threeDimensionalState.vectors}
+                colors={vectorColors}
+                active={activeDimension === 3}
+                resetKey={threeDimensionalCameraResetKey}
+              />
+            </Suspense>
+          ) : null}
         </section>
       </main>
 
@@ -1222,7 +1225,7 @@ export function App() {
         <p>
           {projectInfo.status} — {activeDimension === 2
             ? '有効な成分は座標平面と判定へ即時反映されます。'
-            : '3D表示は作業単位5.2で接続します。'}
+            : '正投影の3D表示を回転・拡大・移動できます。'}
         </p>
       </footer>
 
@@ -1308,6 +1311,16 @@ export function App() {
         </div>
       </dialog>
     </div>
+  );
+}
+
+function ThreeDimensionalLoading() {
+  return (
+    <section className="three-dimensional-loading" aria-live="polite" aria-busy="true">
+      <p className="panel-kicker">3D coordinate space</p>
+      <h2>3次元表示を準備しています</h2>
+      <p>初回だけ3D描画に必要なデータを読み込みます。</p>
+    </section>
   );
 }
 

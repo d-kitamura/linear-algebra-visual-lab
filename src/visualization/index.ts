@@ -22,3 +22,17 @@ export {
 } from './planeGeometry';
 
 export type { PlaneViewport, SvgPoint, TickScale } from './planeGeometry';
+export {
+  DEFAULT_SPACE_HALF_RANGE,
+  SPACE_CAMERA_DISTANCE_FACTOR,
+  SPACE_FIT_PADDING,
+  createCameraPose,
+  createSpaceExtent,
+  orthographicHalfHeight,
+} from './spaceGeometry';
+export type {
+  CameraPose,
+  CameraPreset,
+  SpaceExtent,
+  ThreeDimensionalPoint,
+} from './spaceGeometry';

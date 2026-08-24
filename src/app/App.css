@@ -312,70 +312,219 @@
 }
 
 .lab-workspace[hidden],
-.three-dimensional-placeholder[hidden] {
+.three-dimensional-workspace[hidden] {
   display: none;
 }
 
-.three-dimensional-placeholder {
-  min-height: 440px;
-  padding: clamp(24px, 5vw, 52px);
+.three-dimensional-workspace {
+  min-width: 0;
+}
+
+.three-dimensional-loading {
+  min-height: 420px;
+  padding: 34px;
   display: grid;
   align-content: center;
-  gap: 28px;
+  justify-items: center;
   border: 1px solid var(--line);
   border-radius: 24px;
-  background:
-    linear-gradient(145deg, color-mix(in srgb, #2f6690 7%, var(--paper)), var(--paper));
+  color: var(--muted);
+  background: var(--paper);
+  text-align: center;
   box-shadow: 0 24px 70px rgba(28, 36, 44, 0.08);
 }
 
-.three-dimensional-placeholder h2 {
+.three-dimensional-loading h2,
+.three-dimensional-loading p {
+  margin: 0;
+}
+
+.three-dimensional-loading h2 {
+  color: var(--ink);
+  font-family: var(--display-font);
+}
+
+.three-dimensional-loading p:last-child {
+  margin-top: 10px;
+  font-size: 0.8rem;
+}
+
+.three-dimensional-plot-card {
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--paper);
+  box-shadow: 0 24px 70px rgba(28, 36, 44, 0.08);
+}
+
+.three-dimensional-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.three-dimensional-heading h2 {
   margin: 0;
   font-family: var(--display-font);
-  font-size: clamp(1.8rem, 4vw, 3rem);
-  letter-spacing: -0.04em;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  letter-spacing: -0.035em;
 }
 
-.three-dimensional-placeholder > div > p:last-child,
-.three-dimensional-axis-note {
-  max-width: 720px;
-  margin: 14px 0 0;
-  color: var(--muted);
-  line-height: 1.8;
+.camera-preset-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
 }
 
-.three-dimensional-state-summary {
-  max-width: 720px;
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.three-dimensional-state-summary div {
-  min-width: 0;
-  padding: 15px;
-  border: 1px solid color-mix(in srgb, #2f6690 20%, var(--line));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--paper) 80%, transparent);
-}
-
-.three-dimensional-state-summary dt {
-  color: var(--muted);
-  font-size: 0.68rem;
-}
-
-.three-dimensional-state-summary dd {
-  margin: 7px 0 0;
+.camera-preset-controls button {
+  min-height: 40px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
   color: var(--ink);
+  background: var(--paper);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.camera-preset-controls button:hover {
+  border-color: #2f6690;
+  background: color-mix(in srgb, #2f6690 7%, var(--paper));
+}
+
+.camera-preset-controls button:focus-visible,
+.three-dimensional-canvas:focus-visible {
+  outline: 3px solid color-mix(in srgb, #2f6690 27%, transparent);
+  outline-offset: 2px;
+}
+
+.camera-preset-controls .fit-space-button {
+  color: white;
+  border-color: #2f6690;
+  background: #2f6690;
+}
+
+.three-dimensional-render-frame {
+  position: relative;
+  min-height: 360px;
+  height: clamp(420px, 65vh, 680px);
+  margin-top: 20px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: #fffdf8;
+}
+
+.three-dimensional-render-host,
+.three-dimensional-canvas,
+.three-dimensional-label-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.three-dimensional-render-host {
+  overflow: hidden;
+}
+
+.three-dimensional-canvas {
+  display: block;
+  touch-action: none;
+}
+
+.three-dimensional-label-layer {
+  pointer-events: none;
+  user-select: none;
+}
+
+.space-label {
+  padding: 2px 5px;
+  border-radius: 6px;
+  color: var(--ink);
+  background: color-mix(in srgb, #fffdf8 84%, transparent);
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 1rem;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.axis-label {
+  font-family: Cambria, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 1.05rem;
+}
+
+.axis-x {
+  color: #884138;
+}
+
+.axis-y {
+  color: #286a60;
+}
+
+.axis-z {
+  color: #2d5f87;
+}
+
+.origin-label {
+  color: var(--muted);
+  font-family: Cambria, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+.space-vector-label {
+  color: var(--space-vector-color);
+  border: 1px solid color-mix(in srgb, var(--space-vector-color) 30%, transparent);
+  background: color-mix(in srgb, #fffdf8 90%, transparent);
+  font-size: 1.05rem;
+}
+
+.space-vector-label-base {
+  font-family: Cambria, "Times New Roman", serif;
+  font-style: italic;
   font-weight: 800;
 }
 
-.three-dimensional-axis-note {
-  margin-top: 0;
-  padding-top: 22px;
-  border-top: 1px solid var(--line);
-  font-size: 0.82rem;
+.space-vector-label sub {
+  margin-left: 0.05em;
+  font-family: Cambria, "Times New Roman", serif;
+  font-size: 0.65em;
+  font-style: normal;
+  font-weight: 400;
+  vertical-align: -0.28em;
+}
+
+.three-dimensional-error {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  padding: 30px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+}
+
+.three-dimensional-error p {
+  max-width: 520px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.three-dimensional-help {
+  margin: 14px 2px 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.65;
 }
 
 .plot-card,
@@ -2363,13 +2512,29 @@
     grid-template-columns: 1fr;
   }
 
-  .three-dimensional-placeholder {
-    min-height: 380px;
-    padding: 24px 19px;
+  .three-dimensional-plot-card {
+    padding: 16px;
   }
 
-  .three-dimensional-state-summary {
-    grid-template-columns: 1fr;
+  .three-dimensional-heading {
+    display: grid;
+  }
+
+  .camera-preset-controls {
+    justify-content: flex-start;
+  }
+
+  .camera-preset-controls button {
+    flex: 1 1 52px;
+  }
+
+  .camera-preset-controls .fit-space-button {
+    flex-basis: 108px;
+  }
+
+  .three-dimensional-render-frame {
+    min-height: 330px;
+    height: min(58vh, 500px);
   }
 
   .analysis-summary {
