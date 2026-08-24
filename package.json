@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "verify:dist": "node scripts/verify-static-build.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview"

@@ -44,6 +44,11 @@ jobs:
         env:
           APP_BASE_PATH: /linear-algebra-visual-lab/
 
+      - name: Verify static artifact and base path
+        run: pnpm verify:dist
+        env:
+          EXPECTED_BASE_PATH: /linear-algebra-visual-lab/
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
 

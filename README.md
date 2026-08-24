@@ -2,7 +2,7 @@
 
 線形代数を学ぶ学生が、2D/3D のベクトル、一次独立・一次従属、ベクトルが張る空間をブラウザ上で視覚的・対話的に理解するための教材アプリです。
 
-フェーズ5「3D教材版」までの実装・利用者確認・統合棚卸しが完了しています。2D/3D切替、右手座標系・正投影カメラ、数値編集・解析・共有、rankに応じたspan幾何、一次結合、モードなしの矢先ドラッグ、平行・同一平面上への吸着、spanと係数幾何のドラッグ中更新を利用できます。2D・3D合わせて16件の代表例、本番共有URL、QR表示・PNG保存、授業手順、Canvasを利用できない場合の代替導線も整備済みです。フェーズ6「共有と配布の仕上げ」は6.3の共有URL互換契約まで完了し、6.4以降を進行中です。公開版は [Linear Algebra Visual Lab](https://d-kitamura.github.io/linear-algebra-visual-lab/) です。
+フェーズ5「3D教材版」までの実装・利用者確認・統合棚卸しが完了しています。2D/3D切替、右手座標系・正投影カメラ、数値編集・解析・共有、rankに応じたspan幾何、一次結合、モードなしの矢先ドラッグ、平行・同一平面上への吸着、spanと係数幾何のドラッグ中更新を利用できます。2D・3D合わせて16件の代表例、本番共有URL、QR表示・PNG保存、授業手順、Canvasを利用できない場合の代替導線も整備済みです。フェーズ6「共有と配布の仕上げ」は6.4の配布可搬性・nginx手順まで完了し、6.5以降を進行中です。公開版は [Linear Algebra Visual Lab](https://d-kitamura.github.io/linear-algebra-visual-lab/) です。
 
 ## 文書の役割
 
@@ -12,6 +12,7 @@
 - [`docs/PROJECT_STATUS.md`](./docs/PROJECT_STATUS.md): 現在地、検証結果、再開時に必要な実装コンテキスト、次に行う小さな作業
 - [`docs/DECISIONS.md`](./docs/DECISIONS.md): 技術・教材設計上の意思決定と保留事項
 - [`docs/GITHUB_PAGES.md`](./docs/GITHUB_PAGES.md): GitHub Actions、pnpm、GitHub Pagesによる公開の仕組みと利用者の操作手順
+- [`docs/NGINX.md`](./docs/NGINX.md): 学内nginx向けのルート／サブパスビルド、設定例、配置後の確認手順
 - [`docs/SHARE_URL_COMPATIBILITY.md`](./docs/SHARE_URL_COMPATIBILITY.md): 正式リリース後の共有URL互換契約、版ごとの扱い、fixture更新手順
 - [`docs/TEACHING_SCENARIOS.md`](./docs/TEACHING_SCENARIOS.md): 2Dの代表例、本番共有URL、授業内の確認手順、3Dへ再利用する境界
 - [`math-writing-rules.txt`](./math-writing-rules.txt): 学生向け画面で使う数学用語・数式表記の基準

@@ -18,8 +18,9 @@
 4. `pnpm test` を実行する。失敗した場合は公開しない。
 5. `APP_BASE_PATH=/linear-algebra-visual-lab/` を指定して `pnpm build` を実行する。
 6. Viteが `dist/index.html`、CSS、JavaScript等の公開用ファイル一式を `dist/` に生成する。
-7. GitHub Actionsが `dist/` だけをPages artifactとしてアップロードする。
-8. GitHub Pagesがartifactを公開し、成功した実行のURLをActions画面へ表示する。
+7. `pnpm verify:dist`が、`dist/index.html`のbase pathと参照アセットの存在を検証する。
+8. GitHub Actionsが検証済みの `dist/` だけをPages artifactとしてアップロードする。
+9. GitHub Pagesがartifactを公開し、成功した実行のURLをActions画面へ表示する。
 
 `dist/` はビルドのたびに再生成できる成果物であり、mainへコミットしない。
 
@@ -57,6 +58,7 @@
 - 共有URLを別タブで開き、ベクトル、span選択、幾何表示が復元される。
 - 共有URLから編集した後のReset、クリップボードコピー、テキスト保存が動作する。
 - Actionsの実行対象コミットが、公開したいmainの最新コミットと一致する。
+- `Verify static artifact and base path`ステップが成功し、`/linear-algebra-visual-lab/`と参照アセットが一致する。
 
 ## 通常の更新
 
@@ -69,6 +71,7 @@
 - リポジトリ名を変更した場合は `APP_BASE_PATH` を変更する。
 - GitHub Pagesのカスタムドメインを設定した場合は、通常base pathを `/` へ変更する。
 - 学内nginxへ移す場合は、配置するサブパス、HTTPS、リクエスト行長、キャッシュ方針を別途確認する。
+- nginx向けの具体的なビルド・設定・確認項目は [`NGINX.md`](./NGINX.md) を参照する。
 - GitHub Actionsで使用する各Actionの参照バージョンは、ワークフロー実装時と定期棚卸し時に公式ドキュメントで確認する。
 
 ## 公式資料
