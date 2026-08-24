@@ -87,6 +87,8 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain("const SPAN_COLOR = '#737b82'");
     expect(componentSource).toContain('side: THREE.DoubleSide');
     expect(componentSource).toContain('new THREE.LineDashedMaterial');
+    expect(componentSource).toContain('const fill = new THREE.Mesh(boxGeometry, fillMaterial)');
+    expect(componentSource).not.toContain('addSpanPlaneGrid');
     expect(componentSource).toContain('space-span-rank-three-label');
   });
 });

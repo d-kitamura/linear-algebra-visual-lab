@@ -1695,7 +1695,7 @@ function ThreeDimensionalInspector({
           </div>
         </dl>
         <p className="three-dimensional-span-note">
-          灰色の原点・破線・半透明平面・空間格子で次元を区別します。
+          灰色の原点・破線・半透明平面・半透明空間と外枠で次元を区別します。
           表示をオフにしても、選択集合と解析結果は維持されます。
         </p>
       </section>

@@ -410,7 +410,7 @@ function addSpanGeometry(
       addSpanPlane(scene, geometry, extent);
       return;
     case 'space':
-      addSpanSpace(scene, geometry, extent);
+      addSpanSpace(scene, geometry);
   }
 }
 
@@ -494,7 +494,7 @@ function addSpanPlane(
   const planeMaterial = new THREE.MeshBasicMaterial({
     color: SPAN_COLOR,
     transparent: true,
-    opacity: 0.14,
+    opacity: 0.18,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
@@ -505,14 +505,6 @@ function addSpanPlane(
 
   const basisU = pointToVector3(geometry.basisU);
   const basisV = pointToVector3(geometry.basisV);
-  addSpanPlaneGrid(
-    scene,
-    basisU,
-    basisV,
-    geometry.halfSize,
-    adaptiveGridStep(extent.halfRange),
-    0.38,
-  );
 
   const labelPosition = basisU.clone().add(basisV).normalize()
     .multiplyScalar(extent.halfRange * 0.82)
@@ -527,45 +519,33 @@ function addSpanPlane(
 function addSpanSpace(
   scene: THREE.Scene,
   geometry: Extract<SpaceSpanGeometry, { readonly kind: 'space' }>,
-  extent: SpaceExtent,
 ): void {
   const boxGeometry = new THREE.BoxGeometry(
     geometry.halfSize * 2,
     geometry.halfSize * 2,
     geometry.halfSize * 2,
   );
-  const edgeGeometry = new THREE.EdgesGeometry(boxGeometry);
-  boxGeometry.dispose();
-  const edgeMaterial = new THREE.LineDashedMaterial({
+  const fillMaterial = new THREE.MeshBasicMaterial({
     color: SPAN_COLOR,
-    dashSize: extent.halfRange * 0.08,
-    gapSize: extent.halfRange * 0.045,
     transparent: true,
-    opacity: 0.42,
+    opacity: 0.065,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const fill = new THREE.Mesh(boxGeometry, fillMaterial);
+  fill.renderOrder = -4;
+  scene.add(fill);
+
+  const edgeGeometry = new THREE.EdgesGeometry(boxGeometry);
+  const edgeMaterial = new THREE.LineBasicMaterial({
+    color: SPAN_COLOR,
+    transparent: true,
+    opacity: 0.72,
     depthWrite: false,
   });
   const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-  edges.computeLineDistances();
   edges.renderOrder = -3;
   scene.add(edges);
-
-  const step = adaptiveGridStep(extent.halfRange);
-  addSpanPlaneGrid(
-    scene,
-    new THREE.Vector3(1, 0, 0),
-    new THREE.Vector3(0, 0, 1),
-    geometry.halfSize,
-    step,
-    0.2,
-  );
-  addSpanPlaneGrid(
-    scene,
-    new THREE.Vector3(0, 1, 0),
-    new THREE.Vector3(0, 0, 1),
-    geometry.halfSize,
-    step,
-    0.2,
-  );
 
   scene.add(createTextLabel(
     '生成する空間：3次元座標空間全体',
@@ -576,43 +556,6 @@ function addSpanSpace(
       geometry.halfSize * 0.78,
     ),
   ));
-}
-
-function addSpanPlaneGrid(
-  scene: THREE.Scene,
-  basisU: THREE.Vector3,
-  basisV: THREE.Vector3,
-  halfSize: number,
-  step: number,
-  opacity: number,
-): void {
-  const positions: number[] = [];
-  const lineCount = Math.max(1, Math.ceil(halfSize / step));
-
-  for (let index = -lineCount; index <= lineCount; index += 1) {
-    const coordinate = Math.max(-halfSize, Math.min(halfSize, index * step));
-    const uStart = basisU.clone().multiplyScalar(-halfSize)
-      .addScaledVector(basisV, coordinate);
-    const uEnd = basisU.clone().multiplyScalar(halfSize)
-      .addScaledVector(basisV, coordinate);
-    const vStart = basisV.clone().multiplyScalar(-halfSize)
-      .addScaledVector(basisU, coordinate);
-    const vEnd = basisV.clone().multiplyScalar(halfSize)
-      .addScaledVector(basisU, coordinate);
-    positions.push(...uStart.toArray(), ...uEnd.toArray(), ...vStart.toArray(), ...vEnd.toArray());
-  }
-
-  const gridGeometry = new THREE.BufferGeometry();
-  gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  const gridMaterial = new THREE.LineBasicMaterial({
-    color: SPAN_COLOR,
-    transparent: true,
-    opacity,
-    depthWrite: false,
-  });
-  const grid = new THREE.LineSegments(gridGeometry, gridMaterial);
-  grid.renderOrder = -2;
-  scene.add(grid);
 }
 
 function addAxes(scene: THREE.Scene, extent: SpaceExtent): void {
