@@ -298,9 +298,16 @@ export function VectorSpace3D({
         <span><i className="camera-gesture-mark" aria-hidden="true" />背景をドラッグ：視点を回転</span>
       </div>
 
+      <p className="visually-hidden" id="space-3d-canvas-alternative">
+        3D図形は補助的な可視化です。ベクトルの座標、rank、生成する空間、一次独立性、
+        一次結合の解は、3D表示の後にある数値入力と解析カードでも確認できます。
+        3D表示を利用できない場合も、数値入力、共有URL、Resetは利用できます。
+      </p>
+
       <div
         className={`three-dimensional-render-frame ${errorMessage ? 'has-error' : ''}`}
         role="group"
+        aria-describedby="space-3d-canvas-alternative"
         aria-label={`右手座標系の3次元座標空間。x軸、y軸、z軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `選択したベクトルが生成する${describeSpaceSpan(spanRank)}を灰色の幾何形状で表示しています。` : '生成する空間の幾何表示はオフです。'}${linearCombinationVisible ? linearCombinationTarget ? 'ターゲットvと一次結合の幾何表示があります。' : '一次結合モードでターゲットは未配置です。' : ''}`}
       >
         <div className="three-dimensional-render-host" ref={hostRef} />
@@ -313,6 +320,7 @@ export function VectorSpace3D({
           <div className="three-dimensional-error" role="alert">
             <strong>3D表示を利用できません</strong>
             <p>{errorMessage}</p>
+            <p>数値入力と解析カード、共有URL、Resetはそのまま利用できます。</p>
           </div>
         ) : null}
       </div>

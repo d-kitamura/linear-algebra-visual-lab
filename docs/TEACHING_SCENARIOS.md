@@ -1,12 +1,12 @@
-# 2D教材シナリオ
+# 2D・3D教材シナリオ
 
-最終更新: 2026-08-20
+最終更新: 2026-08-24
 
 ## 目的
 
-フェーズ3・4の統合確認と授業準備に共通して使える2Dの代表例を定義する。既存リンクは共有状態v2で作成したものだが、現行v3へ厳密に移行して同じベクトル、span選択、幾何表示、一次結合エクスプローラとターゲットを復元する。リンクを開いた時点の状態がInitialStateとなるため、操作後にResetすると同じ例へ戻る。
+フェーズ3〜5の統合確認と授業準備に共通して使える2D・3Dの代表例を定義する。2Dの既存リンクは共有状態v2で作成したものだが、現行v3へ厳密に移行して同じベクトル、span選択、幾何表示、一次結合エクスプローラとターゲットを復元する。3Dリンクはこれらに加えてカメラも復元する。リンクを開いた時点の状態がInitialStateとなるため、操作後にResetすると同じ例へ戻る。
 
-状態の正本は `src/teaching/twoDimensionalScenarios.ts` とし、期待する数学結果と本番共有URLの往復を自動テストする。
+状態の正本は `src/teaching/twoDimensionalScenarios.ts` と `src/teaching/threeDimensionalScenarios.ts` とし、期待する数学結果と本番共有URLの往復を自動テストする。
 
 ## 代表例
 
@@ -66,6 +66,52 @@
 - 期待結果: `rank(A) = rank([A | v]) = 2 < 3`、不定（解が無数）。
 - 観察点: 2次元座標平面全体を生成しても、3本を使うと係数の組は一意でない。常時表示の2例と、展開できる一般解を比較する。
 
+## 3Dの代表例
+
+### 10. 3Dの空集合
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjozLCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjMsInZlY3RvcnMiOltdLCJzcGFuU2VsZWN0aW9uIjpbXSwidmlzdWFsaXphdGlvbiI6eyJzaG93U3BhbiI6dHJ1ZSwiY2FtZXJhIjp7ImRpcmVjdGlvbiI6WzAuNTAzMDU1NDYsLTAuNjgwNjA0NDUsMC41MzI2NDY5Nl0sInRhcmdldCI6WzAsMCwwXSwidXAiOlswLDAsMV0sInpvb20iOjF9fSwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6ZmFsc2UsInRhcmdldCI6bnVsbH19)
+- 期待結果: ベクトル数0、`rank(A) = 0`、生成する空間の次元0、一次独立。
+- 観察点: 3次元でも空集合が生成する空間は原点だけであり、空集合は一次独立である。
+
+### 11. 3Dの零ベクトル
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjozLCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjMsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYeKCgSIsImNvb3JkaW5hdGVzIjpbMCwwLDBdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiXSwidmlzdWFsaXphdGlvbiI6eyJzaG93U3BhbiI6dHJ1ZSwiY2FtZXJhIjp7ImRpcmVjdGlvbiI6WzAsLTEsMF0sInRhcmdldCI6WzAsMCwwXSwidXAiOlswLDAsMV0sInpvb20iOjF9fSwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6ZmFsc2UsInRhcmdldCI6bnVsbH19)
+- 期待結果: ベクトル数1、`rank(A) = 0`、生成する空間の次元0、一次従属。
+- 観察点: 空集合と同じ零部分空間を生成する一方、零ベクトルを含む集合は一次従属となる。
+
+### 12. 1本が生成する直線
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjozLCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjMsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYeKCgSIsImNvb3JkaW5hdGVzIjpbMSwyLDFdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiXSwidmlzdWFsaXphdGlvbiI6eyJzaG93U3BhbiI6dHJ1ZSwiY2FtZXJhIjp7ImRpcmVjdGlvbiI6WzEsMCwwXSwidGFyZ2V0IjpbMCwwLDBdLCJ1cCI6WzAsMCwxXSwiem9vbSI6MX19LCJsaW5lYXJDb21iaW5hdGlvbiI6eyJ2aXNpYmxlIjpmYWxzZSwidGFyZ2V0IjpudWxsfX0)
+- 期待結果: ベクトル数1、`rank(A) = 1`、生成する空間の次元1、一次独立。
+- 観察点: 灰色の直線を視点回転し、1本が原点を通る1次元部分空間を生成することを確認する。
+
+### 13. 同一平面上の3本
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjozLCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjMsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYeKCgSIsImNvb3JkaW5hdGVzIjpbMSwwLDBdfSx7ImlkIjoiYTIiLCJuYW1lIjoiYeKCgiIsImNvb3JkaW5hdGVzIjpbMCwxLDBdfSx7ImlkIjoiYTMiLCJuYW1lIjoiYeKCgyIsImNvb3JkaW5hdGVzIjpbMSwxLDBdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiLCJhMiIsImEzIl0sInZpc3VhbGl6YXRpb24iOnsic2hvd1NwYW4iOnRydWUsImNhbWVyYSI6eyJkaXJlY3Rpb24iOlswLDAsMV0sInRhcmdldCI6WzAsMCwwXSwidXAiOlswLDEsMF0sInpvb20iOjF9fSwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6ZmFsc2UsInRhcmdldCI6bnVsbH19)
+- 期待結果: ベクトル数3、`rank(A) = 2`、生成する空間の次元2、一次従属。
+- 観察点: 上から見ると2Dに見える例を等角視点へ変え、灰色の平面が3次元座標空間の一部であることを確認する。矢先を平面外へ動かしてrank 3にした後、平面へ近づけて吸着させる比較にも使える。
+
+## 3D一次結合エクスプローラの代表例
+
+### 14. 一次独立な3本で唯一解
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjozLCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjMsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYeKCgSIsImNvb3JkaW5hdGVzIjpbMSwxLDBdfSx7ImlkIjoiYTIiLCJuYW1lIjoiYeKCgiIsImNvb3JkaW5hdGVzIjpbMCwxLDFdfSx7ImlkIjoiYTMiLCJuYW1lIjoiYeKCgyIsImNvb3JkaW5hdGVzIjpbMSwwLDFdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiLCJhMiIsImEzIl0sInZpc3VhbGl6YXRpb24iOnsic2hvd1NwYW4iOnRydWUsImNhbWVyYSI6eyJkaXJlY3Rpb24iOlswLjUwMzA1NTQ2LC0wLjY4MDYwNDQ1LDAuNTMyNjQ2OTZdLCJ0YXJnZXQiOlswLDAsMF0sInVwIjpbMCwwLDFdLCJ6b29tIjoxfX0sImxpbmVhckNvbWJpbmF0aW9uIjp7InZpc2libGUiOnRydWUsInRhcmdldCI6WzMsMiw0XX19)
+- 期待結果: `rank(A) = rank([A | v]) = 3`、唯一解、`v = 0.5a₁ + 1.5a₂ + 2.5a₃`。
+- 観察点: 直観的でない3本でも3次元座標空間全体を生成し、ターゲットの係数が一意に定まる。平行六面体を回転して、3本の係数倍ベクトルと対角のターゲットを確認する。
+
+### 15. 3Dの直線外では表現不能
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjozLCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjMsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYeKCgSIsImNvb3JkaW5hdGVzIjpbMSwxLDBdfSx7ImlkIjoiYTIiLCJuYW1lIjoiYeKCgiIsImNvb3JkaW5hdGVzIjpbMiwyLDBdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiLCJhMiJdLCJ2aXN1YWxpemF0aW9uIjp7InNob3dTcGFuIjp0cnVlLCJjYW1lcmEiOnsiZGlyZWN0aW9uIjpbMCwtMSwwXSwidGFyZ2V0IjpbMCwwLDBdLCJ1cCI6WzAsMCwxXSwiem9vbSI6MX19LCJsaW5lYXJDb21iaW5hdGlvbiI6eyJ2aXNpYmxlIjp0cnVlLCJ0YXJnZXQiOlswLDAsMV19fQ)
+- 期待結果: `rank(A) = 1 < rank([A | v]) = 2`、不能（解なし）。
+- 観察点: 正面視点では重なりに注意し、等角視点へ変えてターゲットが灰色の直線外にあることを確認する。ターゲットを数値入力で直線上へ置くと不定へ変わる。
+
+### 16. 同一平面上の3本では表し方が無数
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjozLCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjMsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYeKCgSIsImNvb3JkaW5hdGVzIjpbMSwwLDBdfSx7ImlkIjoiYTIiLCJuYW1lIjoiYeKCgiIsImNvb3JkaW5hdGVzIjpbMCwxLDBdfSx7ImlkIjoiYTMiLCJuYW1lIjoiYeKCgyIsImNvb3JkaW5hdGVzIjpbMSwxLDBdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiLCJhMiIsImEzIl0sInZpc3VhbGl6YXRpb24iOnsic2hvd1NwYW4iOnRydWUsImNhbWVyYSI6eyJkaXJlY3Rpb24iOlswLjUwMzA1NTQ2LC0wLjY4MDYwNDQ1LDAuNTMyNjQ2OTZdLCJ0YXJnZXQiOlswLDAsMF0sInVwIjpbMCwwLDFdLCJ6b29tIjoxfX0sImxpbmVhckNvbWJpbmF0aW9uIjp7InZpc2libGUiOnRydWUsInRhcmdldCI6WzIsLTEsMF19fQ)
+- 期待結果: `rank(A) = rank([A | v]) = 2 < 3`、不定（解が無数）。
+- 観察点: ターゲットと3本が同じ平面にあり、係数例と一般解が同じターゲットを表すことを確認する。ターゲットの矢先を平面外へ動かすと不能へ変わる。
+
 ## 共有URLを使う授業内の確認手順
 
 1. 教員が上記の共有URLを提示し、学生が同じInitialStateを開く。
@@ -75,6 +121,23 @@
 5. 元のタブでResetを実行し、教員が配布したInitialStateへ戻ることを確認する。
 
 一次結合の代表例では、ターゲット `v` を動かして分類と2つのrankがどう変わるかを確認し、共有URLとResetがターゲットを含む初期状態を復元することも照合する。
+
+3Dの代表例では、次の順に操作すると「見え方」と数学的な状態を混同しにくい。
+
+1. まず右側（狭い画面では3D表示の下）の数式カードでrank、次元、一次独立・一次従属を確認する。
+2. 「正面」「右」「上」「等角」で同じベクトルとspanを見比べ、視点を変えても数学的な状態は変わらないことを確認する。
+3. 背景をドラッグして視点を回転し、ベクトルの矢先をドラッグして画面平行面内で座標を変更する。直線・平面への吸着時は、灰色のspanとrankがドラッグ中に切り替わることを確認する。
+4. 一次結合モードでは背景の短いタップでターゲット `v` を配置し、その矢先をドラッグする。唯一解の例では平行六面体、不定の例では平行四辺形が追従することを確認する。
+5. 教員は共有URLまたはQRコードを提示し、学生は別端末でベクトル、span選択、ターゲット、カメラが一致することを確認する。操作後のResetでも配布時のカメラへ戻る。
+
+## 端末・アクセシビリティ・失敗時の確認
+
+- デスクトップでは3D表示と解析カードが2列、タブレット・スマートフォンでは1列になる。縦向き・横向きの切替後に「全体を表示」を押し、Canvasとカードが横にはみ出さないことを確認する。
+- Canvas内の1本指ドラッグとピンチは3D操作に使う。ページをスクロールするときはCanvas外を操作する。Canvasにはキーボードフォーカスがあり、視点プリセットと「全体を表示」は通常のボタンとしてキーボードでも操作できる。
+- 幾何表示は色だけに依存せず、ベクトル名、線種、数式カード、状態文を併用する。Canvasを利用できない場合も、数値入力と解析カードで座標・rank・生成する空間・一次独立性・一次結合の結果を確認できる。
+- WebGL初期化失敗または描画コンテキスト喪失時は3D表示内に案内を出す。数値入力、共有URL、ResetはCanvasと独立して利用し、授業を継続できる。
+- 座標の不正入力、8本の上限、長すぎる・壊れた共有URL、クリップボードやQR保存の失敗は、該当操作の近くに日本語で理由と復帰方法を表示する。
+- 本番確認では最新のChrome・Edge・Safari系ブラウザを少なくとも1つずつ、PCと実機スマートフォンで確認する。代表例14は描画要素が多いため、視点回転とターゲットドラッグの追従性を性能確認にも使う。
 
 ## 後続フェーズで再利用する境界
 
