@@ -100,3 +100,5 @@
 - [`SHARE_URL_COMPATIBILITY.md`](./SHARE_URL_COMPATIBILITY.md): 正式リリース後のURL互換契約
 - [`GITHUB_PAGES.md`](./GITHUB_PAGES.md): 正規配布先の更新手順
 - [`NGINX.md`](./NGINX.md): 学内nginxを採用する場合の設定・確認手順
+- [`USAGE_AND_PRIVACY.md`](./USAGE_AND_PRIVACY.md): 学生・教員向けの利用・共有・保存・配信基盤の案内
+- [`../THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md): 第三者ライセンス

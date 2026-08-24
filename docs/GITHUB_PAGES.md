@@ -66,6 +66,8 @@
 
 テストまたはビルドが失敗した場合は新しい成果物をデプロイせず、直前に成功した公開版を維持する。競合、認証失敗、意図しない差分がある場合は破壊的に解消せず、作業を止めて利用者へ報告する。GitHubのSettings、Secrets、リポジトリ設定の変更は、通常のcommit・push運用には含めない。
 
+授業での配布・復旧は [`CLASSROOM_DISTRIBUTION.md`](./CLASSROOM_DISTRIBUTION.md)、学生・教員向けの共有状態・保存・配信基盤・利用条件は [`USAGE_AND_PRIVACY.md`](./USAGE_AND_PRIVACY.md) を参照する。配布版を更新するときは、`package.json`、アプリ内表示、`CHANGELOG.md`、第三者通知を同時に確認する。
+
 ## 変更時に見直す項目
 
 - リポジトリ名を変更した場合は `APP_BASE_PATH` を変更する。

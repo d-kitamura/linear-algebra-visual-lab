@@ -115,6 +115,7 @@
 ## 共有URLを使う授業内の確認手順
 
 端末・ブラウザの能力別対応、授業前チェック、QR・ネットワーク・WebGL等の復旧手順は [`CLASSROOM_DISTRIBUTION.md`](./CLASSROOM_DISTRIBUTION.md) を参照する。
+共有状態、個人情報、配信基盤、利用条件の学生向け案内は [`USAGE_AND_PRIVACY.md`](./USAGE_AND_PRIVACY.md) を参照する。
 
 1. 教員が上記の共有URLを提示し、学生が同じInitialStateを開く。
 2. 学生が座標面、選択した集合、全ベクトルの3箇所で期待結果を照合する。

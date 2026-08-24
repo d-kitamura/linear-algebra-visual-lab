@@ -2496,8 +2496,119 @@
   font-size: 0.78rem;
 }
 
+.site-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .site-footer p {
   margin: 0;
+}
+
+.site-footer-meta {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--mono-font);
+}
+
+.site-footer-meta button {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.site-footer-meta button:hover,
+.site-footer-meta button:focus-visible {
+  color: var(--ink);
+}
+
+.usage-dialog {
+  width: min(620px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: 24px;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 0 30px 100px rgba(18, 28, 36, 0.32);
+}
+
+.usage-dialog::backdrop {
+  background: rgba(18, 28, 36, 0.58);
+  backdrop-filter: blur(3px);
+}
+
+.usage-dialog-content {
+  padding: clamp(22px, 5vw, 36px);
+}
+
+.usage-dialog h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: clamp(1.65rem, 4vw, 2.25rem);
+  letter-spacing: -0.035em;
+}
+
+.usage-dialog-content > p:not(.panel-kicker) {
+  margin: 14px 0 0;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.usage-dialog ul {
+  margin: 18px 0;
+  padding-left: 1.3rem;
+  line-height: 1.75;
+}
+
+.usage-dialog-license {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono-font);
+  font-size: 0.78rem;
+}
+
+.usage-dialog-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 20px;
+}
+
+.usage-dialog-links a {
+  color: var(--accent-strong);
+  font-size: 0.84rem;
+  text-underline-offset: 3px;
+}
+
+.usage-dialog-close {
+  width: 100%;
+  margin-top: 24px;
+  padding: 12px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  color: var(--ink);
+  background: #fffdf8;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.usage-dialog-close:hover,
+.usage-dialog-close:focus-visible {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, white);
 }
 
 .share-dialog {
@@ -2674,6 +2785,11 @@
 
   .site-header {
     padding-top: 16px;
+  }
+
+  .site-footer-inner {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .brand > span:last-child {
