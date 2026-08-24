@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   coordinatesFromScreenPlaneDrag,
+  createSpaceSpanDragPreview,
   vectorTipHitRadius,
 } from '../../src/visualization/spaceVectorEditing';
 
@@ -34,5 +35,33 @@ describe('3Dベクトルの画面平行面編集', () => {
     expect(vectorTipHitRadius('mouse')).toBe(15);
     expect(vectorTipHitRadius('pen')).toBe(19);
     expect(vectorTipHitRadius('touch')).toBe(24);
+  });
+
+  it('span対象の3本目を平面へ吸着したプレビューではrankを3から2へ更新する', () => {
+    const spanVectors = [
+      { id: 'a1', name: 'a₁', coordinates: [1, 0, 0] },
+      { id: 'a2', name: 'a₂', coordinates: [0, 1, 0] },
+      { id: 'a3', name: 'a₃', coordinates: [0, 0, 1] },
+    ];
+
+    expect(createSpaceSpanDragPreview('a3', [0.5, 0.25, 0], spanVectors)).toMatchObject({
+      rank: 2,
+      vectors: [
+        spanVectors[0],
+        spanVectors[1],
+        { id: 'a3', name: 'a₃', coordinates: [0.5, 0.25, 0] },
+      ],
+    });
+  });
+
+  it('ドラッグ対象がspanに含まれなければプレビューを変更しない', () => {
+    expect(createSpaceSpanDragPreview(
+      'a3',
+      [0.5, 0.25, 0],
+      [
+        { id: 'a1', name: 'a₁', coordinates: [1, 0, 0] },
+        { id: 'a2', name: 'a₂', coordinates: [0, 1, 0] },
+      ],
+    )).toBeNull();
   });
 });

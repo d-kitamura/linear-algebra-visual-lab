@@ -34,6 +34,8 @@ import {
 } from './spaceGeometry';
 import {
   coordinatesFromScreenPlaneDrag,
+  createSpaceSpanDragPreview,
+  type SpaceSpanDragPreview,
   vectorTipHitRadius,
 } from './spaceVectorEditing';
 
@@ -81,6 +83,7 @@ interface ActiveScreenPlaneDrag {
   coordinates: [number, number, number];
   snapKind: SpaceVectorSnapKind;
   snapTargetVectorIds: readonly string[];
+  spanPreviewRank: number | null;
 }
 
 const ORIGIN = new THREE.Vector3(0, 0, 0);
@@ -357,9 +360,13 @@ function createThreeSpaceRuntime(
   host.append(labelRenderer.domElement);
 
   addGrid(scene, extent);
+  const spanGeometryGroup = new THREE.Group();
   if (showSpan) {
-    addSpanGeometry(scene, spanVectors, spanRank, extent);
+    addSpanGeometry(spanGeometryGroup, spanVectors, spanRank, extent);
   }
+  scene.add(spanGeometryGroup);
+  const spanDragPreview = new THREE.Group();
+  scene.add(spanDragPreview);
   addAxes(scene, extent);
   addOrigin(scene, extent);
   if (combinationGeometry) {
@@ -545,6 +552,18 @@ function createThreeSpaceRuntime(
     renderedVector.object.visible = false;
     renderedVector.label.visible = false;
     renderedVector.tipIndicator.scale.setScalar(1.22);
+    const initialSpanPreview = showSpan
+      ? createSpaceSpanDragPreview(vector.id, initialCoordinates, spanVectors)
+      : null;
+    if (initialSpanPreview) {
+      spanGeometryGroup.visible = false;
+      updateSpanDragPreview(
+        spanDragPreview,
+        initialSpanPreview,
+        null,
+        extent,
+      );
+    }
     activeScreenPlaneDrag = {
       pointerId: event.pointerId,
       vector,
@@ -555,6 +574,7 @@ function createThreeSpaceRuntime(
       coordinates: [...initialCoordinates],
       snapKind: null,
       snapTargetVectorIds: [],
+      spanPreviewRank: initialSpanPreview?.rank ?? null,
     };
     updateVectorScreenPlanePreview(
       dragPreview,
@@ -606,6 +626,21 @@ function createThreeSpaceRuntime(
     activeScreenPlaneDrag.coordinates = [...snapResult.coordinates];
     activeScreenPlaneDrag.snapKind = snapResult.snapKind;
     activeScreenPlaneDrag.snapTargetVectorIds = snapResult.targetVectorIds;
+    const spanPreview = showSpan
+      ? createSpaceSpanDragPreview(
+          activeScreenPlaneDrag.vector.id,
+          activeScreenPlaneDrag.coordinates,
+          spanVectors,
+        )
+      : null;
+    if (spanPreview) {
+      activeScreenPlaneDrag.spanPreviewRank = updateSpanDragPreview(
+        spanDragPreview,
+        spanPreview,
+        activeScreenPlaneDrag.spanPreviewRank,
+        extent,
+      );
+    }
     const tip = new THREE.Vector3(...activeScreenPlaneDrag.coordinates);
     activeScreenPlaneDrag.renderedVector.tipIndicator.position.copy(tip);
     updateVectorScreenPlanePreview(
@@ -624,8 +659,11 @@ function createThreeSpaceRuntime(
       snapResult.targetVectorIds,
       vectors,
     );
+    const spanDescription = activeScreenPlaneDrag.spanPreviewRank === null
+      ? ''
+      : `　生成する空間：${describeSpaceSpan(activeScreenPlaneDrag.spanPreviewRank)}`;
     onInteractionMessage(
-      `${activeScreenPlaneDrag.vector.name} の成分：${formatCoordinateStatus(activeScreenPlaneDrag.coordinates)}　${snapDescription ?? '画面に平行な面内で移動'}`,
+      `${activeScreenPlaneDrag.vector.name} の成分：${formatCoordinateStatus(activeScreenPlaneDrag.coordinates)}　${snapDescription ?? '画面に平行な面内で移動'}${spanDescription}`,
     );
     render();
   };
@@ -664,6 +702,8 @@ function createThreeSpaceRuntime(
     completedDrag.renderedVector.tipIndicator.position.set(...completedDrag.initialCoordinates);
     completedDrag.renderedVector.tipIndicator.scale.setScalar(1);
     clearObjectGroup(dragPreview);
+    clearObjectGroup(spanDragPreview);
+    spanGeometryGroup.visible = true;
     onInteractionMessage('ベクトルの変更を取り消しました。');
     render();
   };
@@ -744,7 +784,7 @@ function addGrid(scene: THREE.Scene, extent: SpaceExtent): void {
 }
 
 function addSpanGeometry(
-  scene: THREE.Scene,
+  scene: THREE.Object3D,
   spanVectors: readonly VectorValue[],
   spanRank: number,
   extent: SpaceExtent,
@@ -766,7 +806,21 @@ function addSpanGeometry(
   }
 }
 
-function addSpanOrigin(scene: THREE.Scene, extent: SpaceExtent): void {
+function updateSpanDragPreview(
+  group: THREE.Group,
+  preview: SpaceSpanDragPreview,
+  previousRank: number | null,
+  extent: SpaceExtent,
+): number {
+  if (preview.rank === previousRank && (preview.rank === 0 || preview.rank === 3)) {
+    return preview.rank;
+  }
+  clearObjectGroup(group);
+  addSpanGeometry(group, preview.vectors, preview.rank, extent);
+  return preview.rank;
+}
+
+function addSpanOrigin(scene: THREE.Object3D, extent: SpaceExtent): void {
   const radius = Math.max(0.14, extent.halfRange * 0.035);
   const fillGeometry = new THREE.SphereGeometry(radius, 20, 14);
   const fillMaterial = new THREE.MeshBasicMaterial({
@@ -798,7 +852,7 @@ function addSpanOrigin(scene: THREE.Scene, extent: SpaceExtent): void {
 }
 
 function addSpanLine(
-  scene: THREE.Scene,
+  scene: THREE.Object3D,
   geometry: Extract<SpaceSpanGeometry, { readonly kind: 'line' }>,
   extent: SpaceExtent,
 ): void {
@@ -837,7 +891,7 @@ function addSpanLine(
 }
 
 function addSpanPlane(
-  scene: THREE.Scene,
+  scene: THREE.Object3D,
   geometry: Extract<SpaceSpanGeometry, { readonly kind: 'plane' }>,
   extent: SpaceExtent,
 ): void {
@@ -869,7 +923,7 @@ function addSpanPlane(
 }
 
 function addSpanSpace(
-  scene: THREE.Scene,
+  scene: THREE.Object3D,
   geometry: Extract<SpaceSpanGeometry, { readonly kind: 'space' }>,
 ): void {
   const boxGeometry = new THREE.BoxGeometry(

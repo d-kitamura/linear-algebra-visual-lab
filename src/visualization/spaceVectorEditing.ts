@@ -1,9 +1,15 @@
+import { analyzeVectorSet, type VectorValue } from '../domain';
 import { MAX_ABSOLUTE_COORDINATE } from '../sharing';
 
 export interface WorldPoint3D {
   readonly x: number;
   readonly y: number;
   readonly z: number;
+}
+
+export interface SpaceSpanDragPreview {
+  readonly vectors: readonly VectorValue[];
+  readonly rank: number;
 }
 
 export function vectorTipHitRadius(pointerType: string): number {
@@ -36,4 +42,24 @@ export function coordinatesFromScreenPlaneDrag(
     const rounded = Number(clamped.toFixed(6));
     return Object.is(rounded, -0) ? 0 : rounded;
   }) as [number, number, number];
+}
+
+export function createSpaceSpanDragPreview(
+  draggedVectorId: string,
+  coordinates: readonly [number, number, number],
+  spanVectors: readonly VectorValue[],
+): SpaceSpanDragPreview | null {
+  if (!spanVectors.some((vector) => vector.id === draggedVectorId)) {
+    return null;
+  }
+
+  const previewVectors = spanVectors.map((vector) => (
+    vector.id === draggedVectorId
+      ? { ...vector, coordinates }
+      : vector
+  ));
+  return {
+    vectors: previewVectors,
+    rank: analyzeVectorSet({ dimension: 3, vectors: previewVectors }).rank,
+  };
 }

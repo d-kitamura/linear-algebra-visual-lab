@@ -79,7 +79,7 @@ describe('固定3D表示とカメラ操作', () => {
   });
 
   it('rank 0〜3のspan幾何を中立色で描画する', () => {
-    expect(componentSource).toContain('addSpanGeometry(scene, spanVectors, spanRank, extent)');
+    expect(componentSource).toContain('addSpanGeometry(spanGeometryGroup, spanVectors, spanRank, extent)');
     expect(componentSource).toContain("case 'origin'");
     expect(componentSource).toContain("case 'line'");
     expect(componentSource).toContain("case 'plane'");
@@ -148,5 +148,13 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain('と平行にスナップ');
     expect(componentSource).toContain('と同一平面上にスナップ');
     expect(componentSource).toContain("snapKind ? '#247565' : '#2f6690'");
+  });
+
+  it('span対象ベクトルのドラッグ中にrankと灰色の幾何形状を更新する', () => {
+    expect(componentSource).toContain('createSpaceSpanDragPreview');
+    expect(componentSource).toContain('updateSpanDragPreview');
+    expect(componentSource).toContain('spanGeometryGroup.visible = false');
+    expect(componentSource).toContain('const spanDescription = activeScreenPlaneDrag.spanPreviewRank');
+    expect(componentSource).toContain('生成する空間：${describeSpaceSpan(activeScreenPlaneDrag.spanPreviewRank)}');
   });
 });
