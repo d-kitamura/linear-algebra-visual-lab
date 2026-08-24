@@ -171,6 +171,19 @@ describe('固定3D表示とカメラ操作', () => {
     expect(cssSource).toMatch(/\.three-dimensional-canvas\.is-target-tip-dragging\s*\{[^}]*cursor:\s*grabbing;/su);
   });
 
+  it('ターゲットプレビュー更新時に古いCSS2DラベルのDOMを明示的に除去する', () => {
+    expect(componentSource).toContain('object instanceof CSS2DObject');
+    expect(componentSource).toContain('object.element.remove()');
+    expect(componentSource).toContain('clearObjectGroup(targetDragPreview)');
+  });
+
+  it('ターゲットをrank 2のspan平面へ画面幅相対の距離で吸着する', () => {
+    expect(componentSource).toContain('snapSpaceTargetToSelectedSpan');
+    expect(componentSource).toContain('activeTargetScreenPlaneDrag.snapKind = snapResult.snapKind');
+    expect(componentSource).toContain('平面spanへ吸着');
+    expect(componentSource).toContain('が生成する平面にスナップ（一次結合で表現できます）');
+  });
+
   it('ドラッグ中だけ表示幅に相対な平行・同一平面スナップを適用する', () => {
     expect(componentSource).toContain('snapDraggedSpaceVectorToDependentPosition');
     expect(componentSource).toContain('parallelSnapDistanceForViewWidth(orthographicVisibleWidth(camera))');

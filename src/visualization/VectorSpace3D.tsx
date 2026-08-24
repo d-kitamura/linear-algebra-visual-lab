@@ -9,6 +9,8 @@ import type { VectorValue } from '../domain';
 import {
   parallelSnapDistanceForViewWidth,
   snapDraggedSpaceVectorToDependentPosition,
+  snapSpaceTargetToSelectedSpan,
+  type SpaceTargetSnapKind,
   type SpaceVectorSnapKind,
 } from '../state';
 import {
@@ -109,6 +111,8 @@ interface ActiveTargetScreenPlaneDrag {
   readonly startPoint: THREE.Vector3;
   readonly interactionPlane: THREE.Plane;
   coordinates: [number, number, number];
+  snapKind: SpaceTargetSnapKind;
+  snapBasisVectorIds: readonly string[];
 }
 
 const ORIGIN = new THREE.Vector3(0, 0, 0);
@@ -290,7 +294,7 @@ export function VectorSpace3D({
       <div className="three-dimensional-gesture-guide" aria-label="3D表示の操作方法">
         <span><i className="vector-tip-gesture-mark" aria-hidden="true" />通常ベクトルの矢先をドラッグ：画面内で移動・吸着</span>
         {linearCombinationVisible && linearCombinationTarget ? (
-          <span><i className="target-vector-gesture-mark" aria-hidden="true" />ターゲット v の矢先をドラッグ：画面内で移動</span>
+          <span><i className="target-vector-gesture-mark" aria-hidden="true" />ターゲット v の矢先をドラッグ：画面内で移動・平面spanへ吸着</span>
         ) : null}
         {linearCombinationVisible ? (
           <span><i className="target-placement-gesture-mark" aria-hidden="true" />背景を短くタップ：ターゲット v を配置</span>
@@ -331,7 +335,7 @@ export function VectorSpace3D({
         それ以外の場所では、ドラッグで視点を回転、ホイールまたは2本指で拡大・縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。
         {showSpan ? ' 灰色の形状は、選択したベクトルが生成する空間です。' : ''}
         {linearCombinationVisible
-          ? ` 背景を短くクリックまたはタップすると、原点を通る現在の画面平行面上へターゲットを配置できます。${linearCombinationTarget ? 'ターゲットの矢先をドラッグすると、一次結合の幾何表示とともに画面平行面内で移動できます。' : ''}数値入力でも変更できます。`
+          ? ` 背景を短くクリックまたはタップすると、原点を通る現在の画面平行面上へターゲットを配置できます。${linearCombinationTarget ? 'ターゲットの矢先をドラッグすると、一次結合の幾何表示とともに画面平行面内で移動できます。選択したベクトルが平面を生成している場合は、その平面へ近づけると吸着します。' : ''}数値入力でも変更できます。`
           : ''}
         ページをスクロールするときは3D表示の外側を操作してください。
       </p>
@@ -405,7 +409,7 @@ function createThreeSpaceRuntime(
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute(
     'aria-label',
-    `3D座標空間。通常ベクトルの矢先をドラッグすると画面に平行な面内で移動し、平行または同一平面上へ吸着できます。${linearCombinationVisible ? `背景を短くクリックまたはタップするとターゲットvを配置できます。${linearCombinationTarget ? 'ターゲットvの矢先をドラッグすると一次結合の幾何表示とともに画面平行面内で移動できます。' : ''}` : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
+    `3D座標空間。通常ベクトルの矢先をドラッグすると画面に平行な面内で移動し、平行または同一平面上へ吸着できます。${linearCombinationVisible ? `背景を短くクリックまたはタップするとターゲットvを配置できます。${linearCombinationTarget ? 'ターゲットvの矢先をドラッグすると一次結合の幾何表示とともに画面平行面内で移動し、選択したベクトルが生成する平面へ吸着できます。' : ''}` : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
   );
   host.append(renderer.domElement);
 
@@ -634,6 +638,8 @@ function createThreeSpaceRuntime(
         startPoint,
         interactionPlane,
         coordinates: [...initialCoordinates],
+        snapKind: null,
+        snapBasisVectorIds: [],
       };
       updateTargetScreenPlanePreview(
         targetDragPreview,
@@ -644,6 +650,7 @@ function createThreeSpaceRuntime(
         colors,
         extent,
         camera,
+        null,
       );
       onInteractionMessage('ターゲット v を画面に平行な面内で移動しています。');
       render();
@@ -775,12 +782,21 @@ function createThreeSpaceRuntime(
       if (!currentPoint) {
         return;
       }
-      const coordinates = coordinatesFromScreenPlaneDrag(
+      const candidateCoordinates = coordinatesFromScreenPlaneDrag(
         activeTargetScreenPlaneDrag.initialCoordinates,
         activeTargetScreenPlaneDrag.startPoint,
         currentPoint,
       );
+      const snapResult = snapSpaceTargetToSelectedSpan(
+        candidateCoordinates,
+        spanVectors,
+        spanRank,
+        parallelSnapDistanceForViewWidth(orthographicVisibleWidth(camera)),
+      );
+      const coordinates: [number, number, number] = [...snapResult.coordinates];
       activeTargetScreenPlaneDrag.coordinates = coordinates;
+      activeTargetScreenPlaneDrag.snapKind = snapResult.snapKind;
+      activeTargetScreenPlaneDrag.snapBasisVectorIds = snapResult.basisVectorIds;
       activeTargetScreenPlaneDrag.renderedTarget.tipIndicator.position.set(...coordinates);
       const previewStatus = updateTargetScreenPlanePreview(
         targetDragPreview,
@@ -791,9 +807,15 @@ function createThreeSpaceRuntime(
         colors,
         extent,
         camera,
+        snapResult.snapKind,
+      );
+      const snapDescription = describeSpaceTargetSnap(
+        snapResult.snapKind,
+        snapResult.basisVectorIds,
+        vectors,
       );
       onInteractionMessage(
-        `ターゲット v の成分：${formatCoordinateStatus(coordinates)}　${describeTargetPreviewStatus(previewStatus)}`,
+        `ターゲット v の成分：${formatCoordinateStatus(coordinates)}　${snapDescription ?? describeTargetPreviewStatus(previewStatus)}`,
       );
       render();
       return;
@@ -929,8 +951,13 @@ function createThreeSpaceRuntime(
       renderer.domElement.releasePointerCapture(event.pointerId);
     }
     if (commit) {
+      const snapDescription = describeSpaceTargetSnap(
+        completedDrag.snapKind,
+        completedDrag.snapBasisVectorIds,
+        vectors,
+      );
       onInteractionMessage(
-        `ターゲット v を変更しました。${formatCoordinateStatus(completedDrag.coordinates)}`,
+        `ターゲット v を変更しました。${formatCoordinateStatus(completedDrag.coordinates)}${snapDescription ? `。${snapDescription}` : ''}`,
       );
       onLinearCombinationTargetPlacement(completedDrag.coordinates);
       return;
@@ -1523,6 +1550,7 @@ function updateTargetScreenPlanePreview(
   colors: readonly string[],
   extent: SpaceExtent,
   camera: THREE.Camera,
+  snapKind: SpaceTargetSnapKind,
 ): ReturnType<typeof createSpaceTargetDragPreview>['status'] {
   clearObjectGroup(group);
   const preview = createSpaceTargetDragPreview(coordinates, spanVectors);
@@ -1553,7 +1581,7 @@ function updateTargetScreenPlanePreview(
     new THREE.Color(TARGET_COLOR),
     extent,
     camera,
-    null,
+    snapKind,
   );
   return preview.status;
 }
@@ -1565,7 +1593,7 @@ function addScreenPlaneDragGuides(
   color: THREE.Color,
   extent: SpaceExtent,
   camera: THREE.Camera,
-  snapKind: SpaceVectorSnapKind,
+  snapKind: SpaceVectorSnapKind | SpaceTargetSnapKind,
 ): void {
 
   const guideLength = Math.max(0.9, extent.halfRange * 0.28);
@@ -1682,6 +1710,9 @@ function clearObjectGroup(group: THREE.Group): void {
           material.dispose();
         }
       });
+    }
+    if (object instanceof CSS2DObject) {
+      object.element.remove();
     }
   });
   group.clear();
@@ -2055,6 +2086,20 @@ function describeSpaceVectorSnap(
     return `${names[0]} と平行にスナップ`;
   }
   return `${names.join('、')} と同一平面上にスナップ`;
+}
+
+function describeSpaceTargetSnap(
+  snapKind: SpaceTargetSnapKind,
+  basisVectorIds: readonly string[],
+  vectors: readonly VectorValue[],
+): string | null {
+  if (snapKind !== 'span-plane') {
+    return null;
+  }
+  const names = basisVectorIds.map((id) => (
+    vectors.find((vector) => vector.id === id)?.name ?? id
+  ));
+  return `${names.join('、')} が生成する平面にスナップ（一次結合で表現できます）`;
 }
 
 function adaptiveGridStep(gridHalfSize: number): number {

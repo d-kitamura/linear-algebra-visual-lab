@@ -17,6 +17,11 @@ export type {
   SpaceVectorSnapKind,
   SpaceVectorSnapResult,
 } from './spaceVectorSnapping';
+export { snapSpaceTargetToSelectedSpan } from './spaceTargetSnapping';
+export type {
+  SpaceTargetSnapKind,
+  SpaceTargetSnapResult,
+} from './spaceTargetSnapping';
 export { snapTargetToSelectedSpan } from './targetSnapping';
 export type { TargetSnapKind, TargetSnapResult } from './targetSnapping';
 export type { AppInitialization } from './appInitialization';
