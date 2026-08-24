@@ -36,7 +36,7 @@ describe('共有URLのQRコード', () => {
   it('QRコードの容量を超える文字列では案内可能なエラーにする', async () => {
     await expect(createShareQrCodeDataUrl(`https://example.jp/?state=${'a'.repeat(5_000)}`))
       .rejects.toThrowError(
-        '共有URLからQRコードを生成できませんでした。URLが長すぎる可能性があります。',
+        '共有URLがQRコード用の上限 2048 文字を超えています。',
       );
   });
 

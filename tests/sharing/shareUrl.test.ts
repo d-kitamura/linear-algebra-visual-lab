@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildShareUrl,
+  MAX_OPERATIONAL_SHARE_URL_LENGTH,
+  ShareUrlBuildError,
   createShareTextFileContents,
   createShareTextFileName,
   readShareStateFromUrl,
@@ -63,5 +65,16 @@ describe('共有URL', () => {
     expect(createShareTextFileContents(shareUrl)).toBe(`${shareUrl}\n`);
     expect(createShareTextFileName(date))
       .toBe('linear-algebra-visual-lab-url-20260819-2030.txt');
+  });
+
+  it('完全URLが授業用上限を超える場合は長さを付けて拒否する', () => {
+    const longBaseUrl = `https://example.jp/${'a'.repeat(MAX_OPERATIONAL_SHARE_URL_LENGTH)}/`;
+
+    expect(() => buildShareUrl(longBaseUrl, exampleState)).toThrowError(
+      expect.objectContaining<Partial<ShareUrlBuildError>>({
+        code: 'URL_TOO_LONG',
+        actualLength: expect.any(Number) as number,
+      }),
+    );
   });
 });

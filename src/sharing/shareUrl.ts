@@ -1,6 +1,21 @@
 import { decodeShareState, encodeShareState, type ShareState } from './shareState';
 
 export const SHARE_STATE_QUERY_PARAMETER = 'state';
+export const MAX_OPERATIONAL_SHARE_URL_LENGTH = 2_048;
+
+export type ShareUrlBuildErrorCode = 'INVALID_BASE_URL' | 'URL_TOO_LONG';
+
+export class ShareUrlBuildError extends Error {
+  readonly code: ShareUrlBuildErrorCode;
+  readonly actualLength?: number;
+
+  constructor(code: ShareUrlBuildErrorCode, message: string, actualLength?: number) {
+    super(message);
+    this.name = 'ShareUrlBuildError';
+    this.code = code;
+    this.actualLength = actualLength;
+  }
+}
 
 export type ShareUrlErrorCode =
   | 'INVALID_URL'
@@ -23,14 +38,26 @@ export function buildShareUrl(baseHref: string, state: ShareState): string {
   try {
     url = new URL(baseHref);
   } catch {
-    throw new TypeError('共有URLの基準となるページURLが正しくありません。');
+    throw new ShareUrlBuildError(
+      'INVALID_BASE_URL',
+      '共有URLの基準となるページURLが正しくありません。',
+    );
   }
 
   url.search = '';
   url.hash = '';
   url.searchParams.set(SHARE_STATE_QUERY_PARAMETER, encodeShareState(state));
 
-  return url.toString();
+  const shareUrl = url.toString();
+  if (shareUrl.length > MAX_OPERATIONAL_SHARE_URL_LENGTH) {
+    throw new ShareUrlBuildError(
+      'URL_TOO_LONG',
+      `共有URLが授業用の上限 ${MAX_OPERATIONAL_SHARE_URL_LENGTH} 文字を超えています。`,
+      shareUrl.length,
+    );
+  }
+
+  return shareUrl;
 }
 
 export function readShareStateFromUrl(href: string): ShareUrlReadResult {

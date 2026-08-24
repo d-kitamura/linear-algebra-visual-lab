@@ -31,7 +31,9 @@ export type {
 } from './shareState';
 
 export {
+  MAX_OPERATIONAL_SHARE_URL_LENGTH,
   SHARE_STATE_QUERY_PARAMETER,
+  ShareUrlBuildError,
   buildShareUrl,
   createShareTextFileContents,
   createShareTextFileName,
@@ -39,6 +41,7 @@ export {
 } from './shareUrl';
 
 export type {
+  ShareUrlBuildErrorCode,
   ShareUrlError,
   ShareUrlErrorCode,
   ShareUrlReadResult,

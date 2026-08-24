@@ -1,10 +1,16 @@
 import { toDataURL } from 'qrcode';
+import { MAX_OPERATIONAL_SHARE_URL_LENGTH } from './shareUrl';
 
 const QR_CODE_IMAGE_SIZE = 768;
 
 export async function createShareQrCodeDataUrl(shareUrl: string): Promise<string> {
   if (shareUrl.trim().length === 0) {
     throw new TypeError('QRコードに変換する共有URLがありません。');
+  }
+  if (shareUrl.length > MAX_OPERATIONAL_SHARE_URL_LENGTH) {
+    throw new RangeError(
+      `共有URLがQRコード用の上限 ${MAX_OPERATIONAL_SHARE_URL_LENGTH} 文字を超えています。`,
+    );
   }
 
   try {

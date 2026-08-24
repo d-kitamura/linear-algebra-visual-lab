@@ -20,6 +20,7 @@ import {
 import {
   MAX_ABSOLUTE_COORDINATE,
   MAX_SHARE_VECTORS,
+  ShareUrlBuildError,
   buildShareUrl,
   createShareQrCodeDataUrl,
   createShareQrCodeFileName,
@@ -757,8 +758,12 @@ export function App() {
         shareUrlFieldRef.current?.focus();
         shareUrlFieldRef.current?.select();
       });
-    } catch {
-      setExportErrorMessage('共有URLを生成できませんでした。入力内容を確認して、もう一度お試しください。');
+    } catch (error) {
+      setExportErrorMessage(
+        error instanceof ShareUrlBuildError
+          ? error.message
+          : '共有URLを生成できませんでした。入力内容を確認して、もう一度お試しください。',
+      );
     }
   }
 
