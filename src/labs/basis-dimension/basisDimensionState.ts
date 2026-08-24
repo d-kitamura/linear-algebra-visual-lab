@@ -1,9 +1,20 @@
 import type { VectorDimension, VectorValue } from '../../domain';
+import { MAX_ABSOLUTE_COORDINATE } from '../../sharing';
+import {
+  parallelSnapDistanceForViewWidth,
+  snapDraggedVectorToParallel,
+} from '../../state';
 
 export interface BasisDimensionScene {
   readonly dimension: VectorDimension;
   readonly vectors: readonly VectorValue[];
   readonly candidateVectorIds: readonly string[];
+}
+
+export interface BasisPlaneVectorDragResult {
+  readonly scene: BasisDimensionScene;
+  readonly snapTargetVectorId: string | null;
+  readonly coordinates: readonly [number, number];
 }
 
 export const DEFAULT_BASIS_SCENES: Readonly<Record<VectorDimension, BasisDimensionScene>> = {
@@ -78,10 +89,42 @@ export function updateBasisVectorCoordinates(
   };
 }
 
+export function updateBasisPlaneVectorDrag(
+  scene: BasisDimensionScene,
+  vectorId: string,
+  coordinates: readonly [number, number],
+  viewWidth: number,
+): BasisPlaneVectorDragResult {
+  if (scene.dimension !== 2) {
+    throw new RangeError('2D平行スナップには2次元の教材状態が必要です。');
+  }
+
+  const candidateCoordinates: readonly [number, number] = [
+    clampDraggedCoordinate(coordinates[0]),
+    clampDraggedCoordinate(coordinates[1]),
+  ];
+  const snapResult = snapDraggedVectorToParallel(
+    vectorId,
+    candidateCoordinates,
+    scene.vectors,
+    parallelSnapDistanceForViewWidth(viewWidth),
+  );
+
+  return {
+    scene: updateBasisVectorCoordinates(scene, vectorId, snapResult.coordinates),
+    snapTargetVectorId: snapResult.targetVectorId,
+    coordinates: snapResult.coordinates,
+  };
+}
+
 export function createCoordinateDrafts(
   vectors: readonly VectorValue[],
 ): Readonly<Record<string, readonly string[]>> {
   return Object.fromEntries(
     vectors.map((vector) => [vector.id, vector.coordinates.map(String)]),
   );
+}
+
+function clampDraggedCoordinate(value: number): number {
+  return Math.min(MAX_ABSOLUTE_COORDINATE, Math.max(-MAX_ABSOLUTE_COORDINATE, value));
 }

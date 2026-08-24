@@ -28,12 +28,13 @@ describe('フェーズ8開始後の棚卸し記録', () => {
     expect(projectStatus).not.toContain('D-060の表示幅3%について');
   });
 
-  it('仕様書版と8.4の実装状態を現在地へ揃える', () => {
-    expect(specification).toContain('| 文書バージョン | 0.68 |');
-    expect(specification).toContain('フェーズ8.4実装・自動検証済み、利用者確認待ち');
+  it('仕様書版と8.4aの実装状態を現在地へ揃える', () => {
+    expect(specification).toContain('| 文書バージョン | 0.69 |');
+    expect(specification).toContain('フェーズ8.4a補修・自動検証済み、利用者確認待ち');
     expect(decisions).toContain('### D-061 フェーズ8開始後の棚卸しと8.3への引渡し');
     expect(decisions).toContain('### D-062 基底・次元の対象空間、判定API、数式表記');
     expect(decisions).toContain('### D-063 2D/3D基底エクスプローラの画面と段階的共有境界');
-    expect(projectStatus).toContain('D-063の2D/3D基底エクスプローラを公開版で利用者が確認する');
+    expect(decisions).toContain('### D-064 基底・次元Labの2D平行吸着を既存Labへ統一');
+    expect(projectStatus).toContain('D-063の2D/3D基底エクスプローラとD-064の2D平行吸着を公開版で利用者が確認する');
   });
 });

@@ -27,6 +27,7 @@ import {
   moveBasisCandidate,
   toggleBasisCandidate,
   updateBasisVectorCoordinates,
+  updateBasisPlaneVectorDrag,
   type BasisDimensionScene,
 } from './basisDimensionState';
 
@@ -68,6 +69,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     3: createCoordinateDrafts(createDefaultBasisScene(3).vectors),
   });
   const [planeViewport, setPlaneViewport] = useState<PlaneViewport>(DEFAULT_PLANE_VIEWPORT);
+  const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
   const [camera, setCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
   const [spaceResetKey, setSpaceResetKey] = useState(0);
   const scene = scenes[activeDimension];
@@ -88,6 +90,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   }
 
   function handleDimensionChange(dimension: VectorDimension): void {
+    setParallelSnapTargetId(null);
     setActiveDimension(dimension);
   }
 
@@ -125,6 +128,27 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
         [vectorId]: coordinates.map(formatCoordinate),
       },
     }));
+  }
+
+  function handlePlaneVectorDrag(
+    vectorId: string,
+    coordinates: readonly [number, number],
+  ): void {
+    const result = updateBasisPlaneVectorDrag(
+      scenes[2],
+      vectorId,
+      coordinates,
+      planeViewport.maxX - planeViewport.minX,
+    );
+    setScenes((current) => ({ ...current, 2: result.scene }));
+    setCoordinateDrafts((current) => ({
+      ...current,
+      2: {
+        ...current[2],
+        [vectorId]: result.coordinates.map(formatCoordinate),
+      },
+    }));
+    setParallelSnapTargetId(result.snapTargetVectorId);
   }
 
   function handleCoordinateChange(vectorId: string, coordinateIndex: number, value: string): void {
@@ -167,6 +191,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     }));
     if (activeDimension === 2) {
       setPlaneViewport(createAutoFitViewport(resetScene.vectors));
+      setParallelSnapTargetId(null);
     } else {
       setCamera(DEFAULT_3D_CAMERA_STATE);
       setSpaceResetKey((current) => current + 1);
@@ -252,8 +277,10 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   colors={VECTOR_COLORS}
                   viewport={planeViewport}
                   onViewportChange={setPlaneViewport}
-                  onVectorChange={(vectorId, coordinates) =>
-                    commitVectorCoordinates(vectorId, coordinates)}
+                  onVectorDragStart={() => setParallelSnapTargetId(null)}
+                  onVectorChange={handlePlaneVectorDrag}
+                  onVectorDragEnd={() => setParallelSnapTargetId(null)}
+                  parallelSnapTargetId={parallelSnapTargetId}
                   spanVectors={candidateVectors}
                   spanDimension={analysis.candidateRank}
                   showSpan

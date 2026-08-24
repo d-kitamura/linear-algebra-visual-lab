@@ -39,7 +39,9 @@ describe('8.4 基底・次元エクスプローラ', () => {
   });
 
   it('成分入力と矢先ドラッグの両方で再計算できる', () => {
-    expect(source).toContain('onVectorChange={(vectorId, coordinates)');
+    expect(source).toContain('onVectorChange={handlePlaneVectorDrag}');
+    expect(source).toContain('parallelSnapTargetId={parallelSnapTargetId}');
+    expect(source).toContain('updateBasisPlaneVectorDrag');
     expect(source).toContain('onVectorCoordinatesCommit={commitVectorCoordinates}');
     expect(source).toContain('onCoordinateChange(vector.id, coordinateIndex');
     expect(source).toContain('aria-invalid={!valid}');

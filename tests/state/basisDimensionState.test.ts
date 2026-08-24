@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { analyzeBasisCandidate } from '../../src/domain';
 import {
   createCoordinateDrafts,
   createDefaultBasisScene,
   moveBasisCandidate,
   toggleBasisCandidate,
+  updateBasisPlaneVectorDrag,
   updateBasisVectorCoordinates,
 } from '../../src/labs/basis-dimension/basisDimensionState';
 
@@ -43,5 +45,26 @@ describe('基底・次元Labの画面状態', () => {
     const drafts = createCoordinateDrafts(createDefaultBasisScene(2).vectors);
     expect(drafts.a1).toEqual(['2', '1']);
     expect(drafts.a3).toEqual(['3', '3']);
+  });
+
+  it('2D矢先ドラッグを表示幅1%で他のベクトルへ平行吸着させる', () => {
+    const scene = createDefaultBasisScene(2);
+    const before = analyzeBasisCandidate(scene, scene.candidateVectorIds);
+    const result = updateBasisPlaneVectorDrag(scene, 'a2', [4, 2.05], 10);
+    const after = analyzeBasisCandidate(result.scene, result.scene.candidateVectorIds);
+
+    expect(before.candidateRank).toBe(2);
+    expect(result.snapTargetVectorId).toBe('a1');
+    expect(result.coordinates[1] / result.coordinates[0]).toBeCloseTo(0.5);
+    expect(after.candidateRank).toBe(1);
+  });
+
+  it('2D平行吸着の距離を現在の表示幅に比例させる', () => {
+    const scene = createDefaultBasisScene(2);
+
+    expect(updateBasisPlaneVectorDrag(scene, 'a2', [4, 2.15], 10).snapTargetVectorId)
+      .toBeNull();
+    expect(updateBasisPlaneVectorDrag(scene, 'a2', [4, 2.15], 20).snapTargetVectorId)
+      .toBe('a1');
   });
 });
