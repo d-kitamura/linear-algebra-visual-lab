@@ -7,9 +7,9 @@ import {
 } from 'three/addons/renderers/CSS2DRenderer.js';
 import type { VectorValue } from '../domain';
 import {
-  parallelSnapDistanceForViewWidth,
   snapDraggedSpaceVectorToDependentPosition,
   snapSpaceTargetToSelectedSpan,
+  spaceSnapDistanceForViewWidth,
   type SpaceTargetSnapKind,
   type SpaceVectorSnapKind,
 } from '../state';
@@ -791,7 +791,7 @@ function createThreeSpaceRuntime(
         candidateCoordinates,
         spanVectors,
         spanRank,
-        parallelSnapDistanceForViewWidth(orthographicVisibleWidth(camera)),
+        spaceSnapDistanceForViewWidth(orthographicVisibleWidth(camera)),
       );
       const coordinates: [number, number, number] = [...snapResult.coordinates];
       activeTargetScreenPlaneDrag.coordinates = coordinates;
@@ -847,7 +847,7 @@ function createThreeSpaceRuntime(
       activeVectorDrag.vector.id,
       directCoordinates,
       vectors,
-      parallelSnapDistanceForViewWidth(orthographicVisibleWidth(camera)),
+      spaceSnapDistanceForViewWidth(orthographicVisibleWidth(camera)),
     );
     activeVectorDrag.coordinates = [...snapResult.coordinates];
     activeVectorDrag.snapKind = snapResult.snapKind;

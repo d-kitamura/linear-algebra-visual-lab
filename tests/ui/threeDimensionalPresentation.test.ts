@@ -192,7 +192,12 @@ describe('固定3D表示とカメラ操作', () => {
 
   it('ドラッグ中だけ表示幅に相対な平行・同一平面スナップを適用する', () => {
     expect(componentSource).toContain('snapDraggedSpaceVectorToDependentPosition');
-    expect(componentSource).toContain('parallelSnapDistanceForViewWidth(orthographicVisibleWidth(camera))');
+    expect(componentSource.match(
+      /spaceSnapDistanceForViewWidth\(orthographicVisibleWidth\(camera\)\)/gu,
+    )).toHaveLength(2);
+    expect(componentSource).not.toContain(
+      'parallelSnapDistanceForViewWidth(orthographicVisibleWidth(camera))',
+    );
     expect(componentSource).toContain('と平行にスナップ');
     expect(componentSource).toContain('と同一平面上にスナップ');
     expect(componentSource).toContain("snapKind ? '#247565' : '#2f6690'");

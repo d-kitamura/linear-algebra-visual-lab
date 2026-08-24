@@ -1,6 +1,8 @@
 import { analyzeVectorSet, type VectorValue } from '../domain';
 import { MAX_ABSOLUTE_COORDINATE } from '../sharing';
 
+export const SPACE_SNAP_DISTANCE_RATIO = 0.03;
+
 export type SpaceVectorSnapKind = 'parallel' | 'coplanar' | null;
 
 export interface SpaceVectorSnapResult {
@@ -13,6 +15,13 @@ interface SnapCandidate {
   readonly coordinates: readonly [number, number, number];
   readonly distance: number;
   readonly targetVectorIds: readonly string[];
+}
+
+export function spaceSnapDistanceForViewWidth(viewWidth: number): number {
+  if (!Number.isFinite(viewWidth) || viewWidth <= 0) {
+    throw new RangeError('3D表示幅は 0 より大きい有限値である必要があります。');
+  }
+  return viewWidth * SPACE_SNAP_DISTANCE_RATIO;
 }
 
 export function snapDraggedSpaceVectorToDependentPosition(

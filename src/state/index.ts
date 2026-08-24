@@ -12,7 +12,11 @@ export {
 export type { CoordinateInputErrorCode, CoordinateInputResult } from './vectorEditing';
 export type { AddDefaultVectorResult } from './vectorCollection';
 export type { ParallelSnapResult } from './vectorSnapping';
-export { snapDraggedSpaceVectorToDependentPosition } from './spaceVectorSnapping';
+export {
+  SPACE_SNAP_DISTANCE_RATIO,
+  snapDraggedSpaceVectorToDependentPosition,
+  spaceSnapDistanceForViewWidth,
+} from './spaceVectorSnapping';
 export type {
   SpaceVectorSnapKind,
   SpaceVectorSnapResult,

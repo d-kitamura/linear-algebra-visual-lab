@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeVectorSet, type VectorValue } from '../../src/domain';
-import { snapDraggedSpaceVectorToDependentPosition } from '../../src/state';
+import {
+  SPACE_SNAP_DISTANCE_RATIO,
+  snapDraggedSpaceVectorToDependentPosition,
+  spaceSnapDistanceForViewWidth,
+} from '../../src/state';
 
 const vectors: readonly VectorValue[] = [
   { id: 'a1', name: 'a₁', coordinates: [2, 1, 1] },
@@ -9,6 +13,14 @@ const vectors: readonly VectorValue[] = [
 ];
 
 describe('3Dの平行・同一平面スナップ', () => {
+  it('3D専用の吸着距離を表示幅の3%として計算する', () => {
+    expect(SPACE_SNAP_DISTANCE_RATIO).toBe(0.03);
+    expect(spaceSnapDistanceForViewWidth(10)).toBeCloseTo(0.3);
+    expect(spaceSnapDistanceForViewWidth(100)).toBeCloseTo(3);
+    expect(spaceSnapDistanceForViewWidth(4)).toBeCloseTo(0.12);
+    expect(() => spaceSnapDistanceForViewWidth(0)).toThrow(RangeError);
+  });
+
   it('最も近いベクトルが張る直線へ直交射影して平行にする', () => {
     const result = snapDraggedSpaceVectorToDependentPosition(
       'a3',
