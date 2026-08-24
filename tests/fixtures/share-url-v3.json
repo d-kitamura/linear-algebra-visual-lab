@@ -1,0 +1,27 @@
+{
+  "description": "3D一次結合の唯一解を含む、最初の正式リリース候補v3 fixture",
+  "schemaVersion": 3,
+  "guaranteeStarts": "formal-release",
+  "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjozLCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjMsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYeKCgSIsImNvb3JkaW5hdGVzIjpbMSwxLDBdfSx7ImlkIjoiYTIiLCJuYW1lIjoiYeKCgiIsImNvb3JkaW5hdGVzIjpbMCwxLDFdfSx7ImlkIjoiYTMiLCJuYW1lIjoiYeKCgyIsImNvb3JkaW5hdGVzIjpbMSwwLDFdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiLCJhMiIsImEzIl0sInZpc3VhbGl6YXRpb24iOnsic2hvd1NwYW4iOnRydWUsImNhbWVyYSI6eyJkaXJlY3Rpb24iOlswLjUwMzA1NTQ2LC0wLjY4MDYwNDQ1LDAuNTMyNjQ2OTZdLCJ0YXJnZXQiOlswLDAsMF0sInVwIjpbMCwwLDFdLCJ6b29tIjoxfX0sImxpbmVhckNvbWJpbmF0aW9uIjp7InZpc2libGUiOnRydWUsInRhcmdldCI6WzMsMiw0XX19",
+  "expectedState": {
+    "v": 3,
+    "lab": "vector-space",
+    "dim": 3,
+    "vectors": [
+      { "id": "a1", "name": "a₁", "coordinates": [1, 1, 0] },
+      { "id": "a2", "name": "a₂", "coordinates": [0, 1, 1] },
+      { "id": "a3", "name": "a₃", "coordinates": [1, 0, 1] }
+    ],
+    "spanSelection": ["a1", "a2", "a3"],
+    "visualization": {
+      "showSpan": true,
+      "camera": {
+        "direction": [0.50305546, -0.68060445, 0.53264696],
+        "target": [0, 0, 0],
+        "up": [0, 0, 1],
+        "zoom": 1
+      }
+    },
+    "linearCombination": { "visible": true, "target": [3, 2, 4] }
+  }
+}
