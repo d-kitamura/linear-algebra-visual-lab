@@ -23,3 +23,15 @@ export type {
   VectorSetValidationCode,
   VectorValue,
 } from './vectorSet';
+
+export {
+  InvalidBasisCandidateError,
+  analyzeBasisCandidate,
+  extractBasisExample,
+} from './basisDimension';
+
+export type {
+  BasisCandidateAnalysis,
+  BasisCandidateValidationCode,
+  BasisFailureReason,
+} from './basisDimension';

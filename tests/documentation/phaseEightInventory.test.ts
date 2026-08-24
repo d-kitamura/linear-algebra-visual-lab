@@ -28,10 +28,11 @@ describe('フェーズ8開始後の棚卸し記録', () => {
     expect(projectStatus).not.toContain('D-060の表示幅3%について');
   });
 
-  it('仕様書版と次の作業単位を棚卸し後の現在地へ揃える', () => {
-    expect(specification).toContain('| 文書バージョン | 0.66 |');
-    expect(specification).toContain('次は8.3');
+  it('仕様書版と8.3の実装状態を現在地へ揃える', () => {
+    expect(specification).toContain('| 文書バージョン | 0.67 |');
+    expect(specification).toContain('フェーズ8.3実装・自動検証済み、利用者確認待ち');
     expect(decisions).toContain('### D-061 フェーズ8開始後の棚卸しと8.3への引渡し');
-    expect(projectStatus).toContain('次の作業単位は8.3「基底・次元の数学ロジック」');
+    expect(decisions).toContain('### D-062 基底・次元の対象空間、判定API、数式表記');
+    expect(projectStatus).toContain('D-062の数学仕様と表記を利用者が確認する');
   });
 });
