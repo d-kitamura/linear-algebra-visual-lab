@@ -5,7 +5,10 @@ const componentSource = readFileSync(
   new URL('../../src/visualization/VectorSpace3D.tsx', import.meta.url),
   'utf8',
 );
-const appSource = readFileSync(new URL('../../src/app/App.tsx', import.meta.url), 'utf8');
+const appSource = readFileSync(
+  new URL('../../src/labs/vector-space/VectorSpaceLab.tsx', import.meta.url),
+  'utf8',
+);
 const cssSource = readFileSync(new URL('../../src/app/App.css', import.meta.url), 'utf8');
 
 describe('固定3D表示とカメラ操作', () => {
@@ -56,7 +59,7 @@ describe('固定3D表示とカメラ操作', () => {
 
   it('3D状態とResetを固定3D表示へ接続する', () => {
     expect(appSource).toContain('<VectorSpace3D');
-    expect(appSource).toContain("await import('../visualization/VectorSpace3D')");
+    expect(appSource).toContain("await import('../../visualization/VectorSpace3D')");
     expect(appSource).toContain('hasActivatedThreeDimensions');
     expect(appSource).toContain('vectors={threeDimensionalState.vectors}');
     expect(appSource).toContain('resetKey={threeDimensionalCameraResetKey}');

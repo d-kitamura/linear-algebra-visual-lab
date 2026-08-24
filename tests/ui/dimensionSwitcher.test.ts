@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const appSource = readFileSync(
-  new URL('../../src/app/App.tsx', import.meta.url),
+  new URL('../../src/labs/vector-space/VectorSpaceLab.tsx', import.meta.url),
   'utf8',
 );
 const cssSource = readFileSync(
