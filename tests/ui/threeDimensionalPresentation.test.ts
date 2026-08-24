@@ -91,4 +91,24 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).not.toContain('addSpanPlaneGrid');
     expect(componentSource).toContain('space-span-rank-three-label');
   });
+
+  it('3Dターゲットの数値入力・解析・共有状態を一次結合タブへ接続する', () => {
+    expect(appSource).toContain("{ id: 'combination', label: '一次結合'");
+    expect(appSource).toContain('threeDimensionalTargetCoordinateDrafts');
+    expect(appSource).toContain('threeDimensionalLinearCombinationAnalysis');
+    expect(appSource).toContain('handleThreeDimensionalTargetCoordinateChange');
+    expect(appSource).toContain('inputIdPrefix="3d-"');
+    expect(appSource).toContain('ambientDimension={3}');
+    expect(componentSource).toContain('一次結合を調べる');
+  });
+
+  it('3Dターゲットと2項・3項の係数幾何を描画する', () => {
+    expect(componentSource).toContain('createSpaceCombinationGeometry');
+    expect(componentSource).toContain('addSpaceCombinationGeometry');
+    expect(componentSource).toContain('addTargetVector');
+    expect(componentSource).toContain("geometry.kind === 'parallelogram'");
+    expect(componentSource).toContain('space-combination-term-label');
+    expect(appSource).toContain('平行六面体');
+    expect(appSource).toContain('4本以上の係数は3D図形へ一意に対応させず');
+  });
 });

@@ -42,3 +42,8 @@ export type {
   SpaceSpanGeometry,
   ThreeDimensionalPoint,
 } from './spaceGeometry';
+export { createSpaceCombinationGeometry } from './spaceCombinationGeometry';
+export type {
+  SpaceCombinationGeometry,
+  SpaceCombinationGeometryKind,
+} from './spaceCombinationGeometry';

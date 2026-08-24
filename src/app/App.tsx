@@ -85,11 +85,12 @@ const dimensionTabs = [
 const threeDimensionalInspectorTabs = [
   { id: 'edit', label: 'ベクトル編集', shortLabel: '編集' },
   { id: 'span', label: '生成する空間', shortLabel: 'span' },
+  { id: 'combination', label: '一次結合', shortLabel: '一次結合' },
   { id: 'all', label: '全ベクトル', shortLabel: '全体' },
 ] as const;
 
 type CoordinateDrafts = Readonly<Record<string, readonly string[]>>;
-type TargetCoordinateDrafts = readonly [string, string];
+type TargetCoordinateDrafts = readonly string[];
 type ViewMode = 'auto' | 'manual';
 type InspectorTabId = typeof inspectorTabs[number]['id'];
 type ThreeDimensionalInspectorTabId =
@@ -135,7 +136,13 @@ export function App() {
     createCoordinateDrafts(initial3DState.vectors),
   );
   const [targetCoordinateDrafts, setTargetCoordinateDrafts] = useState<TargetCoordinateDrafts>(
-    () => createTargetCoordinateDrafts(initial2DState.linearCombination.target),
+    () => createTargetCoordinateDrafts(initial2DState.linearCombination.target, 2),
+  );
+  const [
+    threeDimensionalTargetCoordinateDrafts,
+    setThreeDimensionalTargetCoordinateDrafts,
+  ] = useState<TargetCoordinateDrafts>(
+    () => createTargetCoordinateDrafts(initial3DState.linearCombination.target, 3),
   );
   const [viewMode, setViewMode] = useState<ViewMode>('auto');
   const [manualViewport, setManualViewport] = useState<PlaneViewport | null>(null);
@@ -148,7 +155,9 @@ export function App() {
   const [
     activeThreeDimensionalInspectorTab,
     setActiveThreeDimensionalInspectorTab,
-  ] = useState<ThreeDimensionalInspectorTabId>('edit');
+  ] = useState<ThreeDimensionalInspectorTabId>(
+    initial3DState.linearCombination.visible ? 'combination' : 'edit',
+  );
   const [loadErrorMessage, setLoadErrorMessage] = useState(initialization.errorMessage);
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState('');
@@ -177,12 +186,20 @@ export function App() {
   );
   const hasInvalid2DCoordinateDraft = coordinateInputIssues.length > 0;
   const threeDimensionalCoordinateInputIssues = useMemo(
-    () => collectVectorCoordinateInputIssues(
+    () => collectCoordinateInputIssues(
       threeDimensionalState.vectors,
       threeDimensionalCoordinateDrafts,
+      threeDimensionalState.linearCombination.visible,
+      threeDimensionalTargetCoordinateDrafts,
       '3d-',
+      '3d-linear-combination-target-coordinate-',
     ),
-    [threeDimensionalState.vectors, threeDimensionalCoordinateDrafts],
+    [
+      threeDimensionalState.vectors,
+      threeDimensionalState.linearCombination.visible,
+      threeDimensionalCoordinateDrafts,
+      threeDimensionalTargetCoordinateDrafts,
+    ],
   );
   const hasInvalidCoordinateDraft = activeDimension === 2
     ? hasInvalid2DCoordinateDraft
@@ -215,6 +232,23 @@ export function App() {
       vectors: threeDimensionalSpanVectors,
     }),
     [threeDimensionalState.dim, threeDimensionalSpanVectors],
+  );
+  const threeDimensionalTargetCoordinates = useMemo(
+    () => toThreeDimensionalTarget(threeDimensionalState.linearCombination.target),
+    [threeDimensionalState.linearCombination.target],
+  );
+  const threeDimensionalLinearCombinationAnalysis = useMemo(
+    () => threeDimensionalTargetCoordinates
+      ? analyzeLinearCombination(
+          { dimension: threeDimensionalState.dim, vectors: threeDimensionalSpanVectors },
+          threeDimensionalTargetCoordinates,
+        )
+      : null,
+    [
+      threeDimensionalState.dim,
+      threeDimensionalSpanVectors,
+      threeDimensionalTargetCoordinates,
+    ],
   );
   const spanVectors = useMemo(
     () => selectSpanVectors(state.vectors, state.spanSelection),
@@ -273,6 +307,9 @@ export function App() {
   const availableInspectorTabs = state.linearCombination.visible
     ? inspectorTabs
     : inspectorTabs.filter((tab) => tab.id !== 'combination');
+  const availableThreeDimensionalInspectorTabs = threeDimensionalState.linearCombination.visible
+    ? threeDimensionalInspectorTabs
+    : threeDimensionalInspectorTabs.filter((tab) => tab.id !== 'combination');
   const viewportLabel = viewMode === 'auto'
     ? `自動表示 ±${formatViewportNumber((viewport.maxX - viewport.minX) / 2)}`
     : `手動表示・幅 ${formatViewportNumber(viewport.maxX - viewport.minX)}`;
@@ -346,7 +383,7 @@ export function App() {
       nextVisible ? 'combination' : current === 'combination' ? 'span' : current
     ));
     if (!nextVisible) {
-      setTargetCoordinateDrafts(createTargetCoordinateDrafts(state.linearCombination.target));
+      setTargetCoordinateDrafts(createTargetCoordinateDrafts(state.linearCombination.target, 2));
     }
   }
 
@@ -391,7 +428,7 @@ export function App() {
   function handleTargetCoordinateChange(coordinateIndex: number, input: string): void {
     const nextDrafts = targetCoordinateDrafts.map((value, index) =>
       index === coordinateIndex ? input : value,
-    ) as [string, string];
+    );
     setTargetCoordinateDrafts(nextDrafts);
 
     if (nextDrafts.every((draft) => draft.trim().length === 0)) {
@@ -497,6 +534,67 @@ export function App() {
     }));
   }
 
+  function handleThreeDimensionalLinearCombinationVisibility(): void {
+    const nextVisible = !threeDimensionalState.linearCombination.visible;
+    setThreeDimensionalState((current) => ({
+      ...current,
+      linearCombination: {
+        ...current.linearCombination,
+        visible: nextVisible,
+      },
+    }));
+    setActiveThreeDimensionalInspectorTab((current) => (
+      nextVisible ? 'combination' : current === 'combination' ? 'span' : current
+    ));
+    if (!nextVisible) {
+      setThreeDimensionalTargetCoordinateDrafts(createTargetCoordinateDrafts(
+        threeDimensionalState.linearCombination.target,
+        3,
+      ));
+    }
+  }
+
+  function handleThreeDimensionalTargetCoordinateChange(
+    coordinateIndex: number,
+    input: string,
+  ): void {
+    const nextDrafts = threeDimensionalTargetCoordinateDrafts.map((value, index) =>
+      index === coordinateIndex ? input : value,
+    );
+    setThreeDimensionalTargetCoordinateDrafts(nextDrafts);
+
+    if (nextDrafts.every((draft) => draft.trim().length === 0)) {
+      setThreeDimensionalState((current) => ({
+        ...current,
+        linearCombination: { ...current.linearCombination, target: null },
+      }));
+      return;
+    }
+
+    const parsed = nextDrafts.map(parseCoordinateInput);
+    if (!parsed.every((result) => result.ok)) {
+      return;
+    }
+
+    const coordinates: readonly [number, number, number] = [
+      parsed[0].ok ? parsed[0].value : 0,
+      parsed[1].ok ? parsed[1].value : 0,
+      parsed[2].ok ? parsed[2].value : 0,
+    ];
+    setThreeDimensionalState((current) => ({
+      ...current,
+      linearCombination: { ...current.linearCombination, target: coordinates },
+    }));
+  }
+
+  function handleThreeDimensionalClearTarget(): void {
+    setThreeDimensionalState((current) => ({
+      ...current,
+      linearCombination: { ...current.linearCombination, target: null },
+    }));
+    setThreeDimensionalTargetCoordinateDrafts(['', '', '']);
+  }
+
   function handleThreeDimensionalShowSpan(showSpan: boolean): void {
     setThreeDimensionalState((current) => ({
       ...current,
@@ -542,7 +640,13 @@ export function App() {
     if (activeDimension === 3) {
       setThreeDimensionalState(initial3DState);
       setThreeDimensionalCoordinateDrafts(createCoordinateDrafts(initial3DState.vectors));
-      setActiveThreeDimensionalInspectorTab('edit');
+      setThreeDimensionalTargetCoordinateDrafts(createTargetCoordinateDrafts(
+        initial3DState.linearCombination.target,
+        3,
+      ));
+      setActiveThreeDimensionalInspectorTab(
+        initial3DState.linearCombination.visible ? 'combination' : 'edit',
+      );
       setThreeDimensionalCameraResetKey((current) => current + 1);
       setExportErrorMessage(null);
       setShareUrl('');
@@ -557,7 +661,10 @@ export function App() {
 
     setState(initial2DState);
     setCoordinateDrafts(createCoordinateDrafts(initial2DState.vectors));
-    setTargetCoordinateDrafts(createTargetCoordinateDrafts(initial2DState.linearCombination.target));
+    setTargetCoordinateDrafts(createTargetCoordinateDrafts(
+      initial2DState.linearCombination.target,
+      2,
+    ));
     setViewMode('auto');
     setManualViewport(null);
     setDragViewport(null);
@@ -624,7 +731,19 @@ export function App() {
       return;
     }
 
-    setActiveInspectorTab('edit');
+    if (activeDimension === 3) {
+      setActiveThreeDimensionalInspectorTab(
+        firstIssue.inputId.startsWith('3d-linear-combination-target-')
+          ? 'combination'
+          : 'edit',
+      );
+    } else {
+      setActiveInspectorTab(
+        firstIssue.inputId.startsWith('linear-combination-target-')
+          ? 'combination'
+          : 'edit',
+      );
+    }
     window.requestAnimationFrame(() => {
       const input = document.getElementById(firstIssue.inputId);
       if (input instanceof HTMLInputElement) {
@@ -727,27 +846,27 @@ export function App() {
   function handleThreeDimensionalInspectorTabKeyDown(
     event: ReactKeyboardEvent<HTMLButtonElement>,
   ): void {
-    const currentIndex = threeDimensionalInspectorTabs.findIndex(
+    const currentIndex = availableThreeDimensionalInspectorTabs.findIndex(
       (tab) => tab.id === activeThreeDimensionalInspectorTab,
     );
     let nextIndex = currentIndex;
 
     if (event.key === 'ArrowRight') {
-      nextIndex = (currentIndex + 1) % threeDimensionalInspectorTabs.length;
+      nextIndex = (currentIndex + 1) % availableThreeDimensionalInspectorTabs.length;
     } else if (event.key === 'ArrowLeft') {
       nextIndex = (
-        currentIndex - 1 + threeDimensionalInspectorTabs.length
-      ) % threeDimensionalInspectorTabs.length;
+        currentIndex - 1 + availableThreeDimensionalInspectorTabs.length
+      ) % availableThreeDimensionalInspectorTabs.length;
     } else if (event.key === 'Home') {
       nextIndex = 0;
     } else if (event.key === 'End') {
-      nextIndex = threeDimensionalInspectorTabs.length - 1;
+      nextIndex = availableThreeDimensionalInspectorTabs.length - 1;
     } else {
       return;
     }
 
     event.preventDefault();
-    const nextTab = threeDimensionalInspectorTabs[nextIndex];
+    const nextTab = availableThreeDimensionalInspectorTabs[nextIndex];
     setActiveThreeDimensionalInspectorTab(nextTab.id);
     document.getElementById(`3d-inspector-tab-${nextTab.id}`)?.focus();
   }
@@ -1397,10 +1516,18 @@ export function App() {
                   spanVectors={threeDimensionalSpanVectors}
                   spanRank={threeDimensionalSpanAnalysis.rank}
                   showSpan={threeDimensionalState.visualization.showSpan}
+                  linearCombinationVisible={threeDimensionalState.linearCombination.visible}
+                  linearCombinationTarget={threeDimensionalTargetCoordinates}
+                  linearCombinationCoefficients={
+                    threeDimensionalLinearCombinationAnalysis?.particularSolution ?? null
+                  }
                   active={activeDimension === 3}
                   resetKey={threeDimensionalCameraResetKey}
                   camera={threeDimensionalState.visualization.camera}
                   onCameraChange={handleThreeDimensionalCameraChange}
+                  onLinearCombinationVisibility={
+                    handleThreeDimensionalLinearCombinationVisibility
+                  }
                 />
               </Suspense>
             ) : null}
@@ -1411,6 +1538,9 @@ export function App() {
               spanVectors={threeDimensionalSpanVectors}
               spanAnalysis={threeDimensionalSpanAnalysis}
               spanShape={threeDimensionalSpanShape}
+              targetDrafts={threeDimensionalTargetCoordinateDrafts}
+              target={threeDimensionalTargetCoordinates}
+              linearCombinationAnalysis={threeDimensionalLinearCombinationAnalysis}
               allVectorRelation={threeDimensionalAllVectorRelation}
               activeTab={activeThreeDimensionalInspectorTab}
               addButtonRef={threeDimensionalAddVectorButtonRef}
@@ -1419,6 +1549,8 @@ export function App() {
               onCoordinateChange={handleThreeDimensionalCoordinateChange}
               onSpanSelection={handleThreeDimensionalSpanSelection}
               onShowSpan={handleThreeDimensionalShowSpan}
+              onTargetCoordinateChange={handleThreeDimensionalTargetCoordinateChange}
+              onClearTarget={handleThreeDimensionalClearTarget}
               onAddVector={handleThreeDimensionalAddVector}
               onRemoveVector={handleThreeDimensionalRemoveVector}
             />
@@ -1536,6 +1668,9 @@ function ThreeDimensionalInspector({
   spanVectors,
   spanAnalysis,
   spanShape,
+  targetDrafts,
+  target,
+  linearCombinationAnalysis,
   allVectorRelation,
   activeTab,
   addButtonRef,
@@ -1544,6 +1679,8 @@ function ThreeDimensionalInspector({
   onCoordinateChange,
   onSpanSelection,
   onShowSpan,
+  onTargetCoordinateChange,
+  onClearTarget,
   onAddVector,
   onRemoveVector,
 }: {
@@ -1553,6 +1690,9 @@ function ThreeDimensionalInspector({
   readonly spanVectors: readonly VectorValue[];
   readonly spanAnalysis: VectorSetAnalysis;
   readonly spanShape: SpanShapeDescription;
+  readonly targetDrafts: TargetCoordinateDrafts;
+  readonly target: readonly [number, number, number] | null;
+  readonly linearCombinationAnalysis: LinearCombinationAnalysis | null;
   readonly allVectorRelation: ReturnType<typeof describeAllVectorRelation>;
   readonly activeTab: ThreeDimensionalInspectorTabId;
   readonly addButtonRef: RefObject<HTMLButtonElement | null>;
@@ -1561,9 +1701,15 @@ function ThreeDimensionalInspector({
   readonly onCoordinateChange: (vectorId: string, coordinateIndex: number, input: string) => void;
   readonly onSpanSelection: (vectorId: string, selected: boolean) => void;
   readonly onShowSpan: (showSpan: boolean) => void;
+  readonly onTargetCoordinateChange: (coordinateIndex: number, input: string) => void;
+  readonly onClearTarget: () => void;
   readonly onAddVector: () => void;
   readonly onRemoveVector: (vectorId: string) => void;
 }) {
+  const availableTabs = state.linearCombination.visible
+    ? threeDimensionalInspectorTabs
+    : threeDimensionalInspectorTabs.filter((tab) => tab.id !== 'combination');
+
   return (
     <aside className="analysis-column three-dimensional-analysis" aria-label="3Dベクトル集合の編集と解析結果">
       <section className="analysis-summary" aria-labelledby="3d-analysis-summary-title">
@@ -1595,7 +1741,7 @@ function ThreeDimensionalInspector({
       </section>
 
       <div className="inspector-tablist" role="tablist" aria-label="3D編集・解析の詳細">
-        {threeDimensionalInspectorTabs.map((tab) => (
+        {availableTabs.map((tab) => (
           <button
             key={tab.id}
             id={`3d-inspector-tab-${tab.id}`}
@@ -1699,6 +1845,26 @@ function ThreeDimensionalInspector({
           表示をオフにしても、選択集合と解析結果は維持されます。
         </p>
       </section>
+
+      <LinearCombinationExplorer
+        visible={state.linearCombination.visible}
+        active={activeTab === 'combination'}
+        target={target}
+        vectors={spanVectors}
+        analysis={linearCombinationAnalysis}
+        ambientDimension={3}
+        idPrefix="3d-"
+        targetEditor={(
+          <TargetEditor
+            drafts={targetDrafts}
+            target={target}
+            dimension={3}
+            inputIdPrefix="3d-"
+            onCoordinateChange={onTargetCoordinateChange}
+            onClear={onClearTarget}
+          />
+        )}
+      />
 
       <section
         className={`result-card inspector-panel ${analysis.isLinearlyIndependent ? 'is-independent' : 'is-dependent'}`}
@@ -1879,11 +2045,15 @@ function ThreeDimensionalVectorEditor({
 function TargetEditor({
   drafts,
   target,
+  dimension = 2,
+  inputIdPrefix = '',
   onCoordinateChange,
   onClear,
 }: {
   readonly drafts: TargetCoordinateDrafts;
-  readonly target: readonly [number, number] | null;
+  readonly target: readonly number[] | null;
+  readonly dimension?: AppDimension;
+  readonly inputIdPrefix?: string;
   readonly onCoordinateChange: (coordinateIndex: number, input: string) => void;
   readonly onClear: () => void;
 }) {
@@ -1893,13 +2063,18 @@ function TargetEditor({
   const firstError = invalidResults[0];
 
   return (
-    <section className="target-editor" aria-labelledby="target-editor-title">
+    <section className="target-editor" aria-labelledby={`${inputIdPrefix}target-editor-title`}>
       <div className="target-editor-copy">
         <p className="panel-kicker">Linear combination target</p>
-        <h3 id="target-editor-title">ターゲット <MathVectorName name="v" /></h3>
+        <h3 id={`${inputIdPrefix}target-editor-title`}>
+          ターゲット <MathVectorName name="v" />
+        </h3>
         <p>
-          座標面をクリックまたはタップして配置するか、成分を入力してください。
-          選択集合 <span className="math-set-name">S</span> の一次結合で表せるかを右側の「一次結合」タブに表示します。
+          {dimension === 2
+            ? '座標面をクリックまたはタップして配置するか、成分を入力してください。'
+            : '3つの成分を入力してください。3Dでは曖昧なCanvasクリック配置を行いません。'}
+          選択集合 <span className="math-set-name">S</span> の一次結合で表せるかを
+          {dimension === 2 ? '右側の「一次結合」タブ' : 'このカード'}に表示します。
         </p>
       </div>
       <div className="target-editor-controls">
@@ -1909,7 +2084,7 @@ function TargetEditor({
           {drafts.map((draft, coordinateIndex) => {
             const result = results[coordinateIndex];
             const isInvalid = hasDraftInput && !result.ok;
-            const inputId = `linear-combination-target-coordinate-${coordinateIndex}`;
+            const inputId = `${inputIdPrefix}linear-combination-target-coordinate-${coordinateIndex}`;
             const errorId = `${inputId}-error`;
 
             return (
@@ -1955,7 +2130,9 @@ function TargetEditor({
         {firstError && !firstError.ok
           ? `${invalidResults.length}か所が未確定です。${firstError.message} ターゲットには直前の有効値を使います。`
           : target
-            ? '入力と座標面上のターゲットは同期しています。'
+            ? dimension === 2
+              ? '入力と座標面上のターゲットは同期しています。'
+              : '入力と3D座標空間のターゲットは同期しています。'
             : 'ターゲットは未配置です。この状態も共有できます。'}
       </p>
     </section>
@@ -1968,28 +2145,45 @@ function LinearCombinationExplorer({
   target,
   vectors,
   analysis,
+  ambientDimension = 2,
+  idPrefix = '',
+  targetEditor = null,
 }: {
   readonly visible: boolean;
   readonly active: boolean;
-  readonly target: readonly [number, number] | null;
+  readonly target: readonly number[] | null;
   readonly vectors: readonly VectorValue[];
   readonly analysis: LinearCombinationAnalysis | null;
+  readonly ambientDimension?: AppDimension;
+  readonly idPrefix?: string;
+  readonly targetEditor?: ReactNode;
 }) {
   const statusPresentation = analysis ? describeLinearCombinationStatus(analysis.status) : null;
   const showsGeneralTargetFormula = Boolean(
-    analysis && vectors.length === 2 && analysis.rank === 2,
+    ambientDimension === 2 && analysis && vectors.length === 2 && analysis.rank === 2,
   );
+  const coefficientGeometryIsDegenerate = analysis?.particularSolution
+    ? isCombinationGeometryDegenerate(
+        vectors,
+        analysis.particularSolution,
+        ambientDimension,
+      )
+    : false;
+  const panelId = `${idPrefix}inspector-panel-combination`;
+  const tabId = `${idPrefix}inspector-tab-combination`;
+  const titleId = `${idPrefix}linear-combination-title`;
 
   return (
     <section
       className={`linear-combination-card inspector-panel ${analysis ? `is-${analysis.status}` : 'is-empty'}`}
-      id="inspector-panel-combination"
+      id={panelId}
       role="tabpanel"
-      aria-labelledby="inspector-tab-combination linear-combination-title"
+      aria-labelledby={`${tabId} ${titleId}`}
       hidden={!visible || !active}
     >
       <p className="panel-kicker">Linear combination explorer</p>
-      <h2 id="linear-combination-title">一次結合でターゲットを表す</h2>
+      <h2 id={titleId}>一次結合でターゲットを表す</h2>
+      {targetEditor}
       <LinearCombinationDefinition vectors={vectors} />
 
       {!target || !analysis || !statusPresentation ? (
@@ -1997,7 +2191,11 @@ function LinearCombinationExplorer({
           <span aria-hidden="true">◇</span>
           <div>
             <strong>ターゲットを配置してください</strong>
-            <p>座標面をクリック・タップするか、2つの成分を入力すると結果を表示します。</p>
+            <p>
+              {ambientDimension === 2
+                ? '座標面をクリック・タップするか、2つの成分を入力すると結果を表示します。'
+                : '3つの成分を入力すると結果を表示します。'}
+            </p>
           </div>
         </div>
       ) : (
@@ -2056,9 +2254,22 @@ function LinearCombinationExplorer({
 
               {vectors.length === 2 ? (
                 <p className="parallelogram-note">
-                  座標面では <CoefficientName index={1} /><MathVectorName name={vectors[0].name} /> と
+                  {ambientDimension === 2 ? '座標面' : '3D座標空間'}では
+                  {' '}<CoefficientName index={1} /><MathVectorName name={vectors[0].name} /> と
                   {' '}<CoefficientName index={2} /><MathVectorName name={vectors[1].name} /> を原点からの2辺とする
-                  {analysis.rank === 2 ? '平行四辺形' : '退化した平行四辺形'}を重ねています。
+                  {coefficientGeometryIsDegenerate ? '退化した平行四辺形' : '平行四辺形'}を重ねています。
+                </p>
+              ) : null}
+              {ambientDimension === 3 && vectors.length === 3 ? (
+                <p className="parallelogram-note">
+                  3D座標空間では係数の例1について、3本の係数倍を原点からの3辺とする
+                  {coefficientGeometryIsDegenerate ? '退化した平行六面体' : '平行六面体'}を重ねています。
+                  無数解の場合、係数の例2と一般解は数式で比較してください。
+                </p>
+              ) : null}
+              {ambientDimension === 3 && vectors.length >= 4 ? (
+                <p className="parallelogram-note">
+                  4本以上の係数は3D図形へ一意に対応させず、代数表示だけで示します。
                 </p>
               ) : null}
             </div>
@@ -2670,6 +2881,23 @@ function describeAllVectorRelation(
       };
 }
 
+function isCombinationGeometryDegenerate(
+  vectors: readonly VectorValue[],
+  coefficients: readonly number[],
+  dimension: AppDimension,
+): boolean {
+  if (vectors.length !== 2 && vectors.length !== 3) {
+    return false;
+  }
+  const scaledVectors = vectors.map((vector, vectorIndex) => ({
+    ...vector,
+    coordinates: vector.coordinates.map((coordinate) => (
+      coordinate * (coefficients[vectorIndex] ?? 0)
+    )),
+  }));
+  return analyzeVectorSet({ dimension, vectors: scaledVectors }).rank < vectors.length;
+}
+
 function createCoordinateDrafts(vectors: readonly VectorValue[]): CoordinateDrafts {
   return Object.fromEntries(
     vectors.map((vector) => [vector.id, vector.coordinates.map(String)]),
@@ -2678,15 +2906,18 @@ function createCoordinateDrafts(vectors: readonly VectorValue[]): CoordinateDraf
 
 function createTargetCoordinateDrafts(
   target: readonly number[] | null,
+  dimension: AppDimension,
 ): TargetCoordinateDrafts {
-  const coordinates = toTwoDimensionalTarget(target);
-  return coordinates ? coordinatesToTargetDrafts(coordinates) : ['', ''];
+  const coordinates = target?.length === dimension ? target : null;
+  return coordinates
+    ? coordinatesToTargetDrafts(coordinates)
+    : Array.from({ length: dimension }, () => '');
 }
 
 function coordinatesToTargetDrafts(
-  coordinates: readonly [number, number],
+  coordinates: readonly number[],
 ): TargetCoordinateDrafts {
-  return [String(coordinates[0]), String(coordinates[1])];
+  return coordinates.map(String);
 }
 
 function toTwoDimensionalTarget(
@@ -2695,19 +2926,31 @@ function toTwoDimensionalTarget(
   return target?.length === 2 ? [target[0], target[1]] : null;
 }
 
+function toThreeDimensionalTarget(
+  target: readonly number[] | null,
+): readonly [number, number, number] | null {
+  return target?.length === 3 ? [target[0], target[1], target[2]] : null;
+}
+
 function collectCoordinateInputIssues(
   vectors: readonly VectorValue[],
   drafts: CoordinateDrafts,
   targetVisible: boolean,
   targetDrafts: TargetCoordinateDrafts,
+  vectorInputIdPrefix = '',
+  targetInputIdPrefix = 'linear-combination-target-coordinate-',
 ): readonly CoordinateInputIssue[] {
-  const vectorIssues = collectVectorCoordinateInputIssues(vectors, drafts);
+  const vectorIssues = collectVectorCoordinateInputIssues(
+    vectors,
+    drafts,
+    vectorInputIdPrefix,
+  );
   const hasTargetDraftInput = targetDrafts.some((draft) => draft.trim().length > 0);
   const targetIssues = targetVisible && hasTargetDraftInput
     ? targetDrafts.flatMap((draft, coordinateIndex) => (
         parseCoordinateInput(draft).ok
           ? []
-          : [{ inputId: `linear-combination-target-coordinate-${coordinateIndex}` }]
+          : [{ inputId: `${targetInputIdPrefix}${coordinateIndex}` }]
       ))
     : [];
 

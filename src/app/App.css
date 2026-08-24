@@ -382,6 +382,16 @@
   letter-spacing: -0.035em;
 }
 
+.three-dimensional-toolbar {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.three-dimensional-toolbar .target-mode-button {
+  min-height: 40px;
+}
+
 .camera-preset-controls {
   display: flex;
   flex-wrap: wrap;
@@ -525,6 +535,46 @@
   font-size: 0.68rem;
   font-weight: 760;
   line-height: 1.25;
+}
+
+.space-target-label {
+  color: #245b8d;
+  border: 1px solid color-mix(in srgb, #245b8d 34%, transparent);
+  background: color-mix(in srgb, #fffdf8 92%, transparent);
+  font-family: Cambria, "Times New Roman", serif;
+  font-size: 1.12rem;
+  font-style: italic;
+  font-weight: 800;
+}
+
+.space-combination-term-label {
+  color: var(--space-combination-color);
+  border: 1px dashed color-mix(in srgb, var(--space-combination-color) 38%, transparent);
+  background: color-mix(in srgb, #fffdf8 90%, transparent);
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 0.9rem;
+}
+
+.space-coefficient-base {
+  font-family: Cambria, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.space-combination-vector-base {
+  margin-left: 0.08em;
+  font-family: Cambria, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 800;
+}
+
+.space-combination-term-label sub {
+  margin-left: 0.03em;
+  font-family: Cambria, "Times New Roman", serif;
+  font-size: 0.65em;
+  font-style: normal;
+  font-weight: 400;
+  vertical-align: -0.28em;
 }
 
 .three-dimensional-error {
@@ -999,6 +1049,15 @@
   border: 1px solid color-mix(in srgb, #2f6690 30%, var(--line));
   border-radius: 14px;
   background: color-mix(in srgb, #2f6690 6%, #fffdf7);
+}
+
+.linear-combination-card > .target-editor {
+  margin: 16px 0;
+  grid-template-columns: 1fr;
+}
+
+.linear-combination-card > .target-editor .target-editor-controls {
+  grid-template-columns: auto auto minmax(110px, 1fr) auto;
 }
 
 .target-editor .panel-kicker {
@@ -2597,6 +2656,11 @@
     display: grid;
   }
 
+  .three-dimensional-toolbar {
+    width: 100%;
+    justify-items: stretch;
+  }
+
   .camera-preset-controls {
     justify-content: flex-start;
   }
@@ -2607,6 +2671,14 @@
 
   .camera-preset-controls .fit-space-button {
     flex-basis: 108px;
+  }
+
+  .linear-combination-card > .target-editor .target-editor-controls {
+    grid-template-columns: auto auto minmax(96px, 1fr);
+  }
+
+  .linear-combination-card > .target-editor .clear-target-button {
+    grid-column: 1 / -1;
   }
 
   .three-dimensional-render-frame {

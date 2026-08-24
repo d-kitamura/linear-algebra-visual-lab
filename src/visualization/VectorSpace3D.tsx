@@ -14,6 +14,10 @@ import {
 } from '../sharing';
 import { splitVectorName } from '../ui';
 import {
+  createSpaceCombinationGeometry,
+  type SpaceCombinationGeometry,
+} from './spaceCombinationGeometry';
+import {
   createCameraPose,
   createSharedCameraState,
   createSpaceExtent,
@@ -30,10 +34,14 @@ interface VectorSpace3DProps {
   readonly spanVectors: readonly VectorValue[];
   readonly spanRank: number;
   readonly showSpan: boolean;
+  readonly linearCombinationVisible: boolean;
+  readonly linearCombinationTarget: readonly [number, number, number] | null;
+  readonly linearCombinationCoefficients: readonly number[] | null;
   readonly active: boolean;
   readonly resetKey: number;
   readonly camera: SharedCameraState | null;
   readonly onCameraChange: (camera: SharedCameraState) => void;
+  readonly onLinearCombinationVisibility: () => void;
 }
 
 interface ThreeSpaceRuntime {
@@ -51,6 +59,8 @@ const AXIS_COLORS = {
   z: '#3e6687',
 } as const;
 const SPAN_COLOR = '#737b82';
+const TARGET_COLOR = '#245b8d';
+const COMBINATION_HELPER_COLOR = '#596b78';
 
 export function VectorSpace3D({
   vectors,
@@ -58,10 +68,14 @@ export function VectorSpace3D({
   spanVectors,
   spanRank,
   showSpan,
+  linearCombinationVisible,
+  linearCombinationTarget,
+  linearCombinationCoefficients,
   active,
   resetKey,
   camera,
   onCameraChange,
+  onLinearCombinationVisibility,
 }: VectorSpace3DProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<ThreeSpaceRuntime | null>(null);
@@ -89,6 +103,9 @@ export function VectorSpace3D({
         spanVectors,
         spanRank,
         showSpan,
+        linearCombinationVisible,
+        linearCombinationTarget,
+        linearCombinationCoefficients,
         cameraRef.current,
         (nextCamera) => onCameraChangeRef.current(nextCamera),
         (message) => {
@@ -110,7 +127,16 @@ export function VectorSpace3D({
       );
       return undefined;
     }
-  }, [colors, showSpan, spanRank, spanVectors, vectors]);
+  }, [
+    colors,
+    linearCombinationCoefficients,
+    linearCombinationTarget,
+    linearCombinationVisible,
+    showSpan,
+    spanRank,
+    spanVectors,
+    vectors,
+  ]);
 
   useEffect(() => {
     if (!active) {
@@ -132,29 +158,39 @@ export function VectorSpace3D({
           <p className="panel-kicker">3D coordinate space</p>
           <h2 id="space-3d-title">3次元座標空間</h2>
         </div>
-        <div className="camera-preset-controls" role="group" aria-label="3D視点プリセット">
-          <button type="button" onClick={() => runtimeRef.current?.applyPreset('front')}>
-            正面
+        <div className="three-dimensional-toolbar">
+          <button
+            className="target-mode-button"
+            type="button"
+            aria-pressed={linearCombinationVisible}
+            onClick={onLinearCombinationVisibility}
+          >
+            {linearCombinationVisible ? '一次結合モードを終了' : '一次結合を調べる'}
           </button>
-          <button type="button" onClick={() => runtimeRef.current?.applyPreset('right')}>
-            右
-          </button>
-          <button type="button" onClick={() => runtimeRef.current?.applyPreset('top')}>
-            上
-          </button>
-          <button type="button" onClick={() => runtimeRef.current?.applyPreset('isometric')}>
-            等角
-          </button>
-          <button className="fit-space-button" type="button" onClick={() => runtimeRef.current?.fit()}>
-            全体を表示
-          </button>
+          <div className="camera-preset-controls" role="group" aria-label="3D視点プリセット">
+            <button type="button" onClick={() => runtimeRef.current?.applyPreset('front')}>
+              正面
+            </button>
+            <button type="button" onClick={() => runtimeRef.current?.applyPreset('right')}>
+              右
+            </button>
+            <button type="button" onClick={() => runtimeRef.current?.applyPreset('top')}>
+              上
+            </button>
+            <button type="button" onClick={() => runtimeRef.current?.applyPreset('isometric')}>
+              等角
+            </button>
+            <button className="fit-space-button" type="button" onClick={() => runtimeRef.current?.fit()}>
+              全体を表示
+            </button>
+          </div>
         </div>
       </div>
 
       <div
         className={`three-dimensional-render-frame ${errorMessage ? 'has-error' : ''}`}
         role="group"
-        aria-label={`右手座標系の3次元座標空間。x軸、y軸、z軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `選択したベクトルが生成する${describeSpaceSpan(spanRank)}を灰色の幾何形状で表示しています。` : '生成する空間の幾何表示はオフです。'}`}
+        aria-label={`右手座標系の3次元座標空間。x軸、y軸、z軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `選択したベクトルが生成する${describeSpaceSpan(spanRank)}を灰色の幾何形状で表示しています。` : '生成する空間の幾何表示はオフです。'}${linearCombinationVisible ? linearCombinationTarget ? 'ターゲットvと一次結合の幾何表示があります。' : '一次結合モードでターゲットは未配置です。' : ''}`}
       >
         <div className="three-dimensional-render-host" ref={hostRef} />
         {errorMessage ? (
@@ -169,6 +205,9 @@ export function VectorSpace3D({
         ドラッグで視点を回転し、ホイールまたは2本指で拡大・縮小できます。
         右ドラッグまたは2本指ドラッグで表示位置を移動できます。
         {showSpan ? ' 灰色の形状は、選択したベクトルが生成する空間です。' : ''}
+        {linearCombinationVisible
+          ? ' ターゲットは数値入力で変更し、係数の幾何表示を視点回転して確認できます。'
+          : ''}
         ページをスクロールするときは3D表示の外側を操作してください。
       </p>
     </section>
@@ -182,13 +221,36 @@ function createThreeSpaceRuntime(
   spanVectors: readonly VectorValue[],
   spanRank: number,
   showSpan: boolean,
+  linearCombinationVisible: boolean,
+  linearCombinationTarget: readonly [number, number, number] | null,
+  linearCombinationCoefficients: readonly number[] | null,
   initialCamera: SharedCameraState | null,
   onCameraChange: (camera: SharedCameraState) => void,
   onError: (message: string) => void,
 ): ThreeSpaceRuntime {
   host.replaceChildren();
 
-  const extent = createSpaceExtent(vectors);
+  const combinationGeometry = linearCombinationVisible
+    && linearCombinationTarget
+    && linearCombinationCoefficients
+    ? createSpaceCombinationGeometry(spanVectors, linearCombinationCoefficients)
+    : null;
+  const extentVectors: VectorValue[] = [...vectors];
+  if (linearCombinationVisible && linearCombinationTarget) {
+    extentVectors.push({
+      id: '__target__',
+      name: 'v',
+      coordinates: linearCombinationTarget,
+    });
+  }
+  combinationGeometry?.vertices.forEach((vertex, index) => {
+    extentVectors.push({
+      id: `__combination_vertex_${index}__`,
+      name: '',
+      coordinates: [vertex.x, vertex.y, vertex.z],
+    });
+  });
+  const extent = createSpaceExtent(extentVectors);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#fffdf8');
 
@@ -221,6 +283,9 @@ function createThreeSpaceRuntime(
   }
   addAxes(scene, extent);
   addOrigin(scene, extent);
+  if (combinationGeometry) {
+    addSpaceCombinationGeometry(scene, combinationGeometry, spanVectors, vectors, colors, extent);
+  }
   addVectors(
     scene,
     vectors,
@@ -229,6 +294,9 @@ function createThreeSpaceRuntime(
     new Set(spanVectors.map((vector) => vector.id)),
     showSpan,
   );
+  if (linearCombinationVisible && linearCombinationTarget) {
+    addTargetVector(scene, linearCombinationTarget, extent);
+  }
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = false;
@@ -666,6 +734,197 @@ function addVectors(
   });
 }
 
+function addSpaceCombinationGeometry(
+  scene: THREE.Scene,
+  geometry: SpaceCombinationGeometry,
+  spanVectors: readonly VectorValue[],
+  allVectors: readonly VectorValue[],
+  colors: readonly string[],
+  extent: SpaceExtent,
+): void {
+  const vertices = geometry.vertices.map(pointToVector3);
+  const facePositions: number[] = [];
+  geometry.faces.forEach(([first, second, third, fourth]) => {
+    facePositions.push(
+      ...vertices[first].toArray(),
+      ...vertices[second].toArray(),
+      ...vertices[third].toArray(),
+      ...vertices[first].toArray(),
+      ...vertices[third].toArray(),
+      ...vertices[fourth].toArray(),
+    );
+  });
+  const faceGeometry = new THREE.BufferGeometry();
+  faceGeometry.setAttribute('position', new THREE.Float32BufferAttribute(facePositions, 3));
+  const faceMaterial = new THREE.MeshBasicMaterial({
+    color: TARGET_COLOR,
+    transparent: true,
+    opacity: geometry.kind === 'parallelogram' ? 0.07 : 0.045,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const faces = new THREE.Mesh(faceGeometry, faceMaterial);
+  faces.renderOrder = 2;
+  scene.add(faces);
+
+  const helperPositions: number[] = [];
+  geometry.helperEdges.forEach(([startIndex, endIndex]) => {
+    helperPositions.push(...vertices[startIndex].toArray(), ...vertices[endIndex].toArray());
+  });
+  const helperGeometry = new THREE.BufferGeometry();
+  helperGeometry.setAttribute('position', new THREE.Float32BufferAttribute(helperPositions, 3));
+  const helperMaterial = new THREE.LineDashedMaterial({
+    color: COMBINATION_HELPER_COLOR,
+    dashSize: Math.max(0.14, extent.halfRange * 0.045),
+    gapSize: Math.max(0.08, extent.halfRange * 0.026),
+    transparent: true,
+    opacity: 0.78,
+    depthWrite: false,
+  });
+  const helperEdges = new THREE.LineSegments(helperGeometry, helperMaterial);
+  helperEdges.computeLineDistances();
+  helperEdges.renderOrder = 3;
+  scene.add(helperEdges);
+
+  geometry.terms.forEach((term, index) => {
+    const tip = pointToVector3(term);
+    const sourceVector = spanVectors[index];
+    const sourceIndex = allVectors.findIndex((vector) => vector.id === sourceVector?.id);
+    const color = new THREE.Color(
+      colors[(sourceIndex >= 0 ? sourceIndex : index) % colors.length] ?? '#2f6690',
+    );
+    addCombinationTermArrow(scene, tip, color, extent);
+    const labelOffset = tip.length() === 0
+      ? new THREE.Vector3(extent.halfRange * 0.045, 0, extent.halfRange * 0.045)
+      : tip.clone().normalize().multiplyScalar(extent.halfRange * 0.055);
+    scene.add(createCombinationTermLabel(
+      index + 1,
+      sourceVector?.name ?? `a${index + 1}`,
+      color.getStyle(),
+      tip.clone().add(labelOffset),
+    ));
+  });
+
+  const targetCorner = vertices[geometry.targetIndex];
+  const cornerGeometry = new THREE.SphereGeometry(
+    Math.max(0.07, extent.halfRange * 0.017),
+    16,
+    10,
+  );
+  const cornerMaterial = new THREE.MeshBasicMaterial({
+    color: TARGET_COLOR,
+    depthTest: false,
+  });
+  const corner = new THREE.Mesh(cornerGeometry, cornerMaterial);
+  corner.position.copy(targetCorner);
+  corner.renderOrder = 6;
+  scene.add(corner);
+}
+
+function addCombinationTermArrow(
+  scene: THREE.Scene,
+  tip: THREE.Vector3,
+  color: THREE.Color,
+  extent: SpaceExtent,
+): void {
+  const length = tip.length();
+  if (length === 0) {
+    const markerGeometry = new THREE.RingGeometry(
+      extent.halfRange * 0.018,
+      extent.halfRange * 0.032,
+      20,
+    );
+    const markerMaterial = new THREE.MeshBasicMaterial({
+      color,
+      side: THREE.DoubleSide,
+      depthTest: false,
+    });
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.lookAt(new THREE.Vector3(0, -1, 0));
+    marker.renderOrder = 5;
+    scene.add(marker);
+    return;
+  }
+
+  const headLength = Math.min(length * 0.24, Math.max(0.2, extent.halfRange * 0.065));
+  const arrow = new THREE.ArrowHelper(
+    tip.clone().normalize(),
+    ORIGIN,
+    length,
+    color,
+    headLength,
+    headLength * 0.52,
+  );
+  applyForegroundAppearance(arrow, 0.84, 5);
+  scene.add(arrow);
+}
+
+function addTargetVector(
+  scene: THREE.Scene,
+  target: readonly [number, number, number],
+  extent: SpaceExtent,
+): void {
+  const tip = new THREE.Vector3(...target);
+  const color = new THREE.Color(TARGET_COLOR);
+  const length = tip.length();
+
+  if (length === 0) {
+    const geometry = new THREE.RingGeometry(
+      extent.halfRange * 0.032,
+      extent.halfRange * 0.052,
+      24,
+    );
+    const material = new THREE.MeshBasicMaterial({
+      color,
+      side: THREE.DoubleSide,
+      depthTest: false,
+    });
+    const marker = new THREE.Mesh(geometry, material);
+    marker.lookAt(new THREE.Vector3(0, -1, 0));
+    marker.renderOrder = 7;
+    scene.add(marker);
+  } else {
+    const headLength = Math.min(length * 0.25, Math.max(0.24, extent.halfRange * 0.075));
+    const arrow = new THREE.ArrowHelper(
+      tip.clone().normalize(),
+      ORIGIN,
+      length,
+      color,
+      headLength,
+      headLength * 0.55,
+    );
+    applyForegroundAppearance(arrow, 1, 7);
+    scene.add(arrow);
+  }
+
+  const labelOffset = length === 0
+    ? new THREE.Vector3(extent.halfRange * 0.06, 0, extent.halfRange * 0.06)
+    : tip.clone().normalize().multiplyScalar(extent.halfRange * 0.065);
+  scene.add(createTargetLabel(tip.clone().add(labelOffset)));
+}
+
+function applyForegroundAppearance(
+  object: THREE.Object3D,
+  opacity: number,
+  renderOrder: number,
+): void {
+  object.traverse((child) => {
+    child.renderOrder = renderOrder;
+    if (!('material' in child)) {
+      return;
+    }
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    materials.forEach((material) => {
+      if (material instanceof THREE.Material) {
+        material.transparent = true;
+        material.opacity = opacity;
+        material.depthTest = false;
+        material.depthWrite = false;
+      }
+    });
+  });
+}
+
 function applyVectorSpanAppearance(
   object: THREE.Object3D,
   showSpan: boolean,
@@ -732,6 +991,51 @@ function createVectorLabel(
   const label = new CSS2DObject(element);
   label.position.copy(position);
   label.center.set(vectorIndex % 2 === 0 ? -0.08 : 1.08, 0.5);
+  return label;
+}
+
+function createTargetLabel(position: THREE.Vector3): CSS2DObject {
+  const element = document.createElement('span');
+  element.className = 'space-label space-target-label';
+  element.textContent = 'v';
+  const label = new CSS2DObject(element);
+  label.position.copy(position);
+  label.center.set(-0.08, 0.5);
+  return label;
+}
+
+function createCombinationTermLabel(
+  coefficientIndex: number,
+  vectorName: string,
+  color: string,
+  position: THREE.Vector3,
+): CSS2DObject {
+  const element = document.createElement('span');
+  element.className = 'space-label space-combination-term-label';
+  element.style.setProperty('--space-combination-color', color);
+
+  const coefficientBase = document.createElement('span');
+  coefficientBase.className = 'space-coefficient-base';
+  coefficientBase.textContent = 'c';
+  element.append(coefficientBase);
+  const coefficientSubscript = document.createElement('sub');
+  coefficientSubscript.textContent = String(coefficientIndex);
+  element.append(coefficientSubscript);
+
+  const { base, subscript } = splitVectorName(vectorName);
+  const vectorBase = document.createElement('span');
+  vectorBase.className = 'space-combination-vector-base';
+  vectorBase.textContent = base;
+  element.append(vectorBase);
+  if (subscript) {
+    const vectorSubscript = document.createElement('sub');
+    vectorSubscript.textContent = subscript;
+    element.append(vectorSubscript);
+  }
+
+  const label = new CSS2DObject(element);
+  label.position.copy(position);
+  label.center.set(-0.08, 0.5);
   return label;
 }
 
