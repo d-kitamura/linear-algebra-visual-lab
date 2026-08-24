@@ -3,6 +3,7 @@ import type { VectorValue } from '../../src/domain';
 import {
   DEFAULT_SPACE_HALF_RANGE,
   createCameraPose,
+  createSharedCameraState,
   createSpaceExtent,
   orthographicHalfHeight,
 } from '../../src/visualization';
@@ -65,5 +66,19 @@ describe('3D視点プリセット', () => {
   it('不正なカメラ距離を拒否する', () => {
     expect(() => createCameraPose('isometric', 0)).toThrow(RangeError);
     expect(() => orthographicHalfHeight(5, Number.NaN)).toThrow(RangeError);
+  });
+
+  it('位置・注視点・上方向・拡大率を共有用カメラ状態へ変換する', () => {
+    expect(createSharedCameraState({
+      position: { x: 12, y: 0, z: 0 },
+      target: { x: 2, y: 0, z: 0 },
+      up: { x: 0, y: 0, z: 2 },
+      zoom: 2.5,
+    })).toEqual({
+      direction: [1, 0, 0],
+      target: [2, 0, 0],
+      up: [0, 0, 1],
+      zoom: 2.5,
+    });
   });
 });

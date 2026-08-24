@@ -9,7 +9,7 @@ import {
 import { addDefaultVector, removeVector } from '../../src/state';
 
 const initialState: ShareState = {
-  v: 2,
+  v: 3,
   lab: 'vector-space',
   dim: 2,
   vectors: [
@@ -17,7 +17,7 @@ const initialState: ShareState = {
     { id: 'a2', name: 'a₂', coordinates: [-3, 2] },
   ],
   spanSelection: ['a1', 'a2'],
-  visualization: { showSpan: true },
+  visualization: { showSpan: true, camera: null },
   linearCombination: { visible: true, target: [3, -2] },
 };
 
@@ -90,7 +90,7 @@ describe('vector collection editing', () => {
     expect(analysis).toMatchObject({ rank: 0, isLinearlyIndependent: true });
   });
 
-  it('round-trips an edited collection and target through share state v2', () => {
+  it('round-trips an edited collection and target through share state v3', () => {
     const edited = removeVector(addDefaultVector(initialState).state, 'a1');
 
     expect(decodeShareState(encodeShareState(edited))).toEqual({

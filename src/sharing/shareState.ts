@@ -1,18 +1,40 @@
 import type { VectorDimension, VectorValue } from '../domain';
 
 export const LEGACY_SHARE_STATE_VERSION = 1 as const;
-export const SHARE_STATE_VERSION = 2 as const;
+export const PREVIOUS_SHARE_STATE_VERSION = 2 as const;
+export const SHARE_STATE_VERSION = 3 as const;
 export const MAX_SHARE_VECTORS = 8;
 export const MAX_SHARE_VECTOR_ID_LENGTH = 32;
 export const MAX_SHARE_VECTOR_NAME_LENGTH = 40;
 export const MAX_ABSOLUTE_COORDINATE = 1_000_000;
+export const MAX_ABSOLUTE_CAMERA_TARGET = 10_000_000;
+export const MIN_CAMERA_ZOOM = 0.05;
+export const MAX_CAMERA_ZOOM = 100;
 export const MAX_ENCODED_SHARE_STATE_LENGTH = 8_192;
 
 const SHARE_LAB = 'vector-space' as const;
 const VECTOR_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
-export interface SharedVisualizationState {
+export interface SharedCameraState {
+  readonly direction: readonly [number, number, number];
+  readonly target: readonly [number, number, number];
+  readonly up: readonly [number, number, number];
+  readonly zoom: number;
+}
+
+export const DEFAULT_3D_CAMERA_STATE: SharedCameraState = {
+  direction: [0.50305546, -0.68060445, 0.53264696],
+  target: [0, 0, 0],
+  up: [0, 0, 1],
+  zoom: 1,
+};
+
+export interface LegacySharedVisualizationState {
   readonly showSpan: boolean;
+}
+
+export interface SharedVisualizationState extends LegacySharedVisualizationState {
+  readonly camera: SharedCameraState | null;
 }
 
 export interface SharedLinearCombinationState {
@@ -26,10 +48,20 @@ export interface ShareStateV1 {
   readonly dim: VectorDimension;
   readonly vectors: readonly VectorValue[];
   readonly spanSelection: readonly string[];
-  readonly visualization: SharedVisualizationState;
+  readonly visualization: LegacySharedVisualizationState;
 }
 
 export interface ShareStateV2 {
+  readonly v: typeof PREVIOUS_SHARE_STATE_VERSION;
+  readonly lab: typeof SHARE_LAB;
+  readonly dim: VectorDimension;
+  readonly vectors: readonly VectorValue[];
+  readonly spanSelection: readonly string[];
+  readonly visualization: LegacySharedVisualizationState;
+  readonly linearCombination: SharedLinearCombinationState;
+}
+
+export interface ShareStateV3 {
   readonly v: typeof SHARE_STATE_VERSION;
   readonly lab: typeof SHARE_LAB;
   readonly dim: VectorDimension;
@@ -39,7 +71,7 @@ export interface ShareStateV2 {
   readonly linearCombination: SharedLinearCombinationState;
 }
 
-export type ShareState = ShareStateV2;
+export type ShareState = ShareStateV3;
 
 export type ShareStateErrorCode =
   | 'EMPTY_ENCODED_STATE'
@@ -73,7 +105,7 @@ interface ValidatedCommonFields {
   readonly dim: VectorDimension;
   readonly vectors: readonly VectorValue[];
   readonly spanSelection: readonly string[];
-  readonly visualization: SharedVisualizationState;
+  readonly visualization: LegacySharedVisualizationState;
 }
 
 export function validateShareState(input: unknown): ShareState {
@@ -89,7 +121,24 @@ export function validateShareState(input: unknown): ShareState {
       v: SHARE_STATE_VERSION,
       lab: SHARE_LAB,
       ...common,
+      visualization: { ...common.visualization, camera: null },
       linearCombination: { visible: false, target: null },
+    };
+  }
+
+  if (state.v === PREVIOUS_SHARE_STATE_VERSION) {
+    const common = validateCommonFields(
+      state,
+      ['v', 'lab', 'dim', 'vectors', 'spanSelection', 'visualization', 'linearCombination'],
+    );
+    const linearCombination = validateLinearCombination(state.linearCombination, common.dim);
+
+    return {
+      v: SHARE_STATE_VERSION,
+      lab: SHARE_LAB,
+      ...common,
+      visualization: { ...common.visualization, camera: null },
+      linearCombination,
     };
   }
 
@@ -97,33 +146,26 @@ export function validateShareState(input: unknown): ShareState {
     const common = validateCommonFields(
       state,
       ['v', 'lab', 'dim', 'vectors', 'spanSelection', 'visualization', 'linearCombination'],
+      ['showSpan', 'camera'],
     );
-    const linearCombination = requireRecord(
-      state.linearCombination,
-      '$.linearCombination',
-    );
-    requireExactKeys(linearCombination, ['visible', 'target'], '$.linearCombination');
+    const visualization = requireRecord(state.visualization, '$.visualization');
+    const camera = visualization.camera === null
+      ? null
+      : validateCameraState(visualization.camera, '$.visualization.camera');
 
-    if (typeof linearCombination.visible !== 'boolean') {
+    if (common.dim === 2 && camera !== null) {
       throw invalidState(
-        'visible は真偽値である必要があります。',
-        '$.linearCombination.visible',
+        '2D共有状態に3Dカメラを指定できません。',
+        '$.visualization.camera',
       );
     }
-
-    const target = linearCombination.target === null
-      ? null
-      : requireCoordinates(
-          linearCombination.target,
-          common.dim,
-          '$.linearCombination.target',
-        );
 
     return {
       v: SHARE_STATE_VERSION,
       lab: SHARE_LAB,
       ...common,
-      linearCombination: { visible: linearCombination.visible, target },
+      visualization: { ...common.visualization, camera },
+      linearCombination: validateLinearCombination(state.linearCombination, common.dim),
     };
   }
 
@@ -137,6 +179,7 @@ export function validateShareState(input: unknown): ShareState {
 function validateCommonFields(
   state: Record<string, unknown>,
   expectedKeys: readonly string[],
+  visualizationKeys: readonly string[] = ['showSpan'],
 ): ValidatedCommonFields {
   requireExactKeys(state, expectedKeys, '$');
 
@@ -212,7 +255,7 @@ function validateCommonFields(
   });
 
   const visualization = requireRecord(state.visualization, '$.visualization');
-  requireExactKeys(visualization, ['showSpan'], '$.visualization');
+  requireExactKeys(visualization, visualizationKeys, '$.visualization');
   if (typeof visualization.showSpan !== 'boolean') {
     throw invalidState('showSpan は真偽値である必要があります。', '$.visualization.showSpan');
   }
@@ -223,6 +266,112 @@ function validateCommonFields(
     spanSelection,
     visualization: { showSpan: visualization.showSpan },
   };
+}
+
+function validateLinearCombination(
+  value: unknown,
+  dimension: VectorDimension,
+): SharedLinearCombinationState {
+  const linearCombination = requireRecord(value, '$.linearCombination');
+  requireExactKeys(linearCombination, ['visible', 'target'], '$.linearCombination');
+
+  if (typeof linearCombination.visible !== 'boolean') {
+    throw invalidState(
+      'visible は真偽値である必要があります。',
+      '$.linearCombination.visible',
+    );
+  }
+
+  const target = linearCombination.target === null
+    ? null
+    : requireCoordinates(
+        linearCombination.target,
+        dimension,
+        '$.linearCombination.target',
+      );
+
+  return { visible: linearCombination.visible, target };
+}
+
+function validateCameraState(value: unknown, path: string): SharedCameraState {
+  const camera = requireRecord(value, path);
+  requireExactKeys(camera, ['direction', 'target', 'up', 'zoom'], path);
+  const direction = requireCameraVector(camera.direction, `${path}.direction`, 2);
+  const target = requireCameraVector(
+    camera.target,
+    `${path}.target`,
+    MAX_ABSOLUTE_CAMERA_TARGET,
+  );
+  const up = requireCameraVector(camera.up, `${path}.up`, 2);
+
+  const directionLength = vectorLength(direction);
+  const upLength = vectorLength(up);
+  if (directionLength < 0.999 || directionLength > 1.001) {
+    throw invalidState('direction は正規化されたベクトルである必要があります。', `${path}.direction`);
+  }
+  if (upLength < 0.999 || upLength > 1.001) {
+    throw invalidState('up は正規化されたベクトルである必要があります。', `${path}.up`);
+  }
+
+  const alignment = Math.abs(dotProduct(direction, up) / (directionLength * upLength));
+  if (alignment > 0.9999) {
+    throw invalidState('direction と up は平行にできません。', path);
+  }
+
+  if (
+    typeof camera.zoom !== 'number'
+    || !Number.isFinite(camera.zoom)
+    || camera.zoom < MIN_CAMERA_ZOOM
+    || camera.zoom > MAX_CAMERA_ZOOM
+  ) {
+    throw invalidState(
+      `zoom は ${MIN_CAMERA_ZOOM} 以上 ${MAX_CAMERA_ZOOM} 以下の有限値である必要があります。`,
+      `${path}.zoom`,
+    );
+  }
+
+  return {
+    direction,
+    target,
+    up,
+    zoom: normalizeNegativeZero(camera.zoom),
+  };
+}
+
+function requireCameraVector(
+  value: unknown,
+  path: string,
+  absoluteLimit: number,
+): [number, number, number] {
+  if (!Array.isArray(value) || value.length !== 3) {
+    throw invalidState('3個の有限値からなる必要があります。', path);
+  }
+
+  return value.map((coordinate, index) => {
+    if (
+      typeof coordinate !== 'number'
+      || !Number.isFinite(coordinate)
+      || Math.abs(coordinate) > absoluteLimit
+    ) {
+      throw invalidState(
+        `成分の絶対値は ${absoluteLimit} 以下の有限値である必要があります。`,
+        `${path}[${index}]`,
+      );
+    }
+    return normalizeNegativeZero(coordinate);
+  }) as [number, number, number];
+}
+
+function vectorLength(vector: readonly number[]): number {
+  return Math.hypot(...vector);
+}
+
+function dotProduct(left: readonly number[], right: readonly number[]): number {
+  return left.reduce((sum, value, index) => sum + value * (right[index] ?? 0), 0);
+}
+
+function normalizeNegativeZero(value: number): number {
+  return Object.is(value, -0) ? 0 : value;
 }
 
 export function encodeShareState(state: ShareState): string {

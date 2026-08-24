@@ -1,7 +1,11 @@
-import { validateShareState, type ShareState } from '../sharing';
+import {
+  DEFAULT_3D_CAMERA_STATE,
+  validateShareState,
+  type ShareState,
+} from '../sharing';
 
 const initialTwoDimensionalState: ShareState = {
-  v: 2,
+  v: 3,
   lab: 'vector-space',
   dim: 2,
   vectors: [
@@ -9,14 +13,14 @@ const initialTwoDimensionalState: ShareState = {
     { id: 'a2', name: 'a₂', coordinates: [-3, 2] },
   ],
   spanSelection: ['a1', 'a2'],
-  visualization: { showSpan: true },
+  visualization: { showSpan: true, camera: null },
   linearCombination: { visible: false, target: null },
 };
 
 export const DEFAULT_2D_SHARE_STATE = validateShareState(initialTwoDimensionalState);
 
 const initialThreeDimensionalState: ShareState = {
-  v: 2,
+  v: 3,
   lab: 'vector-space',
   dim: 3,
   vectors: [
@@ -25,7 +29,7 @@ const initialThreeDimensionalState: ShareState = {
     { id: 'a3', name: 'a₃', coordinates: [1, 1, 2] },
   ],
   spanSelection: ['a1', 'a2', 'a3'],
-  visualization: { showSpan: true },
+  visualization: { showSpan: true, camera: DEFAULT_3D_CAMERA_STATE },
   linearCombination: { visible: false, target: null },
 };
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_3D_CAMERA_STATE,
   MAX_ABSOLUTE_COORDINATE,
+  MAX_CAMERA_ZOOM,
   MAX_ENCODED_SHARE_STATE_LENGTH,
   MAX_SHARE_VECTORS,
   decodeShareState,
@@ -9,10 +11,11 @@ import {
   type ShareState,
   type ShareStateErrorCode,
   type ShareStateV1,
+  type ShareStateV2,
 } from '../../src/sharing';
 
 const exampleState: ShareState = {
-  v: 2,
+  v: 3,
   lab: 'vector-space',
   dim: 2,
   vectors: [
@@ -20,7 +23,7 @@ const exampleState: ShareState = {
     { id: 'v2', name: 'ベクトル v₂', coordinates: [-3, 2] },
   ],
   spanSelection: ['v1'],
-  visualization: { showSpan: true },
+  visualization: { showSpan: true, camera: null },
   linearCombination: { visible: true, target: [3, -2] },
 };
 
@@ -70,18 +73,39 @@ describe('share-state round trip', () => {
 
   it('supports a 3D state and an empty span selection', () => {
     const state: ShareState = {
-      v: 2,
+      v: 3,
       lab: 'vector-space',
       dim: 3,
       vectors: [{ id: 'v1', name: 'v₁', coordinates: [1, 0, -2.5] }],
       spanSelection: [],
-      visualization: { showSpan: false },
+      visualization: { showSpan: false, camera: DEFAULT_3D_CAMERA_STATE },
       linearCombination: { visible: true, target: [2, 0, -1] },
     };
 
     const decoded = decodeShareState(encodeShareState(state));
 
     expect(decoded).toEqual({ ok: true, state });
+  });
+
+  it('restores a validated 3D camera state', () => {
+    const state: ShareState = {
+      ...exampleState,
+      dim: 3,
+      vectors: [{ id: 'v1', name: 'v₁', coordinates: [1, 2, 3] }],
+      spanSelection: ['v1'],
+      visualization: {
+        showSpan: true,
+        camera: {
+          direction: [1, 0, 0],
+          target: [2.5, -1, 0.25],
+          up: [0, 0, 1],
+          zoom: 2.5,
+        },
+      },
+      linearCombination: { visible: false, target: null },
+    };
+
+    expect(decodeShareState(encodeShareState(state))).toEqual({ ok: true, state });
   });
 });
 
@@ -239,14 +263,44 @@ describe('share-state schema validation', () => {
     }), 'COORDINATE_LIMIT_EXCEEDED');
   });
 
-  it('migrates a strict v1 state to the current v2 defaults', () => {
+  it('rejects unsafe, degenerate, and 2D camera states', () => {
+    const cameraState = {
+      ...exampleState,
+      dim: 3,
+      vectors: [{ id: 'v1', name: 'v₁', coordinates: [1, 2, 3] }],
+      spanSelection: ['v1'],
+      visualization: { showSpan: true, camera: DEFAULT_3D_CAMERA_STATE },
+      linearCombination: { visible: false, target: null },
+    };
+
+    expectDecodeError(encodeRawValue({
+      ...cameraState,
+      visualization: {
+        showSpan: true,
+        camera: { ...DEFAULT_3D_CAMERA_STATE, zoom: MAX_CAMERA_ZOOM + 1 },
+      },
+    }), 'INVALID_STATE');
+    expectDecodeError(encodeRawValue({
+      ...cameraState,
+      visualization: {
+        showSpan: true,
+        camera: { ...DEFAULT_3D_CAMERA_STATE, direction: [0, 0, 1], up: [0, 0, 1] },
+      },
+    }), 'INVALID_STATE');
+    expectDecodeError(encodeRawValue({
+      ...exampleState,
+      visualization: { showSpan: true, camera: DEFAULT_3D_CAMERA_STATE },
+    }), 'INVALID_STATE');
+  });
+
+  it('migrates a strict v1 state to the current v3 defaults', () => {
     const legacyState: ShareStateV1 = {
       v: 1,
       lab: 'vector-space',
       dim: 2,
       vectors: exampleState.vectors,
       spanSelection: exampleState.spanSelection,
-      visualization: exampleState.visualization,
+      visualization: { showSpan: exampleState.visualization.showSpan },
     };
     const decoded = decodeShareState(encodeRawValue(legacyState));
 
@@ -254,13 +308,35 @@ describe('share-state schema validation', () => {
       ok: true,
       state: {
         ...legacyState,
-        v: 2,
+        v: 3,
+        visualization: { ...legacyState.visualization, camera: null },
         linearCombination: { visible: false, target: null },
       },
     });
   });
 
-  it('keeps v1 strict instead of accepting v2 fields under the old version', () => {
+  it('migrates a strict v2 state to v3 with the default camera marker', () => {
+    const previousState: ShareStateV2 = {
+      v: 2,
+      lab: 'vector-space',
+      dim: 3,
+      vectors: [{ id: 'v1', name: 'v₁', coordinates: [1, 2, 3] }],
+      spanSelection: ['v1'],
+      visualization: { showSpan: true },
+      linearCombination: { visible: false, target: null },
+    };
+
+    expect(decodeShareState(encodeRawValue(previousState))).toEqual({
+      ok: true,
+      state: {
+        ...previousState,
+        v: 3,
+        visualization: { showSpan: true, camera: null },
+      },
+    });
+  });
+
+  it('keeps v1 strict instead of accepting newer fields under the old version', () => {
     const legacyWithNewField = {
       ...exampleState,
       v: 1,
@@ -292,7 +368,7 @@ describe('safe share-state decoding', () => {
   });
 
   it('rejects an unsupported schema version', () => {
-    expectDecodeError(encodeRawValue({ ...exampleState, v: 3 }), 'UNSUPPORTED_VERSION');
+    expectDecodeError(encodeRawValue({ ...exampleState, v: 4 }), 'UNSUPPORTED_VERSION');
   });
 
   it('rejects a wrong visualization value type', () => {

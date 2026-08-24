@@ -8,11 +8,13 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import {
   analyzeLinearCombination,
   analyzeVectorSet,
   type LinearCombinationAnalysis,
+  type VectorSetAnalysis,
   type VectorValue,
 } from '../domain';
 import {
@@ -23,6 +25,7 @@ import {
   createShareQrCodeFileName,
   createShareTextFileContents,
   createShareTextFileName,
+  type SharedCameraState,
   type ShareState,
 } from '../sharing';
 import {
@@ -68,7 +71,7 @@ const vectorColors = [
   '#4f772d',
   '#8a5a44',
 ];
-const coordinateNames = ['第1成分', '第2成分'] as const;
+const coordinateNames = ['第1成分', '第2成分', '第3成分'] as const;
 const inspectorTabs = [
   { id: 'edit', label: 'ベクトル編集', shortLabel: '編集' },
   { id: 'span', label: '生成する空間', shortLabel: 'span' },
@@ -79,11 +82,18 @@ const dimensionTabs = [
   { dimension: 2, label: '2D座標平面', shortLabel: '2D' },
   { dimension: 3, label: '3D座標空間', shortLabel: '3D' },
 ] as const;
+const threeDimensionalInspectorTabs = [
+  { id: 'edit', label: 'ベクトル編集', shortLabel: '編集' },
+  { id: 'span', label: '生成する空間', shortLabel: 'span' },
+  { id: 'all', label: '全ベクトル', shortLabel: '全体' },
+] as const;
 
 type CoordinateDrafts = Readonly<Record<string, readonly string[]>>;
 type TargetCoordinateDrafts = readonly [string, string];
 type ViewMode = 'auto' | 'manual';
 type InspectorTabId = typeof inspectorTabs[number]['id'];
+type ThreeDimensionalInspectorTabId =
+  typeof threeDimensionalInspectorTabs[number]['id'];
 type ShareFeedback = {
   readonly kind: 'success' | 'error';
   readonly message: string;
@@ -91,6 +101,12 @@ type ShareFeedback = {
 
 interface CoordinateInputIssue {
   readonly inputId: string;
+}
+
+interface SpanShapeDescription {
+  readonly heading: string;
+  readonly explanation: string;
+  readonly summary: string;
 }
 
 export function App() {
@@ -107,9 +123,16 @@ export function App() {
   const [threeDimensionalState, setThreeDimensionalState] = useState<ShareState>(
     initial3DState,
   );
-  const [threeDimensionalCameraResetKey, setThreeDimensionalCameraResetKey] = useState(0);
+  const [threeDimensionalCameraResetKey, setThreeDimensionalCameraResetKey] =
+    useState(0);
   const [coordinateDrafts, setCoordinateDrafts] = useState<CoordinateDrafts>(() =>
     createCoordinateDrafts(initial2DState.vectors),
+  );
+  const [
+    threeDimensionalCoordinateDrafts,
+    setThreeDimensionalCoordinateDrafts,
+  ] = useState<CoordinateDrafts>(() =>
+    createCoordinateDrafts(initial3DState.vectors),
   );
   const [targetCoordinateDrafts, setTargetCoordinateDrafts] = useState<TargetCoordinateDrafts>(
     () => createTargetCoordinateDrafts(initial2DState.linearCombination.target),
@@ -122,6 +145,10 @@ export function App() {
   const [activeInspectorTab, setActiveInspectorTab] = useState<InspectorTabId>(
     initial2DState.linearCombination.visible ? 'combination' : 'edit',
   );
+  const [
+    activeThreeDimensionalInspectorTab,
+    setActiveThreeDimensionalInspectorTab,
+  ] = useState<ThreeDimensionalInspectorTabId>('edit');
   const [loadErrorMessage, setLoadErrorMessage] = useState(initialization.errorMessage);
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState('');
@@ -133,6 +160,7 @@ export function App() {
   const shareDialogRef = useRef<HTMLDialogElement>(null);
   const shareUrlFieldRef = useRef<HTMLTextAreaElement>(null);
   const addVectorButtonRef = useRef<HTMLButtonElement>(null);
+  const threeDimensionalAddVectorButtonRef = useRef<HTMLButtonElement>(null);
   const coordinateInputIssues = useMemo(
     () => collectCoordinateInputIssues(
       state.vectors,
@@ -148,11 +176,45 @@ export function App() {
     ],
   );
   const hasInvalid2DCoordinateDraft = coordinateInputIssues.length > 0;
-  const hasInvalidCoordinateDraft = activeDimension === 2 && hasInvalid2DCoordinateDraft;
+  const threeDimensionalCoordinateInputIssues = useMemo(
+    () => collectVectorCoordinateInputIssues(
+      threeDimensionalState.vectors,
+      threeDimensionalCoordinateDrafts,
+      '3d-',
+    ),
+    [threeDimensionalState.vectors, threeDimensionalCoordinateDrafts],
+  );
+  const hasInvalidCoordinateDraft = activeDimension === 2
+    ? hasInvalid2DCoordinateDraft
+    : threeDimensionalCoordinateInputIssues.length > 0;
+  const activeCoordinateInputIssues = activeDimension === 2
+    ? coordinateInputIssues
+    : threeDimensionalCoordinateInputIssues;
   const activeShareState = activeDimension === 2 ? state : threeDimensionalState;
   const analysis = useMemo(
     () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
     [state],
+  );
+  const threeDimensionalAnalysis = useMemo(
+    () => analyzeVectorSet({
+      dimension: threeDimensionalState.dim,
+      vectors: threeDimensionalState.vectors,
+    }),
+    [threeDimensionalState.dim, threeDimensionalState.vectors],
+  );
+  const threeDimensionalSpanVectors = useMemo(
+    () => selectSpanVectors(
+      threeDimensionalState.vectors,
+      threeDimensionalState.spanSelection,
+    ),
+    [threeDimensionalState.vectors, threeDimensionalState.spanSelection],
+  );
+  const threeDimensionalSpanAnalysis = useMemo(
+    () => analyzeVectorSet({
+      dimension: threeDimensionalState.dim,
+      vectors: threeDimensionalSpanVectors,
+    }),
+    [threeDimensionalState.dim, threeDimensionalSpanVectors],
   );
   const spanVectors = useMemo(
     () => selectSpanVectors(state.vectors, state.spanSelection),
@@ -202,7 +264,12 @@ export function App() {
     analysis.vectorCount,
     analysis.isLinearlyIndependent,
   );
-  const spanShape = describeSpanShape(spanAnalysis.rank);
+  const spanShape = describeSpanShape(spanAnalysis.rank, 2);
+  const threeDimensionalSpanShape = describeSpanShape(threeDimensionalSpanAnalysis.rank, 3);
+  const threeDimensionalAllVectorRelation = describeAllVectorRelation(
+    threeDimensionalAnalysis.vectorCount,
+    threeDimensionalAnalysis.isLinearlyIndependent,
+  );
   const availableInspectorTabs = state.linearCombination.visible
     ? inspectorTabs
     : inspectorTabs.filter((tab) => tab.id !== 'combination');
@@ -418,9 +485,57 @@ export function App() {
     window.requestAnimationFrame(() => addVectorButtonRef.current?.focus());
   }
 
+  function handleThreeDimensionalSpanSelection(vectorId: string, selected: boolean): void {
+    setThreeDimensionalState((current) => ({
+      ...current,
+      spanSelection: updateSpanSelection(
+        current.vectors,
+        current.spanSelection,
+        vectorId,
+        selected,
+      ),
+    }));
+  }
+
+  function handleThreeDimensionalAddVector(): void {
+    const result = addDefaultVector(threeDimensionalState);
+    if (!result.addedVector) {
+      return;
+    }
+    const addedVector = result.addedVector;
+
+    setThreeDimensionalState(result.state);
+    setThreeDimensionalCoordinateDrafts((current) => ({
+      ...current,
+      [addedVector.id]: addedVector.coordinates.map(String),
+    }));
+    window.requestAnimationFrame(() => {
+      document.getElementById(`3d-${addedVector.id}-coordinate-0`)?.focus();
+    });
+  }
+
+  function handleThreeDimensionalRemoveVector(vectorId: string): void {
+    setThreeDimensionalState((current) => removeVectorFromState(current, vectorId));
+    setThreeDimensionalCoordinateDrafts((current) => Object.fromEntries(
+      Object.entries(current).filter(([id]) => id !== vectorId),
+    ));
+    window.requestAnimationFrame(() => threeDimensionalAddVectorButtonRef.current?.focus());
+  }
+
+  function handleThreeDimensionalCameraChange(camera: SharedCameraState): void {
+    setThreeDimensionalState((current) => cameraStatesEqual(current.visualization.camera, camera)
+      ? current
+      : {
+          ...current,
+          visualization: { ...current.visualization, camera },
+        });
+  }
+
   function handleReset(): void {
     if (activeDimension === 3) {
       setThreeDimensionalState(initial3DState);
+      setThreeDimensionalCoordinateDrafts(createCoordinateDrafts(initial3DState.vectors));
+      setActiveThreeDimensionalInspectorTab('edit');
       setThreeDimensionalCameraResetKey((current) => current + 1);
       setExportErrorMessage(null);
       setShareUrl('');
@@ -497,7 +612,7 @@ export function App() {
   }
 
   function handleFocusFirstCoordinateIssue(): void {
-    const firstIssue = coordinateInputIssues[0];
+    const firstIssue = activeCoordinateInputIssues[0];
     if (!firstIssue) {
       return;
     }
@@ -602,6 +717,34 @@ export function App() {
     document.getElementById(`inspector-tab-${nextTab.id}`)?.focus();
   }
 
+  function handleThreeDimensionalInspectorTabKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+  ): void {
+    const currentIndex = threeDimensionalInspectorTabs.findIndex(
+      (tab) => tab.id === activeThreeDimensionalInspectorTab,
+    );
+    let nextIndex = currentIndex;
+
+    if (event.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % threeDimensionalInspectorTabs.length;
+    } else if (event.key === 'ArrowLeft') {
+      nextIndex = (
+        currentIndex - 1 + threeDimensionalInspectorTabs.length
+      ) % threeDimensionalInspectorTabs.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = threeDimensionalInspectorTabs.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    const nextTab = threeDimensionalInspectorTabs[nextIndex];
+    setActiveThreeDimensionalInspectorTab(nextTab.id);
+    document.getElementById(`3d-inspector-tab-${nextTab.id}`)?.focus();
+  }
+
   function handleDimensionTabKeyDown(
     event: ReactKeyboardEvent<HTMLButtonElement>,
   ): void {
@@ -666,6 +809,36 @@ export function App() {
           ),
         };
       }),
+    }));
+  }
+
+  function handleThreeDimensionalCoordinateChange(
+    vectorId: string,
+    coordinateIndex: number,
+    input: string,
+  ): void {
+    setThreeDimensionalCoordinateDrafts((current) => ({
+      ...current,
+      [vectorId]: (current[vectorId] ?? []).map((value, index) =>
+        index === coordinateIndex ? input : value,
+      ),
+    }));
+
+    const parsed = parseCoordinateInput(input);
+    if (!parsed.ok) {
+      return;
+    }
+
+    setThreeDimensionalState((current) => ({
+      ...current,
+      vectors: current.vectors.map((vector) => vector.id === vectorId
+        ? {
+            ...vector,
+            coordinates: vector.coordinates.map((coordinate, index) =>
+              index === coordinateIndex ? parsed.value : coordinate,
+            ),
+          }
+        : vector),
     }));
   }
 
@@ -757,8 +930,8 @@ export function App() {
                   role="status"
                   aria-live="polite"
                 >
-                  未確定の成分が{coordinateInputIssues.length}か所あります。
-                  訂正するまで、座標面と判定には各欄の直前の有効値を使い、エクスポートを停止します。
+                  未確定の成分が{activeCoordinateInputIssues.length}か所あります。
+                  訂正するまで、表示と判定には各欄の直前の有効値を使い、エクスポートを停止します。
                 </p>
                 <button type="button" onClick={handleFocusFirstCoordinateIssue}>
                   入力欄を確認
@@ -1208,16 +1381,37 @@ export function App() {
           hidden={activeDimension !== 3}
           tabIndex={-1}
         >
-          {hasActivatedThreeDimensions ? (
-            <Suspense fallback={<ThreeDimensionalLoading />}>
-              <VectorSpace3D
-                vectors={threeDimensionalState.vectors}
-                colors={vectorColors}
-                active={activeDimension === 3}
-                resetKey={threeDimensionalCameraResetKey}
-              />
-            </Suspense>
-          ) : null}
+          <div className="three-dimensional-layout">
+            {hasActivatedThreeDimensions ? (
+              <Suspense fallback={<ThreeDimensionalLoading />}>
+                <VectorSpace3D
+                  vectors={threeDimensionalState.vectors}
+                  colors={vectorColors}
+                  active={activeDimension === 3}
+                  resetKey={threeDimensionalCameraResetKey}
+                  camera={threeDimensionalState.visualization.camera}
+                  onCameraChange={handleThreeDimensionalCameraChange}
+                />
+              </Suspense>
+            ) : null}
+            <ThreeDimensionalInspector
+              state={threeDimensionalState}
+              drafts={threeDimensionalCoordinateDrafts}
+              analysis={threeDimensionalAnalysis}
+              spanVectors={threeDimensionalSpanVectors}
+              spanAnalysis={threeDimensionalSpanAnalysis}
+              spanShape={threeDimensionalSpanShape}
+              allVectorRelation={threeDimensionalAllVectorRelation}
+              activeTab={activeThreeDimensionalInspectorTab}
+              addButtonRef={threeDimensionalAddVectorButtonRef}
+              onTabChange={setActiveThreeDimensionalInspectorTab}
+              onTabKeyDown={handleThreeDimensionalInspectorTabKeyDown}
+              onCoordinateChange={handleThreeDimensionalCoordinateChange}
+              onSpanSelection={handleThreeDimensionalSpanSelection}
+              onAddVector={handleThreeDimensionalAddVector}
+              onRemoveVector={handleThreeDimensionalRemoveVector}
+            />
+          </div>
         </section>
       </main>
 
@@ -1244,7 +1438,7 @@ export function App() {
             このURLを開くと、ベクトル、spanの選択、幾何表示、一次結合のターゲットが復元されます。
             {activeDimension === 2
               ? '表示範囲はベクトルと表示中のターゲット全体が見えるように自動調整されます。'
-              : '3Dカメラ状態は作業単位5.3で共有状態へ追加します。'}
+              : '3Dではカメラの向き、注視点、拡大率も同じ状態として復元されます。'}
           </p>
           <section
             className={`share-qr-code ${shareQrCodeErrorMessage ? 'has-error' : ''}`}
@@ -1320,6 +1514,319 @@ function ThreeDimensionalLoading() {
       <p className="panel-kicker">3D coordinate space</p>
       <h2>3次元表示を準備しています</h2>
       <p>初回だけ3D描画に必要なデータを読み込みます。</p>
+    </section>
+  );
+}
+
+function ThreeDimensionalInspector({
+  state,
+  drafts,
+  analysis,
+  spanVectors,
+  spanAnalysis,
+  spanShape,
+  allVectorRelation,
+  activeTab,
+  addButtonRef,
+  onTabChange,
+  onTabKeyDown,
+  onCoordinateChange,
+  onSpanSelection,
+  onAddVector,
+  onRemoveVector,
+}: {
+  readonly state: ShareState;
+  readonly drafts: CoordinateDrafts;
+  readonly analysis: VectorSetAnalysis;
+  readonly spanVectors: readonly VectorValue[];
+  readonly spanAnalysis: VectorSetAnalysis;
+  readonly spanShape: SpanShapeDescription;
+  readonly allVectorRelation: ReturnType<typeof describeAllVectorRelation>;
+  readonly activeTab: ThreeDimensionalInspectorTabId;
+  readonly addButtonRef: RefObject<HTMLButtonElement | null>;
+  readonly onTabChange: (tab: ThreeDimensionalInspectorTabId) => void;
+  readonly onTabKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => void;
+  readonly onCoordinateChange: (vectorId: string, coordinateIndex: number, input: string) => void;
+  readonly onSpanSelection: (vectorId: string, selected: boolean) => void;
+  readonly onAddVector: () => void;
+  readonly onRemoveVector: (vectorId: string) => void;
+}) {
+  return (
+    <aside className="analysis-column three-dimensional-analysis" aria-label="3Dベクトル集合の編集と解析結果">
+      <section className="analysis-summary" aria-labelledby="3d-analysis-summary-title">
+        <h2 className="visually-hidden" id="3d-analysis-summary-title">現在の3D解析要約</h2>
+        <button
+          className="summary-tile summary-span"
+          type="button"
+          onClick={() => onTabChange('span')}
+        >
+          <span className="summary-label">選択集合 <span className="math-set-name">S</span></span>
+          <strong>{spanShape.summary}</strong>
+          <span className="summary-math">
+            <MathOperator name="dim" />(<MathOperator name="span" />(<span className="math-set-name">S</span>))
+            {' = '}{spanAnalysis.spanDimension}
+          </span>
+        </button>
+        <button
+          className="summary-tile summary-all"
+          type="button"
+          onClick={() => onTabChange('all')}
+        >
+          <span className="summary-label">表示中の全ベクトル</span>
+          <strong>{analysis.isLinearlyIndependent ? '一次独立' : '一次従属'}</strong>
+          <span className="summary-math">
+            <MathOperator name="rank" />(<MathMatrixName />)
+            {' = '}{analysis.rank}
+          </span>
+        </button>
+      </section>
+
+      <div className="inspector-tablist" role="tablist" aria-label="3D編集・解析の詳細">
+        {threeDimensionalInspectorTabs.map((tab) => (
+          <button
+            key={tab.id}
+            id={`3d-inspector-tab-${tab.id}`}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`3d-inspector-panel-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
+            onClick={() => onTabChange(tab.id)}
+            onKeyDown={onTabKeyDown}
+          >
+            <span className="tab-label-wide">{tab.label}</span>
+            <span className="tab-label-short">{tab.shortLabel}</span>
+          </button>
+        ))}
+      </div>
+
+      <ThreeDimensionalVectorEditor
+        state={state}
+        drafts={drafts}
+        active={activeTab === 'edit'}
+        addButtonRef={addButtonRef}
+        onCoordinateChange={onCoordinateChange}
+        onSpanSelection={onSpanSelection}
+        onAddVector={onAddVector}
+        onRemoveVector={onRemoveVector}
+      />
+
+      <section
+        className={`span-card inspector-panel is-rank-${spanAnalysis.rank}`}
+        id="3d-inspector-panel-span"
+        role="tabpanel"
+        aria-labelledby="3d-inspector-tab-span 3d-span-card-title"
+        hidden={activeTab !== 'span'}
+      >
+        <div className="span-card-heading">
+          <div>
+            <p className="panel-kicker">Selected span / 3D</p>
+            <h2 id="3d-span-card-title">選択したベクトルが生成する空間</h2>
+          </div>
+        </div>
+        <VectorSetDefinition vectors={spanVectors} />
+        <SelectedMatrixDefinition vectors={spanVectors} />
+        <div className="span-shape-result">
+          <span className="span-shape-symbol" aria-hidden="true">
+            {spanAnalysis.rank === 0 ? '⊙' : spanAnalysis.rank === 1 ? '━' : spanAnalysis.rank === 2 ? '▱' : '▦'}
+          </span>
+          <div>
+            <strong>{spanShape.heading}</strong>
+            <p>{spanShape.explanation}</p>
+          </div>
+        </div>
+        <p className="span-relation">
+          {spanVectors.length === 0
+            ? '空集合は一次独立で、生成する空間は零部分空間です。'
+            : spanAnalysis.isLinearlyIndependent
+              ? '選択したベクトルは一次独立です。'
+              : '選択したベクトルは一次従属です。'}
+        </p>
+        <dl className="span-metric-grid">
+          <div><dt>選択数</dt><dd>{spanAnalysis.vectorCount}</dd></div>
+          <div><dt><MathOperator name="rank" />(<MathMatrixName />)</dt><dd>{spanAnalysis.rank}</dd></div>
+          <div>
+            <dt><MathOperator name="dim" />(<MathOperator name="span" />(<span className="math-set-name">S</span>))</dt>
+            <dd>{spanAnalysis.spanDimension}</dd>
+          </div>
+        </dl>
+        <p className="three-dimensional-span-note">
+          直線・平面・3次元座標空間全体の幾何表示は、次の作業単位5.4で追加します。
+        </p>
+      </section>
+
+      <section
+        className={`result-card inspector-panel ${analysis.isLinearlyIndependent ? 'is-independent' : 'is-dependent'}`}
+        id="3d-inspector-panel-all"
+        role="tabpanel"
+        aria-labelledby="3d-inspector-tab-all"
+        hidden={activeTab !== 'all'}
+      >
+        <p className="panel-kicker">All vectors / 3D</p>
+        <MatrixDefinition vectors={state.vectors} />
+        <p className="result-symbol" aria-hidden="true">{analysis.isLinearlyIndependent ? '∥' : '≈'}</p>
+        <h2>{allVectorRelation.heading}</h2>
+        <p className="result-explanation">{allVectorRelation.explanation}</p>
+        <dl className="metric-grid">
+          <div><dt>ベクトル数</dt><dd>{analysis.vectorCount}</dd></div>
+          <div><dt><MathOperator name="rank" />(<MathMatrixName />)</dt><dd>{analysis.rank}</dd></div>
+          <div>
+            <dt>
+              生成する空間の次元
+              <small className="dimension-expression">
+                <MathOperator name="dim" />(<MathOperator name="span" />(&#123;
+                {state.vectors.map((vector, index) => (
+                  <span key={vector.id}>{index > 0 ? ', ' : ''}<MathVectorName name={vector.name} /></span>
+                ))}
+                &#125;))
+              </small>
+            </dt>
+            <dd>{analysis.spanDimension}</dd>
+          </div>
+        </dl>
+      </section>
+      <p className="development-note">
+        3Dでも、選択集合が生成する空間と全ベクトルの一次独立・一次従属を分けて表示しています。
+      </p>
+    </aside>
+  );
+}
+
+function ThreeDimensionalVectorEditor({
+  state,
+  drafts,
+  active,
+  addButtonRef,
+  onCoordinateChange,
+  onSpanSelection,
+  onAddVector,
+  onRemoveVector,
+}: {
+  readonly state: ShareState;
+  readonly drafts: CoordinateDrafts;
+  readonly active: boolean;
+  readonly addButtonRef: RefObject<HTMLButtonElement | null>;
+  readonly onCoordinateChange: (vectorId: string, coordinateIndex: number, input: string) => void;
+  readonly onSpanSelection: (vectorId: string, selected: boolean) => void;
+  readonly onAddVector: () => void;
+  readonly onRemoveVector: (vectorId: string) => void;
+}) {
+  return (
+    <section
+      className="vector-editor-card inspector-panel"
+      id="3d-inspector-panel-edit"
+      role="tabpanel"
+      aria-labelledby="3d-inspector-tab-edit 3d-vector-editor-title"
+      hidden={!active}
+    >
+      <div className="vector-editor-heading">
+        <div>
+          <p className="panel-kicker">Edit vectors / 3D</p>
+          <h2 id="3d-vector-editor-title">列ベクトルの成分</h2>
+          <p className="editor-hint">
+            上から第1・第2・第3成分です。追加したベクトルはspanの対象に含まれます。
+          </p>
+        </div>
+        <div className="vector-collection-controls">
+          <span aria-live="polite">{state.vectors.length} / {MAX_SHARE_VECTORS} 本</span>
+          <button
+            ref={addButtonRef}
+            type="button"
+            disabled={state.vectors.length >= MAX_SHARE_VECTORS}
+            aria-describedby={state.vectors.length >= MAX_SHARE_VECTORS ? '3d-vector-limit-help' : undefined}
+            onClick={onAddVector}
+          >
+            ＋ ベクトルを追加
+          </button>
+        </div>
+      </div>
+      {state.vectors.length >= MAX_SHARE_VECTORS ? (
+        <p className="vector-limit-help" id="3d-vector-limit-help" role="status" aria-live="polite">
+          共有状態の上限である{MAX_SHARE_VECTORS}本に達しています。
+        </p>
+      ) : null}
+      <div className="vector-editor-list">
+        {state.vectors.length === 0 ? (
+          <p className="empty-vector-editor">
+            ベクトルはありません。「ベクトルを追加」から始められます。Resetで読込時の状態へ戻せます。
+          </p>
+        ) : null}
+        {state.vectors.map((vector, vectorIndex) => {
+          const vectorDrafts = drafts[vector.id] ?? vector.coordinates.map(String);
+          const results = vectorDrafts.map(parseCoordinateInput);
+          const firstError = results.find((result) => !result.ok);
+          const errorCount = results.filter((result) => !result.ok).length;
+          const spokenVectorName = formatVectorSpokenName(vector.name);
+
+          return (
+            <div className="vector-editor" key={vector.id}>
+              <span
+                className="vector-key"
+                style={{ '--vector-color': vectorColors[vectorIndex % vectorColors.length] } as CSSProperties}
+                aria-hidden="true"
+              >
+                {vectorIndex + 1}
+              </span>
+              <MathVectorName name={vector.name} />
+              <span className="math-equals" aria-hidden="true">=</span>
+              <div className="editable-column-vector">
+                {vectorDrafts.map((draft, coordinateIndex) => {
+                  const result = results[coordinateIndex];
+                  const inputId = `3d-${vector.id}-coordinate-${coordinateIndex}`;
+                  const inputErrorId = `${inputId}-error`;
+                  return (
+                    <label className="coordinate-field" key={inputId} htmlFor={inputId}>
+                      <span className="visually-hidden">
+                        {`${spokenVectorName} の${coordinateNames[coordinateIndex]}`}
+                      </span>
+                      <input
+                        id={inputId}
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
+                        spellCheck={false}
+                        value={draft}
+                        aria-invalid={!result.ok}
+                        aria-describedby={!result.ok ? inputErrorId : undefined}
+                        onChange={(event) => onCoordinateChange(vector.id, coordinateIndex, event.target.value)}
+                      />
+                      {!result.ok ? (
+                        <span className="visually-hidden" id={inputErrorId}>
+                          {result.message} 3D表示と判定には直前の有効値を使います。
+                        </span>
+                      ) : null}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="vector-editor-actions">
+                <label className="span-selection-control">
+                  <input
+                    type="checkbox"
+                    checked={state.spanSelection.includes(vector.id)}
+                    aria-label={`${spokenVectorName} を生成する空間の対象に含める`}
+                    onChange={(event) => onSpanSelection(vector.id, event.target.checked)}
+                  />
+                  <span><MathOperator name="span" /> の対象に含める</span>
+                </label>
+                <button
+                  className="remove-vector-button"
+                  type="button"
+                  aria-label={`${spokenVectorName} を削除`}
+                  onClick={() => onRemoveVector(vector.id)}
+                >
+                  削除
+                </button>
+              </div>
+              <p className={`coordinate-feedback ${firstError ? 'has-error' : ''}`}>
+                {firstError && !firstError.ok
+                  ? `${errorCount}か所が未確定です。${firstError.message} 3D表示と判定には直前の有効値を使います。`
+                  : '入力は3D表示と判定へすぐに反映されます。'}
+              </p>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -2058,11 +2565,7 @@ function SelectedMatrixDefinition({ vectors }: { readonly vectors: readonly Vect
   );
 }
 
-function describeSpanShape(rank: number): {
-  readonly heading: string;
-  readonly explanation: string;
-  readonly summary: string;
-} {
+function describeSpanShape(rank: number, ambientDimension: AppDimension): SpanShapeDescription {
   if (rank === 0) {
     return {
       heading: '原点だけです',
@@ -2079,10 +2582,24 @@ function describeSpanShape(rank: number): {
     };
   }
 
+  if (rank === 2) {
+    return ambientDimension === 2
+      ? {
+          heading: '2次元座標平面全体です',
+          explanation: '2本の一次独立な方向によって、平面上のすべてのベクトルを作れます。',
+          summary: '2次元座標平面全体',
+        }
+      : {
+          heading: '原点を通る平面です',
+          explanation: '2本の一次独立な方向の一次結合が、3次元空間内の平面全体を作ります。',
+          summary: '原点を通る平面',
+        };
+  }
+
   return {
-    heading: '2次元座標平面全体です',
-    explanation: '2本の一次独立な方向によって、平面上のすべてのベクトルを作れます。',
-    summary: '2次元座標平面全体',
+    heading: '3次元座標空間全体です',
+    explanation: '3本の一次独立な方向によって、空間内のすべてのベクトルを作れます。',
+    summary: '3次元座標空間全体',
   };
 }
 
@@ -2139,16 +2656,7 @@ function collectCoordinateInputIssues(
   targetVisible: boolean,
   targetDrafts: TargetCoordinateDrafts,
 ): readonly CoordinateInputIssue[] {
-  const vectorIssues = vectors.flatMap((vector) =>
-    (drafts[vector.id] ?? vector.coordinates.map(String)).flatMap((draft, coordinateIndex) => {
-      const result = parseCoordinateInput(draft);
-      return result.ok
-        ? []
-        : [{
-            inputId: `${vector.id}-coordinate-${coordinateIndex}`,
-          }];
-    }),
-  );
+  const vectorIssues = collectVectorCoordinateInputIssues(vectors, drafts);
   const hasTargetDraftInput = targetDrafts.some((draft) => draft.trim().length > 0);
   const targetIssues = targetVisible && hasTargetDraftInput
     ? targetDrafts.flatMap((draft, coordinateIndex) => (
@@ -2159,6 +2667,32 @@ function collectCoordinateInputIssues(
     : [];
 
   return [...vectorIssues, ...targetIssues];
+}
+
+function collectVectorCoordinateInputIssues(
+  vectors: readonly VectorValue[],
+  drafts: CoordinateDrafts,
+  inputIdPrefix = '',
+): readonly CoordinateInputIssue[] {
+  return vectors.flatMap((vector) =>
+    (drafts[vector.id] ?? vector.coordinates.map(String)).flatMap((draft, coordinateIndex) => {
+      const result = parseCoordinateInput(draft);
+      return result.ok
+        ? []
+        : [{ inputId: `${inputIdPrefix}${vector.id}-coordinate-${coordinateIndex}` }];
+    }),
+  );
+}
+
+function cameraStatesEqual(
+  left: SharedCameraState | null,
+  right: SharedCameraState,
+): boolean {
+  return left !== null
+    && left.zoom === right.zoom
+    && left.direction.every((value, index) => value === right.direction[index])
+    && left.target.every((value, index) => value === right.target[index])
+    && left.up.every((value, index) => value === right.up[index]);
 }
 
 function formatViewportNumber(value: number): string {

@@ -12,7 +12,8 @@ describe('固定3D表示とカメラ操作', () => {
   it('正投影カメラとオンデマンド描画を使う', () => {
     expect(componentSource).toContain('new THREE.OrthographicCamera');
     expect(componentSource).not.toContain('PerspectiveCamera');
-    expect(componentSource).toContain("controls.addEventListener('change', render)");
+    expect(componentSource).toContain("controls.addEventListener('change', handleControlsChange)");
+    expect(componentSource).toContain("controls.addEventListener('end', emitCameraChange)");
     expect(componentSource).not.toContain('setAnimationLoop');
   });
 
@@ -52,5 +53,16 @@ describe('固定3D表示とカメラ操作', () => {
     expect(appSource).toContain('hasActivatedThreeDimensions');
     expect(appSource).toContain('vectors={threeDimensionalState.vectors}');
     expect(appSource).toContain('resetKey={threeDimensionalCameraResetKey}');
+    expect(appSource).toContain('camera={threeDimensionalState.visualization.camera}');
+    expect(appSource).toContain('onCameraChange={handleThreeDimensionalCameraChange}');
+  });
+
+  it('3Dの数値編集・集合編集・数学カードを接続する', () => {
+    expect(appSource).toContain('ThreeDimensionalVectorEditor');
+    expect(appSource).toContain('handleThreeDimensionalCoordinateChange');
+    expect(appSource).toContain('handleThreeDimensionalAddVector');
+    expect(appSource).toContain('handleThreeDimensionalRemoveVector');
+    expect(appSource).toContain('threeDimensionalSpanAnalysis');
+    expect(appSource).toContain('threeDimensionalAnalysis');
   });
 });

@@ -1,4 +1,10 @@
 import type { VectorValue } from '../domain';
+import {
+  DEFAULT_3D_CAMERA_STATE,
+  MAX_CAMERA_ZOOM,
+  MIN_CAMERA_ZOOM,
+  type SharedCameraState,
+} from '../sharing';
 
 export const DEFAULT_SPACE_HALF_RANGE = 5;
 export const SPACE_FIT_PADDING = 1.25;
@@ -21,6 +27,13 @@ export interface SpaceExtent {
   readonly halfRange: number;
   readonly gridHalfSize: number;
   readonly cameraDistance: number;
+}
+
+export interface CameraStateSource {
+  readonly position: ThreeDimensionalPoint;
+  readonly target: ThreeDimensionalPoint;
+  readonly up: ThreeDimensionalPoint;
+  readonly zoom: number;
 }
 
 export function createSpaceExtent(vectors: readonly VectorValue[]): SpaceExtent {
@@ -70,13 +83,32 @@ export function createCameraPose(
     case 'isometric':
       return {
         position: {
-          x: distance * 0.85,
-          y: -distance * 1.15,
-          z: distance * 0.9,
+          x: distance * DEFAULT_3D_CAMERA_STATE.direction[0],
+          y: distance * DEFAULT_3D_CAMERA_STATE.direction[1],
+          z: distance * DEFAULT_3D_CAMERA_STATE.direction[2],
         },
         up: { x: 0, y: 0, z: 1 },
       };
   }
+}
+
+export function createSharedCameraState(source: CameraStateSource): SharedCameraState {
+  const direction = normalizePoint({
+    x: source.position.x - source.target.x,
+    y: source.position.y - source.target.y,
+    z: source.position.z - source.target.z,
+  });
+  const up = normalizePoint(source.up);
+
+  return {
+    direction: pointToTuple(direction, 8),
+    target: pointToTuple(source.target, 6),
+    up: pointToTuple(up, 8),
+    zoom: roundFinite(
+      Math.min(MAX_CAMERA_ZOOM, Math.max(MIN_CAMERA_ZOOM, source.zoom)),
+      8,
+    ),
+  };
 }
 
 export function orthographicHalfHeight(
@@ -92,4 +124,36 @@ export function orthographicHalfHeight(
 
   const paddedHalfRange = halfRange * 1.4;
   return aspectRatio < 1 ? paddedHalfRange / aspectRatio : paddedHalfRange;
+}
+
+function normalizePoint(point: ThreeDimensionalPoint): ThreeDimensionalPoint {
+  const length = Math.hypot(point.x, point.y, point.z);
+  if (!Number.isFinite(length) || length === 0) {
+    throw new RangeError('向きを表すベクトルは非零の有限値である必要があります。');
+  }
+
+  return {
+    x: point.x / length,
+    y: point.y / length,
+    z: point.z / length,
+  };
+}
+
+function pointToTuple(
+  point: ThreeDimensionalPoint,
+  fractionDigits: number,
+): [number, number, number] {
+  return [
+    roundFinite(point.x, fractionDigits),
+    roundFinite(point.y, fractionDigits),
+    roundFinite(point.z, fractionDigits),
+  ];
+}
+
+function roundFinite(value: number, fractionDigits: number): number {
+  if (!Number.isFinite(value)) {
+    throw new RangeError('カメラ状態は有限値である必要があります。');
+  }
+  const rounded = Number(value.toFixed(fractionDigits));
+  return Object.is(rounded, -0) ? 0 : rounded;
 }

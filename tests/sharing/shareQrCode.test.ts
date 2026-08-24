@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildShareUrl,
   createShareQrCodeDataUrl,
   createShareQrCodeFileName,
 } from '../../src/sharing';
+import { DEFAULT_3D_SHARE_STATE } from '../../src/state';
 
 describe('共有URLのQRコード', () => {
   it('共有URLからPNGのデータURLを生成する', async () => {
@@ -15,6 +17,14 @@ describe('共有URLのQRコード', () => {
     expect(dataUrl).toMatch(/^data:image\/png;base64,/);
     expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
     expect(png.length).toBeGreaterThan(1_000);
+  });
+
+  it('カメラを含む3D共有状態v3をQRコードにできる', async () => {
+    const shareUrl = buildShareUrl('https://example.jp/linear-algebra-visual-lab/', DEFAULT_3D_SHARE_STATE);
+    const dataUrl = await createShareQrCodeDataUrl(shareUrl);
+
+    expect(shareUrl.length).toBeLessThan(1_000);
+    expect(dataUrl).toMatch(/^data:image\/png;base64,/);
   });
 
   it('空のURLを安全に拒否する', async () => {

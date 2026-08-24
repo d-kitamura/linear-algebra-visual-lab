@@ -149,12 +149,12 @@ function createScenarioState(
   target: readonly number[] | null = null,
 ): ShareState {
   return {
-    v: 2,
+    v: 3,
     lab: 'vector-space',
     dim: 2,
     vectors,
     spanSelection,
-    visualization: { showSpan: true },
+    visualization: { showSpan: true, camera: null },
     linearCombination: { visible: target !== null, target },
   };
 }

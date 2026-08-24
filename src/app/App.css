@@ -320,6 +320,17 @@
   min-width: 0;
 }
 
+.three-dimensional-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.7fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.three-dimensional-layout > * {
+  min-width: 0;
+}
+
 .three-dimensional-loading {
   min-height: 420px;
   padding: 34px;
@@ -524,6 +535,15 @@
   margin: 14px 2px 0;
   color: var(--muted);
   font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.three-dimensional-span-note {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.7rem;
   line-height: 1.65;
 }
 
@@ -2406,13 +2426,18 @@
     grid-template-columns: 1fr;
   }
 
+  .three-dimensional-layout {
+    grid-template-columns: 1fr;
+  }
+
   .analysis-column {
     grid-template-columns: 1fr;
   }
 }
 
 @media (min-width: 981px) and (min-height: 820px) {
-  .plot-card {
+  .plot-card,
+  .three-dimensional-plot-card {
     position: sticky;
     top: 18px;
   }

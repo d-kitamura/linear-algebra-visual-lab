@@ -1,6 +1,11 @@
 export {
   LEGACY_SHARE_STATE_VERSION,
+  PREVIOUS_SHARE_STATE_VERSION,
+  DEFAULT_3D_CAMERA_STATE,
   MAX_ABSOLUTE_COORDINATE,
+  MAX_ABSOLUTE_CAMERA_TARGET,
+  MIN_CAMERA_ZOOM,
+  MAX_CAMERA_ZOOM,
   MAX_ENCODED_SHARE_STATE_LENGTH,
   MAX_SHARE_VECTOR_ID_LENGTH,
   MAX_SHARE_VECTOR_NAME_LENGTH,
@@ -18,6 +23,9 @@ export type {
   ShareStateErrorCode,
   ShareStateV1,
   ShareStateV2,
+  ShareStateV3,
+  SharedCameraState,
+  LegacySharedVisualizationState,
   SharedLinearCombinationState,
   SharedVisualizationState,
 } from './shareState';

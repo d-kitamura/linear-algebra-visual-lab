@@ -6,7 +6,8 @@ import { DEFAULT_2D_SHARE_STATE, DEFAULT_3D_SHARE_STATE } from '../../src/state'
 describe('DEFAULT_2D_SHARE_STATE', () => {
   it('is a valid shareable 2D state', () => {
     expect(validateShareState(DEFAULT_2D_SHARE_STATE)).toEqual(DEFAULT_2D_SHARE_STATE);
-    expect(DEFAULT_2D_SHARE_STATE.v).toBe(2);
+    expect(DEFAULT_2D_SHARE_STATE.v).toBe(3);
+    expect(DEFAULT_2D_SHARE_STATE.visualization.camera).toBeNull();
     expect(DEFAULT_2D_SHARE_STATE.linearCombination).toEqual({
       visible: false,
       target: null,
@@ -34,6 +35,7 @@ describe('DEFAULT_3D_SHARE_STATE', () => {
   it('is a valid shareable 3D state with three independent vectors', () => {
     expect(validateShareState(DEFAULT_3D_SHARE_STATE)).toEqual(DEFAULT_3D_SHARE_STATE);
     expect(DEFAULT_3D_SHARE_STATE.dim).toBe(3);
+    expect(DEFAULT_3D_SHARE_STATE.visualization.camera).not.toBeNull();
 
     const analysis = analyzeVectorSet({
       dimension: DEFAULT_3D_SHARE_STATE.dim,

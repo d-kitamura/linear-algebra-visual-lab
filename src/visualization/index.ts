@@ -27,11 +27,13 @@ export {
   SPACE_CAMERA_DISTANCE_FACTOR,
   SPACE_FIT_PADDING,
   createCameraPose,
+  createSharedCameraState,
   createSpaceExtent,
   orthographicHalfHeight,
 } from './spaceGeometry';
 export type {
   CameraPose,
+  CameraStateSource,
   CameraPreset,
   SpaceExtent,
   ThreeDimensionalPoint,

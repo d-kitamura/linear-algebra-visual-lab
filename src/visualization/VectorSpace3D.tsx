@@ -6,9 +6,16 @@ import {
   CSS2DRenderer,
 } from 'three/addons/renderers/CSS2DRenderer.js';
 import type { VectorValue } from '../domain';
+import {
+  DEFAULT_3D_CAMERA_STATE,
+  MAX_CAMERA_ZOOM,
+  MIN_CAMERA_ZOOM,
+  type SharedCameraState,
+} from '../sharing';
 import { splitVectorName } from '../ui';
 import {
   createCameraPose,
+  createSharedCameraState,
   createSpaceExtent,
   orthographicHalfHeight,
   type CameraPreset,
@@ -20,10 +27,13 @@ interface VectorSpace3DProps {
   readonly colors: readonly string[];
   readonly active: boolean;
   readonly resetKey: number;
+  readonly camera: SharedCameraState | null;
+  readonly onCameraChange: (camera: SharedCameraState) => void;
 }
 
 interface ThreeSpaceRuntime {
   readonly applyPreset: (preset: CameraPreset) => void;
+  readonly applyCamera: (camera: SharedCameraState | null) => void;
   readonly fit: () => void;
   readonly resize: () => void;
   readonly dispose: () => void;
@@ -41,10 +51,17 @@ export function VectorSpace3D({
   colors,
   active,
   resetKey,
+  camera,
+  onCameraChange,
 }: VectorSpace3DProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<ThreeSpaceRuntime | null>(null);
+  const cameraRef = useRef(camera);
+  const onCameraChangeRef = useRef(onCameraChange);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  cameraRef.current = camera;
+  onCameraChangeRef.current = onCameraChange;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -56,11 +73,18 @@ export function VectorSpace3D({
     let disposed = false;
 
     try {
-      const runtime = createThreeSpaceRuntime(host, vectors, colors, (message) => {
-        if (!disposed) {
-          setErrorMessage(message);
-        }
-      });
+      const runtime = createThreeSpaceRuntime(
+        host,
+        vectors,
+        colors,
+        cameraRef.current,
+        (nextCamera) => onCameraChangeRef.current(nextCamera),
+        (message) => {
+          if (!disposed) {
+            setErrorMessage(message);
+          }
+        },
+      );
       runtimeRef.current = runtime;
 
       return () => {
@@ -86,7 +110,7 @@ export function VectorSpace3D({
   }, [active]);
 
   useEffect(() => {
-    runtimeRef.current?.applyPreset('isometric');
+    runtimeRef.current?.applyCamera(cameraRef.current);
   }, [resetKey]);
 
   return (
@@ -142,6 +166,8 @@ function createThreeSpaceRuntime(
   host: HTMLDivElement,
   vectors: readonly VectorValue[],
   colors: readonly string[],
+  initialCamera: SharedCameraState | null,
+  onCameraChange: (camera: SharedCameraState) => void,
   onError: (message: string) => void,
 ): ThreeSpaceRuntime {
   host.replaceChildren();
@@ -190,6 +216,8 @@ function createThreeSpaceRuntime(
   controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
   controls.touches.ONE = THREE.TOUCH.ROTATE;
   controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+  controls.minZoom = MIN_CAMERA_ZOOM;
+  controls.maxZoom = MAX_CAMERA_ZOOM;
 
   let disposed = false;
   let resizeObserver: ResizeObserver | null = null;
@@ -200,6 +228,28 @@ function createThreeSpaceRuntime(
     }
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
+  };
+
+  const emitCameraChange = () => {
+    try {
+      onCameraChange(createSharedCameraState({
+        position: camera.position,
+        target: controls.target,
+        up: camera.up,
+        zoom: camera.zoom,
+      }));
+    } catch {
+      onError('現在のカメラ状態を共有用に保存できませんでした。視点を調整してください。');
+    }
+  };
+
+  const handleControlsChange = () => {
+    camera.far = Math.max(
+      extent.cameraDistance * 24,
+      camera.position.length() + extent.halfRange * 6,
+    );
+    camera.updateProjectionMatrix();
+    render();
   };
 
   const resize = () => {
@@ -230,6 +280,22 @@ function createThreeSpaceRuntime(
     camera.updateProjectionMatrix();
     controls.update();
     render();
+    emitCameraChange();
+  };
+
+  const applyCamera = (sharedCamera: SharedCameraState | null) => {
+    const nextCamera = sharedCamera ?? DEFAULT_3D_CAMERA_STATE;
+    const target = new THREE.Vector3(...nextCamera.target);
+    const direction = new THREE.Vector3(...nextCamera.direction).normalize();
+    controls.target.copy(target);
+    camera.position.copy(target).add(direction.multiplyScalar(extent.cameraDistance));
+    camera.up.set(...nextCamera.up).normalize();
+    camera.zoom = Math.min(MAX_CAMERA_ZOOM, Math.max(MIN_CAMERA_ZOOM, nextCamera.zoom));
+    camera.lookAt(target);
+    camera.updateProjectionMatrix();
+    controls.update();
+    render();
+    emitCameraChange();
   };
 
   const fit = () => {
@@ -241,6 +307,7 @@ function createThreeSpaceRuntime(
     camera.updateProjectionMatrix();
     controls.update();
     render();
+    emitCameraChange();
   };
 
   const handleContextLost = (event: Event) => {
@@ -248,15 +315,17 @@ function createThreeSpaceRuntime(
     onError('3D描画の接続が失われました。ページを再読み込みしてください。');
   };
   renderer.domElement.addEventListener('webglcontextlost', handleContextLost);
-  controls.addEventListener('change', render);
+  controls.addEventListener('change', handleControlsChange);
+  controls.addEventListener('end', emitCameraChange);
 
   resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(host);
-  applyPreset('isometric');
+  applyCamera(initialCamera);
   resize();
 
   return {
     applyPreset,
+    applyCamera,
     fit,
     resize,
     dispose: () => {
@@ -265,7 +334,8 @@ function createThreeSpaceRuntime(
       }
       disposed = true;
       resizeObserver?.disconnect();
-      controls.removeEventListener('change', render);
+      controls.removeEventListener('change', handleControlsChange);
+      controls.removeEventListener('end', emitCameraChange);
       controls.dispose();
       renderer.domElement.removeEventListener('webglcontextlost', handleContextLost);
       disposeScene(scene);

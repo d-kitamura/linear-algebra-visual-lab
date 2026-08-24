@@ -23,7 +23,7 @@ describe('アプリ初期状態', () => {
       ...DEFAULT_2D_SHARE_STATE,
       vectors: [{ id: 'a', name: 'a₁', coordinates: [4, -1] }],
       spanSelection: ['a'],
-      visualization: { showSpan: false },
+      visualization: { showSpan: false, camera: null },
       linearCombination: { visible: true, target: [3, -2] },
     };
     const initialization = createAppInitialization(
@@ -57,6 +57,15 @@ describe('アプリ初期状態', () => {
       dim: 3,
       vectors: [{ id: 'v1', name: 'v₁', coordinates: [1, 2, 3] }],
       spanSelection: ['v1'],
+      visualization: {
+        showSpan: true,
+        camera: {
+          direction: [1, 0, 0],
+          target: [1, 2, 0],
+          up: [0, 0, 1],
+          zoom: 2,
+        },
+      },
       linearCombination: { visible: true, target: [2, 0, -1] },
     };
     const initialization = createAppInitialization(
@@ -72,7 +81,7 @@ describe('アプリ初期状態', () => {
     expect(initialization.errorMessage).toBeNull();
   });
 
-  it('v1共有URLをv2へ移行してInitialStateにする', () => {
+  it('v1共有URLをv3へ移行してInitialStateにする', () => {
     const legacy: ShareStateV1 = {
       v: 1,
       lab: 'vector-space',
@@ -86,7 +95,8 @@ describe('アプリ初期状態', () => {
 
     expect(initialization.initialStates[2]).toEqual({
       ...legacy,
-      v: 2,
+      v: 3,
+      visualization: { ...legacy.visualization, camera: null },
       linearCombination: { visible: false, target: null },
     });
     expect(initialization.activeDimension).toBe(2);

@@ -24,12 +24,20 @@ describe('2D teaching scenarios', () => {
       'utf8',
     );
 
-    for (const scenario of [
+    const scenarios = [
       ...TWO_DIMENSIONAL_TEACHING_SCENARIOS,
       ...LINEAR_COMBINATION_TEACHING_SCENARIOS,
-    ]) {
-      expect(guide).toContain(buildShareUrl(PRODUCTION_BASE_URL, scenario.state));
-    }
+    ];
+    const documentedUrls = [...guide.matchAll(/\[本番環境で開く\]\((https:\/\/[^)]+)\)/gu)]
+      .map((match) => match[1]);
+
+    expect(documentedUrls).toHaveLength(scenarios.length);
+    scenarios.forEach((scenario, index) => {
+      expect(readShareStateFromUrl(documentedUrls[index])).toEqual({
+        status: 'success',
+        state: scenario.state,
+      });
+    });
   });
 
   for (const scenario of TWO_DIMENSIONAL_TEACHING_SCENARIOS) {
