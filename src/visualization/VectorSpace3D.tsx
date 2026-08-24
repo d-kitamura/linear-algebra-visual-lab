@@ -39,6 +39,7 @@ import {
   type SpaceSpanDragPreview,
   vectorTipHitRadius,
 } from './spaceVectorEditing';
+import { createSpaceTargetDragPreview } from './spaceTargetEditing';
 
 interface VectorSpace3DProps {
   readonly vectors: readonly VectorValue[];
@@ -77,6 +78,11 @@ interface RenderedVector {
   readonly tipIndicator: THREE.Group;
 }
 
+interface RenderedTarget {
+  readonly object: THREE.Group;
+  readonly tipIndicator: THREE.Group;
+}
+
 interface ActiveScreenPlaneDrag {
   readonly pointerId: number;
   readonly vector: VectorValue;
@@ -94,6 +100,15 @@ interface PendingTargetPlacement {
   readonly pointerId: number;
   readonly startClientX: number;
   readonly startClientY: number;
+}
+
+interface ActiveTargetScreenPlaneDrag {
+  readonly pointerId: number;
+  readonly renderedTarget: RenderedTarget;
+  readonly initialCoordinates: [number, number, number];
+  readonly startPoint: THREE.Vector3;
+  readonly interactionPlane: THREE.Plane;
+  coordinates: [number, number, number];
 }
 
 const ORIGIN = new THREE.Vector3(0, 0, 0);
@@ -273,7 +288,10 @@ export function VectorSpace3D({
       </div>
 
       <div className="three-dimensional-gesture-guide" aria-label="3D表示の操作方法">
-        <span><i className="vector-tip-gesture-mark" aria-hidden="true" />矢先をドラッグ：画面に平行な面内で移動・平行／同一平面へ吸着</span>
+        <span><i className="vector-tip-gesture-mark" aria-hidden="true" />通常ベクトルの矢先をドラッグ：画面内で移動・吸着</span>
+        {linearCombinationVisible && linearCombinationTarget ? (
+          <span><i className="target-vector-gesture-mark" aria-hidden="true" />ターゲット v の矢先をドラッグ：画面内で移動</span>
+        ) : null}
         {linearCombinationVisible ? (
           <span><i className="target-placement-gesture-mark" aria-hidden="true" />背景を短くタップ：ターゲット v を配置</span>
         ) : null}
@@ -300,12 +318,12 @@ export function VectorSpace3D({
       </div>
 
       <p className="three-dimensional-help">
-        矢先をドラッグすると、ドラッグ開始時の画面に平行な面内でベクトルを変更できます。
+        通常ベクトルの矢先をドラッグすると、ドラッグ開始時の画面に平行な面内でベクトルを変更できます。
         他のベクトルが張る直線または平面へ近づけると、平行または同一平面上へ吸着します。
         それ以外の場所では、ドラッグで視点を回転、ホイールまたは2本指で拡大・縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。
         {showSpan ? ' 灰色の形状は、選択したベクトルが生成する空間です。' : ''}
         {linearCombinationVisible
-          ? ' 背景を短くクリックまたはタップすると、原点を通る現在の画面平行面上へターゲットを配置できます。数値入力でも変更できます。'
+          ? ` 背景を短くクリックまたはタップすると、原点を通る現在の画面平行面上へターゲットを配置できます。${linearCombinationTarget ? 'ターゲットの矢先をドラッグすると、一次結合の幾何表示とともに画面平行面内で移動できます。' : ''}数値入力でも変更できます。`
           : ''}
         ページをスクロールするときは3D表示の外側を操作してください。
       </p>
@@ -379,7 +397,7 @@ function createThreeSpaceRuntime(
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute(
     'aria-label',
-    `3D座標空間。ベクトルの矢先をドラッグすると画面に平行な面内で移動し、平行または同一平面上へ吸着できます。${linearCombinationVisible ? '背景を短くクリックまたはタップするとターゲットvを配置できます。' : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
+    `3D座標空間。通常ベクトルの矢先をドラッグすると画面に平行な面内で移動し、平行または同一平面上へ吸着できます。${linearCombinationVisible ? `背景を短くクリックまたはタップするとターゲットvを配置できます。${linearCombinationTarget ? 'ターゲットvの矢先をドラッグすると一次結合の幾何表示とともに画面平行面内で移動できます。' : ''}` : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
   );
   host.append(renderer.domElement);
 
@@ -398,9 +416,18 @@ function createThreeSpaceRuntime(
   scene.add(spanDragPreview);
   addAxes(scene, extent);
   addOrigin(scene, extent);
+  const combinationGeometryGroup = new THREE.Group();
   if (combinationGeometry) {
-    addSpaceCombinationGeometry(scene, combinationGeometry, spanVectors, vectors, colors, extent);
+    addSpaceCombinationGeometry(
+      combinationGeometryGroup,
+      combinationGeometry,
+      spanVectors,
+      vectors,
+      colors,
+      extent,
+    );
   }
+  scene.add(combinationGeometryGroup);
   const renderedVectors = addVectors(
     scene,
     vectors,
@@ -409,12 +436,17 @@ function createThreeSpaceRuntime(
     new Set(spanVectors.map((vector) => vector.id)),
     showSpan,
   );
-  if (linearCombinationVisible && linearCombinationTarget) {
-    addTargetVector(scene, linearCombinationTarget, extent);
-  }
+  const targetVectorGroup = new THREE.Group();
+  const renderedTarget = linearCombinationVisible && linearCombinationTarget
+    ? addTargetVector(targetVectorGroup, linearCombinationTarget, extent)
+    : null;
+  scene.add(targetVectorGroup);
   const dragPreview = new THREE.Group();
   dragPreview.renderOrder = 10;
   scene.add(dragPreview);
+  const targetDragPreview = new THREE.Group();
+  targetDragPreview.renderOrder = 10;
+  scene.add(targetDragPreview);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = false;
@@ -434,6 +466,7 @@ function createThreeSpaceRuntime(
   let disposed = false;
   let resizeObserver: ResizeObserver | null = null;
   let activeScreenPlaneDrag: ActiveScreenPlaneDrag | null = null;
+  let activeTargetScreenPlaneDrag: ActiveTargetScreenPlaneDrag | null = null;
   let pendingTargetPlacement: PendingTargetPlacement | null = null;
 
   const render = () => {
@@ -542,7 +575,7 @@ function createThreeSpaceRuntime(
     ) {
       pendingTargetPlacement = null;
     }
-    if (activeScreenPlaneDrag) {
+    if (activeScreenPlaneDrag || activeTargetScreenPlaneDrag) {
       event.preventDefault();
       event.stopImmediatePropagation();
       return;
@@ -551,6 +584,63 @@ function createThreeSpaceRuntime(
       return;
     }
     const rect = renderer.domElement.getBoundingClientRect();
+    const targetTipHit = linearCombinationTarget && renderedTarget
+      ? isWorldPointTipAtPointer(
+          new THREE.Vector3(...linearCombinationTarget),
+          event,
+          camera,
+          rect,
+        )
+      : false;
+    if (targetTipHit && linearCombinationTarget && renderedTarget) {
+      pendingTargetPlacement = null;
+      const initialCoordinates: [number, number, number] = [...linearCombinationTarget];
+      const initialTip = new THREE.Vector3(...initialCoordinates);
+      const viewDirection = new THREE.Vector3();
+      camera.getWorldDirection(viewDirection);
+      const interactionPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+        viewDirection,
+        initialTip,
+      );
+      updateRayFromPointer(event, rect);
+      const startPoint = raycaster.ray.intersectPlane(
+        interactionPlane,
+        new THREE.Vector3(),
+      );
+      if (!startPoint) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      controls.enabled = false;
+      renderer.domElement.setPointerCapture(event.pointerId);
+      renderer.domElement.classList.add('is-target-tip-dragging');
+      renderedTarget.object.visible = false;
+      combinationGeometryGroup.visible = false;
+      renderedTarget.tipIndicator.scale.setScalar(1.22);
+      activeTargetScreenPlaneDrag = {
+        pointerId: event.pointerId,
+        renderedTarget,
+        initialCoordinates,
+        startPoint,
+        interactionPlane,
+        coordinates: [...initialCoordinates],
+      };
+      updateTargetScreenPlanePreview(
+        targetDragPreview,
+        initialTip,
+        initialCoordinates,
+        spanVectors,
+        vectors,
+        colors,
+        extent,
+        camera,
+      );
+      onInteractionMessage('ターゲット v を画面に平行な面内で移動しています。');
+      render();
+      return;
+    }
     const vector = findVectorTipAtPointer(
       vectors,
       event,
@@ -637,7 +727,7 @@ function createThreeSpaceRuntime(
 
   const handlePointerMove = (event: PointerEvent) => {
     const rect = renderer.domElement.getBoundingClientRect();
-    if (!activeScreenPlaneDrag) {
+    if (!activeScreenPlaneDrag && !activeTargetScreenPlaneDrag) {
       if (
         pendingTargetPlacement?.pointerId === event.pointerId
         && Math.hypot(
@@ -647,60 +737,113 @@ function createThreeSpaceRuntime(
       ) {
         pendingTargetPlacement = null;
       }
-      const hoverVector = findVectorTipAtPointer(vectors, event, camera, rect);
+      const hoverTarget = linearCombinationTarget
+        ? isWorldPointTipAtPointer(
+            new THREE.Vector3(...linearCombinationTarget),
+            event,
+            camera,
+            rect,
+          )
+        : false;
+      const hoverVector = hoverTarget
+        ? null
+        : findVectorTipAtPointer(vectors, event, camera, rect);
+      renderer.domElement.classList.toggle('is-target-tip-hover', hoverTarget);
       renderer.domElement.classList.toggle('is-vector-tip-hover', Boolean(hoverVector));
       return;
     }
+    if (activeTargetScreenPlaneDrag) {
+      event.stopImmediatePropagation();
+      if (activeTargetScreenPlaneDrag.pointerId !== event.pointerId) {
+        event.preventDefault();
+        return;
+      }
+      event.preventDefault();
+      updateRayFromPointer(event, rect);
+      const currentPoint = raycaster.ray.intersectPlane(
+        activeTargetScreenPlaneDrag.interactionPlane,
+        new THREE.Vector3(),
+      );
+      if (!currentPoint) {
+        return;
+      }
+      const coordinates = coordinatesFromScreenPlaneDrag(
+        activeTargetScreenPlaneDrag.initialCoordinates,
+        activeTargetScreenPlaneDrag.startPoint,
+        currentPoint,
+      );
+      activeTargetScreenPlaneDrag.coordinates = coordinates;
+      activeTargetScreenPlaneDrag.renderedTarget.tipIndicator.position.set(...coordinates);
+      const previewStatus = updateTargetScreenPlanePreview(
+        targetDragPreview,
+        new THREE.Vector3(...activeTargetScreenPlaneDrag.initialCoordinates),
+        coordinates,
+        spanVectors,
+        vectors,
+        colors,
+        extent,
+        camera,
+      );
+      onInteractionMessage(
+        `ターゲット v の成分：${formatCoordinateStatus(coordinates)}　${describeTargetPreviewStatus(previewStatus)}`,
+      );
+      render();
+      return;
+    }
+    const activeVectorDrag = activeScreenPlaneDrag;
+    if (!activeVectorDrag) {
+      return;
+    }
     event.stopImmediatePropagation();
-    if (activeScreenPlaneDrag.pointerId !== event.pointerId) {
+    if (activeVectorDrag.pointerId !== event.pointerId) {
       event.preventDefault();
       return;
     }
     event.preventDefault();
     updateRayFromPointer(event, rect);
     const currentPoint = raycaster.ray.intersectPlane(
-      activeScreenPlaneDrag.interactionPlane,
+      activeVectorDrag.interactionPlane,
       new THREE.Vector3(),
     );
     if (!currentPoint) {
       return;
     }
     const directCoordinates = coordinatesFromScreenPlaneDrag(
-      activeScreenPlaneDrag.initialCoordinates,
-      activeScreenPlaneDrag.startPoint,
+      activeVectorDrag.initialCoordinates,
+      activeVectorDrag.startPoint,
       currentPoint,
     );
     const snapResult = snapDraggedSpaceVectorToDependentPosition(
-      activeScreenPlaneDrag.vector.id,
+      activeVectorDrag.vector.id,
       directCoordinates,
       vectors,
       parallelSnapDistanceForViewWidth(orthographicVisibleWidth(camera)),
     );
-    activeScreenPlaneDrag.coordinates = [...snapResult.coordinates];
-    activeScreenPlaneDrag.snapKind = snapResult.snapKind;
-    activeScreenPlaneDrag.snapTargetVectorIds = snapResult.targetVectorIds;
+    activeVectorDrag.coordinates = [...snapResult.coordinates];
+    activeVectorDrag.snapKind = snapResult.snapKind;
+    activeVectorDrag.snapTargetVectorIds = snapResult.targetVectorIds;
     const spanPreview = showSpan
       ? createSpaceSpanDragPreview(
-          activeScreenPlaneDrag.vector.id,
-          activeScreenPlaneDrag.coordinates,
+          activeVectorDrag.vector.id,
+          activeVectorDrag.coordinates,
           spanVectors,
         )
       : null;
     if (spanPreview) {
-      activeScreenPlaneDrag.spanPreviewRank = updateSpanDragPreview(
+      activeVectorDrag.spanPreviewRank = updateSpanDragPreview(
         spanDragPreview,
         spanPreview,
-        activeScreenPlaneDrag.spanPreviewRank,
+        activeVectorDrag.spanPreviewRank,
         extent,
       );
     }
-    const tip = new THREE.Vector3(...activeScreenPlaneDrag.coordinates);
-    activeScreenPlaneDrag.renderedVector.tipIndicator.position.copy(tip);
+    const tip = new THREE.Vector3(...activeVectorDrag.coordinates);
+    activeVectorDrag.renderedVector.tipIndicator.position.copy(tip);
     updateVectorScreenPlanePreview(
       dragPreview,
-      new THREE.Vector3(...activeScreenPlaneDrag.initialCoordinates),
+      new THREE.Vector3(...activeVectorDrag.initialCoordinates),
       tip,
-      activeScreenPlaneDrag.vector,
+      activeVectorDrag.vector,
       vectors,
       colors,
       extent,
@@ -712,11 +855,11 @@ function createThreeSpaceRuntime(
       snapResult.targetVectorIds,
       vectors,
     );
-    const spanDescription = activeScreenPlaneDrag.spanPreviewRank === null
+    const spanDescription = activeVectorDrag.spanPreviewRank === null
       ? ''
-      : `　生成する空間：${describeSpaceSpan(activeScreenPlaneDrag.spanPreviewRank)}`;
+      : `　生成する空間：${describeSpaceSpan(activeVectorDrag.spanPreviewRank)}`;
     onInteractionMessage(
-      `${activeScreenPlaneDrag.vector.name} の成分：${formatCoordinateStatus(activeScreenPlaneDrag.coordinates)}　${snapDescription ?? '画面に平行な面内で移動'}${spanDescription}`,
+      `${activeVectorDrag.vector.name} の成分：${formatCoordinateStatus(activeVectorDrag.coordinates)}　${snapDescription ?? '画面に平行な面内で移動'}${spanDescription}`,
     );
     render();
   };
@@ -760,6 +903,38 @@ function createThreeSpaceRuntime(
     onInteractionMessage('ベクトルの変更を取り消しました。');
     render();
   };
+  const finishTargetScreenPlaneDrag = (event: PointerEvent, commit: boolean) => {
+    if (!activeTargetScreenPlaneDrag) {
+      return;
+    }
+    event.stopImmediatePropagation();
+    if (activeTargetScreenPlaneDrag.pointerId !== event.pointerId) {
+      event.preventDefault();
+      return;
+    }
+    event.preventDefault();
+    const completedDrag = activeTargetScreenPlaneDrag;
+    activeTargetScreenPlaneDrag = null;
+    controls.enabled = true;
+    renderer.domElement.classList.remove('is-target-tip-dragging', 'is-target-tip-hover');
+    if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+      renderer.domElement.releasePointerCapture(event.pointerId);
+    }
+    if (commit) {
+      onInteractionMessage(
+        `ターゲット v を変更しました。${formatCoordinateStatus(completedDrag.coordinates)}`,
+      );
+      onLinearCombinationTargetPlacement(completedDrag.coordinates);
+      return;
+    }
+    completedDrag.renderedTarget.object.visible = true;
+    completedDrag.renderedTarget.tipIndicator.position.set(...completedDrag.initialCoordinates);
+    completedDrag.renderedTarget.tipIndicator.scale.setScalar(1);
+    combinationGeometryGroup.visible = true;
+    clearObjectGroup(targetDragPreview);
+    onInteractionMessage('ターゲット v の変更を取り消しました。');
+    render();
+  };
   const finishTargetPlacement = (event: PointerEvent) => {
     const pending = pendingTargetPlacement;
     pendingTargetPlacement = null;
@@ -793,6 +968,10 @@ function createThreeSpaceRuntime(
     );
   };
   const handlePointerUp = (event: PointerEvent) => {
+    if (activeTargetScreenPlaneDrag) {
+      finishTargetScreenPlaneDrag(event, true);
+      return;
+    }
     if (activeScreenPlaneDrag) {
       finishScreenPlaneDrag(event, true);
       return;
@@ -800,16 +979,26 @@ function createThreeSpaceRuntime(
     finishTargetPlacement(event);
   };
   const handlePointerCancel = (event: PointerEvent) => {
+    if (activeTargetScreenPlaneDrag) {
+      finishTargetScreenPlaneDrag(event, false);
+      return;
+    }
     if (activeScreenPlaneDrag) {
       finishScreenPlaneDrag(event, false);
       return;
     }
     pendingTargetPlacement = null;
   };
-  const handleLostPointerCapture = (event: PointerEvent) => finishScreenPlaneDrag(event, false);
+  const handleLostPointerCapture = (event: PointerEvent) => {
+    if (activeTargetScreenPlaneDrag) {
+      finishTargetScreenPlaneDrag(event, false);
+      return;
+    }
+    finishScreenPlaneDrag(event, false);
+  };
   const handlePointerLeave = () => {
-    if (!activeScreenPlaneDrag) {
-      renderer.domElement.classList.remove('is-vector-tip-hover');
+    if (!activeScreenPlaneDrag && !activeTargetScreenPlaneDrag) {
+      renderer.domElement.classList.remove('is-vector-tip-hover', 'is-target-tip-hover');
       pendingTargetPlacement = null;
     }
   };
@@ -1262,6 +1451,21 @@ function findVectorTipAtPointer(
   return bestMatch?.vector ?? null;
 }
 
+function isWorldPointTipAtPointer(
+  tip: THREE.Vector3,
+  event: PointerEvent,
+  camera: THREE.Camera,
+  rect: DOMRect,
+): boolean {
+  const projected = tip.clone().project(camera);
+  if (projected.z < -1 || projected.z > 1) {
+    return false;
+  }
+  const screen = projectWorldPointToScreen(tip, camera, rect);
+  return (event.clientX - screen.x) ** 2 + (event.clientY - screen.y) ** 2
+    <= vectorTipHitRadius(event.pointerType) ** 2;
+}
+
 function projectWorldPointToScreen(
   point: THREE.Vector3,
   camera: THREE.Camera,
@@ -1290,6 +1494,71 @@ function updateVectorScreenPlanePreview(
   const color = new THREE.Color(colors[Math.max(0, vectorIndex) % colors.length] ?? '#2f6690');
   addPreviewArrow(group, initialTip, color, extent, 0.22, 8);
   addPreviewArrow(group, tip, color, extent, 0.86, 10);
+
+  addScreenPlaneDragGuides(
+    group,
+    initialTip,
+    tip,
+    color,
+    extent,
+    camera,
+    snapKind,
+  );
+}
+
+function updateTargetScreenPlanePreview(
+  group: THREE.Group,
+  initialTip: THREE.Vector3,
+  coordinates: readonly [number, number, number],
+  spanVectors: readonly VectorValue[],
+  vectors: readonly VectorValue[],
+  colors: readonly string[],
+  extent: SpaceExtent,
+  camera: THREE.Camera,
+): ReturnType<typeof createSpaceTargetDragPreview>['status'] {
+  clearObjectGroup(group);
+  const preview = createSpaceTargetDragPreview(coordinates, spanVectors);
+  if (preview.geometry) {
+    addSpaceCombinationGeometry(
+      group,
+      preview.geometry,
+      spanVectors,
+      vectors,
+      colors,
+      extent,
+    );
+  }
+  const tip = new THREE.Vector3(...coordinates);
+  addPreviewArrow(
+    group,
+    initialTip,
+    new THREE.Color(TARGET_COLOR),
+    extent,
+    0.22,
+    8,
+  );
+  addTargetVector(group, coordinates, extent);
+  addScreenPlaneDragGuides(
+    group,
+    initialTip,
+    tip,
+    new THREE.Color(TARGET_COLOR),
+    extent,
+    camera,
+    null,
+  );
+  return preview.status;
+}
+
+function addScreenPlaneDragGuides(
+  group: THREE.Group,
+  initialTip: THREE.Vector3,
+  tip: THREE.Vector3,
+  color: THREE.Color,
+  extent: SpaceExtent,
+  camera: THREE.Camera,
+  snapKind: SpaceVectorSnapKind,
+): void {
 
   const guideLength = Math.max(0.9, extent.halfRange * 0.28);
   const screenRight = new THREE.Vector3(1, 0, 0)
@@ -1411,7 +1680,7 @@ function clearObjectGroup(group: THREE.Group): void {
 }
 
 function addSpaceCombinationGeometry(
-  scene: THREE.Scene,
+  scene: THREE.Object3D,
   geometry: SpaceCombinationGeometry,
   spanVectors: readonly VectorValue[],
   allVectors: readonly VectorValue[],
@@ -1495,7 +1764,7 @@ function addSpaceCombinationGeometry(
 }
 
 function addCombinationTermArrow(
-  scene: THREE.Scene,
+  scene: THREE.Object3D,
   tip: THREE.Vector3,
   color: THREE.Color,
   extent: SpaceExtent,
@@ -1533,10 +1802,12 @@ function addCombinationTermArrow(
 }
 
 function addTargetVector(
-  scene: THREE.Scene,
+  scene: THREE.Object3D,
   target: readonly [number, number, number],
   extent: SpaceExtent,
-): void {
+): RenderedTarget {
+  const group = new THREE.Group();
+  scene.add(group);
   const tip = new THREE.Vector3(...target);
   const color = new THREE.Color(TARGET_COLOR);
   const length = tip.length();
@@ -1555,7 +1826,7 @@ function addTargetVector(
     const marker = new THREE.Mesh(geometry, material);
     marker.lookAt(new THREE.Vector3(0, -1, 0));
     marker.renderOrder = 7;
-    scene.add(marker);
+    group.add(marker);
   } else {
     const headLength = Math.min(length * 0.25, Math.max(0.24, extent.halfRange * 0.075));
     const arrow = new THREE.ArrowHelper(
@@ -1567,10 +1838,13 @@ function addTargetVector(
       headLength * 0.55,
     );
     applyForegroundAppearance(arrow, 1, 7);
-    scene.add(arrow);
+    group.add(arrow);
   }
 
-  scene.add(createTargetLabel(tip));
+  group.add(createTargetLabel(tip));
+  const tipIndicator = createVectorTipIndicator(tip, color, extent, false);
+  group.add(tipIndicator);
+  return { object: group, tipIndicator };
 }
 
 function applyForegroundAppearance(
@@ -1727,6 +2001,18 @@ function describeSpaceSpan(rank: number): string {
     return '原点を通る平面';
   }
   return '3次元座標空間全体';
+}
+
+function describeTargetPreviewStatus(
+  status: ReturnType<typeof createSpaceTargetDragPreview>['status'],
+): string {
+  if (status === 'none') {
+    return '選択集合の一次結合では表現できません';
+  }
+  if (status === 'unique') {
+    return '一次結合の幾何表示を更新中（唯一解）';
+  }
+  return '一次結合の幾何表示を更新中（表し方は無数）';
 }
 
 function formatDirectCoordinate(value: number): string {

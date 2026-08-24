@@ -448,9 +448,19 @@
 
 .vector-tip-gesture-mark,
 .target-placement-gesture-mark,
+.target-vector-gesture-mark,
 .camera-gesture-mark {
   flex: 0 0 auto;
   display: inline-block;
+}
+
+.target-vector-gesture-mark {
+  width: 11px;
+  height: 11px;
+  border: 2px solid #245b8d;
+  border-radius: 50%;
+  background: #245b8d;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #245b8d 20%, transparent);
 }
 
 .target-placement-gesture-mark {
@@ -514,7 +524,15 @@
   cursor: grab;
 }
 
+.three-dimensional-canvas.is-target-tip-hover {
+  cursor: grab;
+}
+
 .three-dimensional-canvas.is-vector-tip-dragging {
+  cursor: grabbing;
+}
+
+.three-dimensional-canvas.is-target-tip-dragging {
   cursor: grabbing;
 }
 

@@ -133,7 +133,7 @@ describe('固定3D表示とカメラ操作', () => {
   });
 
   it('矢先と背景を起点にベクトル移動と視点操作を自動で分ける', () => {
-    expect(componentSource).toContain('矢先をドラッグ：画面に平行な面内で移動');
+    expect(componentSource).toContain('通常ベクトルの矢先をドラッグ：画面内で移動・吸着');
     expect(componentSource).toContain('背景をドラッグ：視点を回転');
     expect(componentSource).toContain('findVectorTipAtPointer');
     expect(componentSource).toContain('setFromNormalAndCoplanarPoint');
@@ -154,6 +154,16 @@ describe('固定3D表示とカメラ操作', () => {
     expect(appSource).not.toContain('threeDimensionalInteractionMode');
   });
 
+  it('ターゲットの矢先ドラッグ中に一次結合の幾何表示を再計算する', () => {
+    expect(componentSource).toContain('ActiveTargetScreenPlaneDrag');
+    expect(componentSource).toContain('isWorldPointTipAtPointer');
+    expect(componentSource).toContain('updateTargetScreenPlanePreview');
+    expect(componentSource).toContain('createSpaceTargetDragPreview(coordinates, spanVectors)');
+    expect(componentSource).toContain('combinationGeometryGroup.visible = false');
+    expect(componentSource).toContain('ターゲット v の矢先をドラッグ：画面内で移動');
+    expect(cssSource).toMatch(/\.three-dimensional-canvas\.is-target-tip-dragging\s*\{[^}]*cursor:\s*grabbing;/su);
+  });
+
   it('ドラッグ中だけ表示幅に相対な平行・同一平面スナップを適用する', () => {
     expect(componentSource).toContain('snapDraggedSpaceVectorToDependentPosition');
     expect(componentSource).toContain('parallelSnapDistanceForViewWidth(orthographicVisibleWidth(camera))');
@@ -166,7 +176,7 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain('createSpaceSpanDragPreview');
     expect(componentSource).toContain('updateSpanDragPreview');
     expect(componentSource).toContain('spanGeometryGroup.visible = false');
-    expect(componentSource).toContain('const spanDescription = activeScreenPlaneDrag.spanPreviewRank');
-    expect(componentSource).toContain('生成する空間：${describeSpaceSpan(activeScreenPlaneDrag.spanPreviewRank)}');
+    expect(componentSource).toContain('const spanDescription = activeVectorDrag.spanPreviewRank');
+    expect(componentSource).toContain('生成する空間：${describeSpaceSpan(activeVectorDrag.spanPreviewRank)}');
   });
 });

@@ -5,6 +5,7 @@ import {
   createSpaceSpanDragPreview,
   vectorTipHitRadius,
 } from '../../src/visualization/spaceVectorEditing';
+import { createSpaceTargetDragPreview } from '../../src/visualization/spaceTargetEditing';
 
 describe('3Dベクトルの画面平行面編集', () => {
   it('操作面上の3次元変位を元の矢先へ加える', () => {
@@ -53,6 +54,28 @@ describe('3Dベクトルの画面平行面編集', () => {
       .toThrow(TypeError);
     expect(() => coordinatesFromWorldPoint({ x: 0, y: 0, z: 0 }, 0))
       .toThrow(RangeError);
+  });
+
+  it('ターゲットのドラッグ座標から平行六面体をリアルタイム再計算する', () => {
+    const preview = createSpaceTargetDragPreview([2, 3, -4], [
+      { id: 'a1', name: 'a₁', coordinates: [1, 0, 0] },
+      { id: 'a2', name: 'a₂', coordinates: [0, 1, 0] },
+      { id: 'a3', name: 'a₃', coordinates: [0, 0, 1] },
+    ]);
+
+    expect(preview.status).toBe('unique');
+    expect(preview.geometry?.kind).toBe('parallelepiped');
+    expect(preview.geometry?.vertices[preview.geometry.targetIndex])
+      .toEqual({ x: 2, y: 3, z: -4 });
+  });
+
+  it('span外へ動かしたターゲットには係数幾何を表示しない', () => {
+    const preview = createSpaceTargetDragPreview([0, 0, 1], [
+      { id: 'a1', name: 'a₁', coordinates: [1, 0, 0] },
+      { id: 'a2', name: 'a₂', coordinates: [0, 1, 0] },
+    ]);
+
+    expect(preview).toEqual({ status: 'none', geometry: null });
   });
 
   it('span対象の3本目を平面へ吸着したプレビューではrankを3から2へ更新する', () => {
