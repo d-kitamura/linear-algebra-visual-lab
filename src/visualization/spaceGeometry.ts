@@ -10,7 +10,7 @@ export const DEFAULT_SPACE_HALF_RANGE = 5;
 export const SPACE_FIT_PADDING = 1.25;
 export const SPACE_CAMERA_DISTANCE_FACTOR = 3.2;
 export const SPACE_SPAN_BOUNDARY_PADDING = 1.08;
-export const SPACE_SPAN_PLANE_SIZE_FACTOR = Math.sqrt(3) * SPACE_SPAN_BOUNDARY_PADDING;
+export const SPACE_SPAN_PLANE_SIZE_FACTOR = 0.92;
 
 export type CameraPreset = 'isometric' | 'front' | 'right' | 'top';
 
@@ -82,12 +82,16 @@ export function createSpaceSpanGeometry(
   vectors: readonly VectorValue[],
   rank: number,
   halfRange: number,
+  gridHalfSize = halfRange,
 ): SpaceSpanGeometry {
   if (!Number.isInteger(rank) || rank < 0 || rank > 3) {
     throw new RangeError('3Dのspanのrankは0以上3以下の整数である必要があります。');
   }
   if (!Number.isFinite(halfRange) || halfRange <= 0) {
     throw new RangeError('spanの表示半径は正の有限値である必要があります。');
+  }
+  if (!Number.isFinite(gridHalfSize) || gridHalfSize <= 0) {
+    throw new RangeError('格子の表示半径は正の有限値である必要があります。');
   }
 
   if (rank === 0) {
@@ -167,7 +171,7 @@ export function createSpaceSpanGeometry(
     basisU,
     basisV,
     normal,
-    halfSize: halfRange * SPACE_SPAN_PLANE_SIZE_FACTOR,
+    halfSize: gridHalfSize * SPACE_SPAN_PLANE_SIZE_FACTOR,
   };
 }
 

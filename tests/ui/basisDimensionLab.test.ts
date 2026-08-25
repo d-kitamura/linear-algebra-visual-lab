@@ -53,6 +53,12 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain('aria-invalid={!valid}');
   });
 
+  it('2D・3Dとも原点優先の共通吸着経路へ接続する', () => {
+    expect(source).toContain('updateBasisPlaneVectorDrag');
+    expect(source).toContain('<VectorSpace3D');
+    expect(source).toContain('onVectorCoordinatesCommit={commitVectorCoordinates}');
+  });
+
   it('共有未対応を明示し、狭い画面では1列にする', () => {
     expect(source).toContain('このLabの共有URLは8.7で追加します');
     expect(css).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.basis-dimension-workspace\s*\{[^}]*grid-template-columns:\s*1fr;/su);

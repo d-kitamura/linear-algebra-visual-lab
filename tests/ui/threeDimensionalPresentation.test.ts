@@ -99,6 +99,9 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain('new THREE.LineDashedMaterial');
     expect(componentSource).toContain('const fill = new THREE.Mesh(boxGeometry, fillMaterial)');
     expect(componentSource).not.toContain('addSpanPlaneGrid');
+    expect(componentSource).toContain('extent.gridHalfSize');
+    expect(componentSource).toContain('new THREE.EdgesGeometry(planeGeometry)');
+    expect(componentSource).toContain('edges.quaternion.copy(plane.quaternion)');
     expect(componentSource).toContain('space-span-rank-three-label');
   });
 
@@ -201,6 +204,12 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain('と平行にスナップ');
     expect(componentSource).toContain('と同一平面上にスナップ');
     expect(componentSource).toContain("snapKind ? '#247565' : '#2f6690'");
+  });
+
+  it('ベクトル空間Labの2D・3Dが原点優先の共通吸着経路を使う', () => {
+    expect(appSource).toContain('snapDraggedVectorToParallel');
+    expect(appSource).toContain('<VectorSpace3D');
+    expect(componentSource).toContain('snapDraggedSpaceVectorToDependentPosition');
   });
 
   it('span対象ベクトルのドラッグ中にrankと灰色の幾何形状を更新する', () => {

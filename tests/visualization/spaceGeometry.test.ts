@@ -109,12 +109,12 @@ describe('3Dで生成する空間の幾何', () => {
     });
   });
 
-  it('rank 2の平面に正規直交基底と法線を与える', () => {
+  it('rank 2の平面に正規直交基底と法線を与え、格子外周より内側へ収める', () => {
     const geometry = createSpaceSpanGeometry([
       { id: 'a1', name: 'a₁', coordinates: [1, 0, 1] },
       { id: 'a2', name: 'a₂', coordinates: [0, 1, 1] },
       { id: 'a3', name: 'a₃', coordinates: [1, 1, 2] },
-    ], 2, 5);
+    ], 2, 5, 6);
 
     expect(geometry.kind).toBe('plane');
     if (geometry.kind !== 'plane') {
@@ -129,7 +129,8 @@ describe('3Dで生成する空間の幾何', () => {
     expect(dot(geometry.basisV, geometry.normal)).toBeCloseTo(0);
     expect(Math.hypot(geometry.normal.x, geometry.normal.y, geometry.normal.z))
       .toBeCloseTo(1);
-    expect(geometry.halfSize).toBeGreaterThan(5);
+    expect(geometry.halfSize).toBeCloseTo(5.52);
+    expect(geometry.halfSize).toBeLessThan(6);
   });
 
   it('rank 3を境界補助付きの空間として扱い、不正な入力を拒否する', () => {
@@ -139,5 +140,6 @@ describe('3Dで生成する空間の幾何', () => {
     });
     expect(() => createSpaceSpanGeometry([], 4, 5)).toThrow(RangeError);
     expect(() => createSpaceSpanGeometry([], 0, 0)).toThrow(RangeError);
+    expect(() => createSpaceSpanGeometry([], 0, 5, 0)).toThrow(RangeError);
   });
 });

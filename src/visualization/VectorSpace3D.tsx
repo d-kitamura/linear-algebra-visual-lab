@@ -1119,7 +1119,12 @@ function addSpanGeometry(
   spanRank: number,
   extent: SpaceExtent,
 ): void {
-  const geometry = createSpaceSpanGeometry(spanVectors, spanRank, extent.halfRange);
+  const geometry = createSpaceSpanGeometry(
+    spanVectors,
+    spanRank,
+    extent.halfRange,
+    extent.gridHalfSize,
+  );
 
   switch (geometry.kind) {
     case 'origin':
@@ -1238,6 +1243,18 @@ function addSpanPlane(
   plane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
   plane.renderOrder = -3;
   scene.add(plane);
+
+  const edgeGeometry = new THREE.EdgesGeometry(planeGeometry);
+  const edgeMaterial = new THREE.LineBasicMaterial({
+    color: SPAN_COLOR,
+    transparent: true,
+    opacity: 0.68,
+    depthWrite: false,
+  });
+  const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+  edges.quaternion.copy(plane.quaternion);
+  edges.renderOrder = -2;
+  scene.add(edges);
 
   const basisU = pointToVector3(geometry.basisU);
   const basisV = pointToVector3(geometry.basisV);

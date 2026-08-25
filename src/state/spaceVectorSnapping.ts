@@ -1,5 +1,6 @@
 import { analyzeVectorSet, type VectorValue } from '../domain';
 import { MAX_ABSOLUTE_COORDINATE } from '../sharing';
+import { isWithinOriginSnapDistance } from './originSnapping';
 
 export const SPACE_SNAP_DISTANCE_RATIO = 0.03;
 
@@ -36,7 +37,7 @@ export function snapDraggedSpaceVectorToDependentPosition(
   if (coordinates.some((coordinate) => !Number.isFinite(coordinate))) {
     throw new TypeError('3Dスナップの座標は有限値である必要があります。');
   }
-  if (length(coordinates) <= maximumDistance) {
+  if (isWithinOriginSnapDistance(coordinates, maximumDistance)) {
     return { coordinates: [0, 0, 0], snapKind: 'origin', targetVectorIds: [] };
   }
 
