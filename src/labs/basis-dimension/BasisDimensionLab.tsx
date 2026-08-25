@@ -55,6 +55,14 @@ const DIMENSION_TABS = [
   { dimension: 3 as const, label: '3次元', shortLabel: '3D' },
 ];
 
+const BASIS_INSPECTOR_TABS = [
+  { id: 'vectors', label: '全ベクトルの集合', shortLabel: '成分' },
+  { id: 'basis', label: '基底・次元の判定', shortLabel: '判定' },
+  { id: 'coordinates', label: '基底に関する座標', shortLabel: '座標' },
+] as const;
+
+type BasisInspectorTabId = typeof BASIS_INSPECTOR_TABS[number]['id'];
+
 interface BasisDimensionLabProps {
   readonly active: boolean;
 }
@@ -78,6 +86,9 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   const [comparisonBasisIds, setComparisonBasisIds] = useState<
     Record<VectorDimension, readonly string[] | null>
   >({ 2: null, 3: null });
+  const [activeInspectorTabs, setActiveInspectorTabs] = useState<
+    Record<VectorDimension, BasisInspectorTabId>
+  >({ 2: 'vectors', 3: 'vectors' });
   const [planeViewport, setPlaneViewport] = useState<PlaneViewport>(DEFAULT_PLANE_VIEWPORT);
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
   const [camera, setCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
@@ -120,6 +131,29 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     const nextDimension = event.key === 'ArrowLeft' || event.key === 'Home' ? 2 : 3;
     handleDimensionChange(nextDimension);
     document.getElementById(`basis-dimension-tab-${nextDimension}`)?.focus();
+  }
+
+  function setActiveInspectorTab(tab: BasisInspectorTabId): void {
+    setActiveInspectorTabs((current) => ({ ...current, [activeDimension]: tab }));
+  }
+
+  function handleInspectorTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+      return;
+    }
+    event.preventDefault();
+    const activeTab = activeInspectorTabs[activeDimension];
+    const currentIndex = BASIS_INSPECTOR_TABS.findIndex((tab) => tab.id === activeTab);
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? BASIS_INSPECTOR_TABS.length - 1
+        : event.key === 'ArrowRight'
+          ? (currentIndex + 1) % BASIS_INSPECTOR_TABS.length
+          : (currentIndex - 1 + BASIS_INSPECTOR_TABS.length) % BASIS_INSPECTOR_TABS.length;
+    const nextTab = BASIS_INSPECTOR_TABS[nextIndex];
+    setActiveInspectorTab(nextTab.id);
+    document.getElementById(`basis-inspector-tab-${nextTab.id}`)?.focus();
   }
 
   function handleCandidateToggle(vectorId: string): void {
@@ -250,6 +284,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
       [activeDimension]: resetScene.target.map(String),
     }));
     setComparisonBasisIds((current) => ({ ...current, [activeDimension]: null }));
+    setActiveInspectorTabs((current) => ({ ...current, [activeDimension]: 'vectors' }));
     if (activeDimension === 2) {
       setPlaneViewport(createBasisAutoFitViewport(resetScene));
       setParallelSnapTargetId(null);
@@ -390,12 +425,6 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               </Suspense>
             )}
 
-            <VectorSourceEditor
-              scene={scene}
-              drafts={coordinateDrafts[activeDimension]}
-              onCoordinateChange={handleCoordinateChange}
-              onCoordinateBlur={handleCoordinateBlur}
-            />
           </div>
 
           <aside className="basis-analysis-column" aria-label="基底候補の選択、判定、座標の比較">
@@ -405,7 +434,38 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               onToggle={handleCandidateToggle}
               onMove={handleCandidateMove}
             />
-            <BasisAnalysisCard scene={scene} analysis={analysis} />
+
+            <div className="inspector-tablist basis-inspector-tablist" role="tablist" aria-label="基底・次元Labの編集・解析の詳細">
+              {BASIS_INSPECTOR_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  id={`basis-inspector-tab-${tab.id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeInspectorTabs[activeDimension] === tab.id}
+                  aria-controls={`basis-inspector-panel-${tab.id}`}
+                  tabIndex={activeInspectorTabs[activeDimension] === tab.id ? 0 : -1}
+                  onClick={() => setActiveInspectorTab(tab.id)}
+                  onKeyDown={handleInspectorTabKeyDown}
+                >
+                  <span className="tab-label-wide">{tab.label}</span>
+                  <span className="tab-label-short">{tab.shortLabel}</span>
+                </button>
+              ))}
+            </div>
+
+            <VectorSourceEditor
+              scene={scene}
+              drafts={coordinateDrafts[activeDimension]}
+              active={activeInspectorTabs[activeDimension] === 'vectors'}
+              onCoordinateChange={handleCoordinateChange}
+              onCoordinateBlur={handleCoordinateBlur}
+            />
+            <BasisAnalysisCard
+              scene={scene}
+              analysis={analysis}
+              active={activeInspectorTabs[activeDimension] === 'basis'}
+            />
             <CoordinateExplorerCard
               scene={scene}
               analysis={coordinateAnalysis}
@@ -415,6 +475,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               onTargetCoordinateChange={handleTargetCoordinateChange}
               onTargetCoordinateBlur={handleTargetCoordinateBlur}
               onSaveComparisonBasis={saveComparisonBasis}
+              active={activeInspectorTabs[activeDimension] === 'coordinates'}
             />
           </aside>
         </div>
@@ -426,16 +487,24 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
 function VectorSourceEditor({
   scene,
   drafts,
+  active,
   onCoordinateChange,
   onCoordinateBlur,
 }: {
   readonly scene: BasisDimensionScene;
   readonly drafts: Readonly<Record<string, readonly string[]>>;
+  readonly active: boolean;
   readonly onCoordinateChange: (vectorId: string, index: number, value: string) => void;
   readonly onCoordinateBlur: (vector: VectorValue, index: number) => void;
 }) {
   return (
-    <section className="basis-source-card" aria-labelledby="basis-source-title">
+    <section
+      className="basis-source-card inspector-panel"
+      id="basis-inspector-panel-vectors"
+      role="tabpanel"
+      aria-labelledby="basis-inspector-tab-vectors basis-source-title"
+      hidden={!active}
+    >
       <p className="panel-kicker">Vector set</p>
       <h2 id="basis-source-title">全ベクトルの集合 <MathSetName /></h2>
       <div className="basis-vector-input-grid">
@@ -537,12 +606,20 @@ function CandidateSelector({
 function BasisAnalysisCard({
   scene,
   analysis,
+  active,
 }: {
   readonly scene: BasisDimensionScene;
   readonly analysis: BasisCandidateAnalysis;
+  readonly active: boolean;
 }) {
   return (
-    <section className={`basis-result-card ${analysis.isBasis ? 'is-basis' : 'is-not-basis'}`} aria-labelledby="basis-result-title">
+    <section
+      className={`basis-result-card inspector-panel ${analysis.isBasis ? 'is-basis' : 'is-not-basis'}`}
+      id="basis-inspector-panel-basis"
+      role="tabpanel"
+      aria-labelledby="basis-inspector-tab-basis basis-result-title"
+      hidden={!active}
+    >
       <p className="panel-kicker">Basis &amp; dimension</p>
       <h2 id="basis-result-title">
         {analysis.isBasis ? 'この候補は基底です' : 'この候補は基底ではありません'}
@@ -604,6 +681,7 @@ function CoordinateExplorerCard({
   onTargetCoordinateChange,
   onTargetCoordinateBlur,
   onSaveComparisonBasis,
+  active,
 }: {
   readonly scene: BasisDimensionScene;
   readonly analysis: BasisCoordinateAnalysis;
@@ -613,6 +691,7 @@ function CoordinateExplorerCard({
   readonly onTargetCoordinateChange: (index: number, value: string) => void;
   readonly onTargetCoordinateBlur: (index: number) => void;
   readonly onSaveComparisonBasis: () => void;
+  readonly active: boolean;
 }) {
   const coordinateValues = analysis.coordinateVector?.map(formatCoordinate) ?? [];
   const particularValues = analysis.combinationAnalysis.particularSolution
@@ -621,8 +700,11 @@ function CoordinateExplorerCard({
 
   return (
     <section
-      className={`basis-coordinate-card is-${analysis.status}`}
-      aria-labelledby="basis-coordinate-title"
+      className={`basis-coordinate-card inspector-panel is-${analysis.status}`}
+      id="basis-inspector-panel-coordinates"
+      role="tabpanel"
+      aria-labelledby="basis-inspector-tab-coordinates basis-coordinate-title"
+      hidden={!active}
     >
       <p className="panel-kicker">Coordinates</p>
       <h2 id="basis-coordinate-title">基底に関する座標</h2>
@@ -690,10 +772,15 @@ function CoordinateExplorerCard({
               <MathBasisName comparison /> = <VectorTuple ids={comparisonBasisIds} vectors={scene.vectors} />
             </p>
             {comparisonAnalysis.status === 'coordinate-vector' ? (
-              <p className="basis-coordinate-formula">
-                <MathCoordinateName comparison /> ={' '}
-                <MathColumnVector values={comparisonAnalysis.coordinateVector?.map(formatCoordinate) ?? []} />
-              </p>
+              <>
+                <p className="basis-coordinate-formula">
+                  <MathVectorName name="c" /> ={' '}
+                  <MathColumnVector values={comparisonAnalysis.coordinateVector?.map(formatCoordinate) ?? []} />
+                </p>
+                <small className="basis-coordinate-identity">
+                  この係数ベクトル <MathVectorName name="c" /> が <MathCoordinateName comparison /> です。
+                </small>
+              </>
             ) : (
               <p className="basis-coordinate-warning">
                 記録した組は現在のベクトル成分では基底でないため、比較用の座標を定義できません。
@@ -725,14 +812,17 @@ function CoordinateResult({
         <div className="basis-coordinate-success">
           <strong>座標ベクトルが唯一に定まります</strong>
           <p className="basis-coordinate-formula">
-            <MathCoordinateName /> = <MathColumnVector values={coordinateValues} />
+            <MathVectorName name="c" /> = <MathColumnVector values={coordinateValues} />
           </p>
           <p className="basis-coordinate-formula is-expansion">
             <MathVectorName name="v" /> ={' '}
             <VectorTuple ids={scene.candidateVectorIds} vectors={scene.vectors} />
-            <MathCoordinateName />
+            <MathVectorName name="c" />
           </p>
-          <small>候補が基底なので、一次結合係数をこの基底に関する座標と呼べます。</small>
+          <small>
+            候補が基底なので、この一意な係数ベクトル <MathVectorName name="c" /> が{' '}
+            <MathCoordinateName /> です。
+          </small>
         </div>
       );
     case 'not-representable':
@@ -751,7 +841,8 @@ function CoordinateResult({
           <div className="basis-coordinate-examples">
             {analysis.combinationAnalysis.exampleSolutions.map((values, index) => (
               <span key={index}>
-                例{index + 1}：<MathColumnVector values={values.map(formatCoordinate)} />
+                例{index + 1}：<MathVectorName name="c" /> ={' '}
+                <MathColumnVector values={values.map(formatCoordinate)} />
               </span>
             ))}
           </div>
@@ -763,7 +854,7 @@ function CoordinateResult({
         <div className="basis-coordinate-warning">
           <strong>このターゲットには一意な係数がありますが、座標とは呼べません</strong>
           <p className="basis-coordinate-formula">
-            係数 = <MathColumnVector values={particularValues} />
+            <MathVectorName name="c" /> = <MathColumnVector values={particularValues} />
           </p>
           <small>現在の候補は対象空間の基底ではないため、他のベクトルには同じ表現規則を使えません。</small>
         </div>
@@ -898,14 +989,13 @@ function MathCoordinateName({ comparison = false }: { readonly comparison?: bool
 
 function MathColumnVector({ values }: { readonly values: readonly string[] }) {
   return (
-    <span className="basis-column-vector" aria-label={`列ベクトル ${values.join('、')}`}>
-      <span aria-hidden="true" className="basis-column-vector-left" />
-      <span className="basis-column-vector-values" aria-hidden="true">
-        {values.length === 0 ? <span> </span> : values.map((value, index) => (
-          <span key={index}>{value}</span>
-        ))}
-      </span>
-      <span aria-hidden="true" className="basis-column-vector-right" />
+    <span
+      className="display-column-vector basis-column-vector"
+      aria-label={`列ベクトル ${values.join('、')}`}
+    >
+      {values.length === 0 ? <span aria-hidden="true"> </span> : values.map((value, index) => (
+        <span key={index} aria-hidden="true">{value}</span>
+      ))}
     </span>
   );
 }

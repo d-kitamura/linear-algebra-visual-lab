@@ -2919,6 +2919,11 @@
   gap: 18px;
 }
 
+.basis-visual-column {
+  align-self: stretch;
+  align-content: start;
+}
+
 .basis-source-card,
 .basis-candidate-card,
 .basis-result-card,
@@ -2998,12 +3003,33 @@
 }
 
 .basis-coordinate-inputs {
+  position: relative;
   min-width: 0;
   display: grid;
   gap: 5px;
-  padding: 5px 9px;
-  border-left: 1.5px solid var(--ink);
-  border-right: 1.5px solid var(--ink);
+  padding: 5px 13px;
+}
+
+.basis-coordinate-inputs::before,
+.basis-coordinate-inputs::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-top: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  pointer-events: none;
+}
+
+.basis-coordinate-inputs::before {
+  left: 0;
+  border-left: 1.5px solid currentColor;
+}
+
+.basis-coordinate-inputs::after {
+  right: 0;
+  border-right: 1.5px solid currentColor;
 }
 
 .basis-coordinate-inputs input {
@@ -3424,6 +3450,14 @@
   border-top: 1px solid var(--line);
 }
 
+.basis-coordinate-identity {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
 .basis-coordinate-name {
   display: inline-flex;
   align-items: baseline;
@@ -3442,34 +3476,9 @@
 }
 
 .basis-column-vector {
-  display: inline-grid;
-  grid-template-columns: 4px auto 4px;
-  align-items: stretch;
-  gap: 5px;
   min-height: 30px;
   vertical-align: middle;
   font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
-}
-
-.basis-column-vector-left {
-  border-top: 1.4px solid currentColor;
-  border-bottom: 1.4px solid currentColor;
-  border-left: 1.4px solid currentColor;
-}
-
-.basis-column-vector-right {
-  border-top: 1.4px solid currentColor;
-  border-right: 1.4px solid currentColor;
-  border-bottom: 1.4px solid currentColor;
-}
-
-.basis-column-vector-values {
-  min-width: 1.4em;
-  padding: 2px 1px;
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  line-height: 1.25;
 }
 
 .basis-math {

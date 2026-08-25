@@ -65,6 +65,16 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*?\.basis-vector-input-grid\s*\{[^}]*grid-template-columns:\s*1fr;/su);
   });
 
+  it('基底候補だけを常時表示し、他の詳細カードを既存Labと同じタブ形式にする', () => {
+    expect(source).toContain('className="inspector-tablist basis-inspector-tablist"');
+    expect(source).toContain("{ id: 'vectors', label: '全ベクトルの集合'");
+    expect(source).toContain("{ id: 'basis', label: '基底・次元の判定'");
+    expect(source).toContain("{ id: 'coordinates', label: '基底に関する座標'");
+    expect(source).toContain('role="tabpanel"');
+    expect(source).toContain('hidden={!active}');
+    expect(source).toContain("[activeDimension]: 'vectors'");
+  });
+
   it('8.5で同じターゲットを2D・3Dの基底座標解析へ接続する', () => {
     expect(source).toContain('analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target)');
     expect(source).toContain('linearCombinationVisible');
@@ -93,7 +103,16 @@ describe('8.4 基底・次元エクスプローラ', () => {
 
   it('列ベクトル表示と狭い画面のターゲット入力を枠内に保つ', () => {
     expect(source).toContain('<MathColumnVector values={coordinateValues} />');
-    expect(css).toMatch(/\.basis-column-vector\s*\{[^}]*display:\s*inline-grid;/su);
+    expect(source).toContain('className="display-column-vector basis-column-vector"');
+    expect(css).toMatch(/\.basis-coordinate-inputs::before,[\s\S]*?border-top:\s*1\.5px solid currentColor;/su);
+    expect(css).toMatch(/\.basis-coordinate-inputs::before\s*\{[^}]*border-left:\s*1\.5px solid currentColor;/su);
+    expect(css).toMatch(/\.basis-coordinate-inputs::after\s*\{[^}]*border-right:\s*1\.5px solid currentColor;/su);
     expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*?\.basis-target-editor,[\s\S]*?grid-template-columns:\s*1fr;/su);
+  });
+
+  it('一次結合係数を太字斜体cで示し、無数の場合も各例へcを付ける', () => {
+    expect(source).toContain('<MathVectorName name="c" /> = <MathColumnVector values={coordinateValues} />');
+    expect(source).toContain('例{index + 1}：<MathVectorName name="c" />');
+    expect(source).toContain('この一意な係数ベクトル <MathVectorName name="c" />');
   });
 });
