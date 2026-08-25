@@ -1,5 +1,6 @@
 import type { VectorValue } from '../domain';
 import { MAX_ABSOLUTE_COORDINATE } from '../sharing';
+import { isWithinOriginSnapDistance } from './originSnapping';
 import { DEFAULT_PARALLEL_SNAP_DISTANCE } from './vectorSnapping';
 
 export type TargetSnapKind = 'origin' | 'span-line' | null;
@@ -22,10 +23,12 @@ export function snapTargetToSelectedSpan(
     throw new RangeError('ターゲット吸着距離は 0 より大きい有限値である必要があります。');
   }
 
+  if (isWithinOriginSnapDistance(coordinates, maximumDistance)) {
+    return { coordinates: [0, 0], snapKind: 'origin' };
+  }
+
   if (spanDimension === 0) {
-    return Math.hypot(coordinates[0], coordinates[1]) <= maximumDistance
-      ? { coordinates: [0, 0], snapKind: 'origin' }
-      : { coordinates, snapKind: null };
+    return { coordinates, snapKind: null };
   }
 
   if (spanDimension !== 1) {

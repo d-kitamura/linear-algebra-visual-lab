@@ -8,7 +8,7 @@ const planeVectors: readonly VectorValue[] = [
 ];
 
 describe('3D一次結合ターゲットのspanスナップ', () => {
-  it('表示幅相対の距離内ではrank 0の原点へ吸着する', () => {
+  it('表示幅相対の距離内ではrankにかかわらず原点を最優先する', () => {
     expect(snapSpaceTargetToSelectedSpan(
       [0.04, -0.03, 0.02],
       [],
@@ -23,6 +23,25 @@ describe('3D一次結合ターゲットのspanスナップ', () => {
     const outside = [0.08, 0.08, 0.08] as const;
     expect(snapSpaceTargetToSelectedSpan(outside, [], 0, 0.1))
       .toEqual({ coordinates: outside, snapKind: null, basisVectorIds: [] });
+
+    expect(snapSpaceTargetToSelectedSpan(
+      [0.04, -0.03, 0.02],
+      [planeVectors[0]],
+      1,
+      0.1,
+    ).snapKind).toBe('origin');
+    expect(snapSpaceTargetToSelectedSpan(
+      [0.04, -0.03, 0.02],
+      planeVectors,
+      2,
+      0.1,
+    ).snapKind).toBe('origin');
+    expect(snapSpaceTargetToSelectedSpan(
+      [0.04, -0.03, 0.02],
+      [...planeVectors, { id: 'a3', name: 'a₃', coordinates: [0, 0, 1] }],
+      3,
+      0.1,
+    ).snapKind).toBe('origin');
   });
 
   it('表示幅相対の距離内ではrank 1のspan直線へ直交射影する', () => {
@@ -94,7 +113,7 @@ describe('3D一次結合ターゲットのspanスナップ', () => {
     }).rank).toBe(2);
   });
 
-  it('距離外とrank 3ではターゲット座標を変更しない', () => {
+  it('距離外では変更せず、rank 3では原点以外へ吸着しない', () => {
     const outside = [2, 3, 0.2] as const;
     expect(snapSpaceTargetToSelectedSpan(outside, planeVectors, 2, 0.1))
       .toEqual({ coordinates: outside, snapKind: null, basisVectorIds: [] });

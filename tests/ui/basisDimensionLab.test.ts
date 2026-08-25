@@ -82,6 +82,9 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain('linearCombinationTarget={scene.target as readonly [number, number, number]}');
     expect(source).toContain('onLinearCombinationTargetPlacement={commitTarget}');
     expect(source).toContain('ターゲットvの第${index + 1}成分');
+    expect(source).toContain('snapTargetToSelectedSpan(');
+    expect(source).toContain('targetSnapKind={targetSnapKind}');
+    expect(source).toContain('onTargetChange={updatePlaneTargetFromPointer}');
   });
 
   it('基底・無数・表現不能・基底でない一意表現を別々に説明する', () => {

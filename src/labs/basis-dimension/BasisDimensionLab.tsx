@@ -15,7 +15,12 @@ import {
   type VectorValue,
 } from '../../domain';
 import { DEFAULT_3D_CAMERA_STATE, type SharedCameraState } from '../../sharing';
-import { parseCoordinateInput } from '../../state';
+import {
+  parallelSnapDistanceForViewWidth,
+  parseCoordinateInput,
+  snapTargetToSelectedSpan,
+  type TargetSnapKind,
+} from '../../state';
 import { VectorPlane2D } from '../../visualization/VectorPlane2D';
 import {
   DEFAULT_PLANE_VIEWPORT,
@@ -91,6 +96,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   >({ 2: 'vectors', 3: 'vectors' });
   const [planeViewport, setPlaneViewport] = useState<PlaneViewport>(DEFAULT_PLANE_VIEWPORT);
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
+  const [targetSnapKind, setTargetSnapKind] = useState<TargetSnapKind>(null);
   const [camera, setCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
   const [spaceResetKey, setSpaceResetKey] = useState(0);
   const scene = scenes[activeDimension];
@@ -120,6 +126,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
 
   function handleDimensionChange(dimension: VectorDimension): void {
     setParallelSnapTargetId(null);
+    setTargetSnapKind(null);
     setActiveDimension(dimension);
   }
 
@@ -242,6 +249,22 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     }));
   }
 
+  function updatePlaneTargetFromPointer(coordinates: readonly [number, number]): void {
+    const snapResult = snapTargetToSelectedSpan(
+      coordinates,
+      candidateVectors,
+      analysis.candidateRank,
+      parallelSnapDistanceForViewWidth(planeViewport.maxX - planeViewport.minX),
+    );
+    commitTarget(snapResult.coordinates);
+    setTargetSnapKind(snapResult.snapKind);
+  }
+
+  function handlePlaneTargetPlacement(coordinates: readonly [number, number]): void {
+    updatePlaneTargetFromPointer(coordinates);
+    setTargetSnapKind(null);
+  }
+
   function handleTargetCoordinateChange(coordinateIndex: number, value: string): void {
     const nextDrafts = [...targetDrafts[activeDimension]];
     nextDrafts[coordinateIndex] = value;
@@ -288,6 +311,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     if (activeDimension === 2) {
       setPlaneViewport(createBasisAutoFitViewport(resetScene));
       setParallelSnapTargetId(null);
+      setTargetSnapKind(null);
     } else {
       setCamera(DEFAULT_3D_CAMERA_STATE);
       setSpaceResetKey((current) => current + 1);
@@ -382,14 +406,17 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   showSpan
                   linearCombinationVisible
                   target={scene.target as readonly [number, number]}
+                  targetSnapKind={targetSnapKind}
                   linearCombinationCoefficients={
                     coordinateAnalysis.status === 'coordinate-vector'
                     && coordinateAnalysis.coordinateVector?.length === 2
                       ? coordinateAnalysis.coordinateVector as readonly [number, number]
                       : null
                   }
-                  onTargetPlacement={commitTarget}
-                  onTargetChange={commitTarget}
+                  onTargetPlacement={handlePlaneTargetPlacement}
+                  onTargetDragStart={() => setTargetSnapKind(null)}
+                  onTargetChange={updatePlaneTargetFromPointer}
+                  onTargetDragEnd={() => setTargetSnapKind(null)}
                 />
                 <p className="viewport-help">
                   灰色は基底候補 <MathBasisName /> が生成する空間です。通常ベクトルとターゲット <MathVectorName name="v" /> の矢先をドラッグできます。

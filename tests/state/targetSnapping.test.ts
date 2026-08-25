@@ -8,8 +8,16 @@ const lineVectors: readonly VectorValue[] = [
 ];
 
 describe('2D linear-combination target snapping', () => {
-  it('snaps a rank-zero target to the origin inside the screen-relative distance', () => {
+  it('snaps a target to the origin first regardless of the selected span rank', () => {
     expect(snapTargetToSelectedSpan([0.06, -0.07], [], 0, 0.1)).toEqual({
+      coordinates: [0, 0],
+      snapKind: 'origin',
+    });
+    expect(snapTargetToSelectedSpan([0.06, -0.07], lineVectors, 1, 0.1)).toEqual({
+      coordinates: [0, 0],
+      snapKind: 'origin',
+    });
+    expect(snapTargetToSelectedSpan([0.06, -0.07], lineVectors, 2, 0.1)).toEqual({
       coordinates: [0, 0],
       snapKind: 'origin',
     });
@@ -31,8 +39,8 @@ describe('2D linear-combination target snapping', () => {
       coordinates: [4, 2.3],
       snapKind: null,
     });
-    expect(snapTargetToSelectedSpan([0.01, 0.01], lineVectors, 2, 0.1)).toEqual({
-      coordinates: [0.01, 0.01],
+    expect(snapTargetToSelectedSpan([1, 1], lineVectors, 2, 0.1)).toEqual({
+      coordinates: [1, 1],
       snapKind: null,
     });
   });

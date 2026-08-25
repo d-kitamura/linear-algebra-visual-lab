@@ -13,7 +13,7 @@ const vectors: readonly VectorValue[] = [
 
 describe('2D parallel snapping', () => {
   it('uses a threshold independent from the rank tolerance', () => {
-    expect(DEFAULT_PARALLEL_SNAP_DISTANCE).toBe(1e-1);
+    expect(DEFAULT_PARALLEL_SNAP_DISTANCE).toBe(2e-1);
 
     const before = analyzeVectorSet({ dimension: 2, vectors });
     const snapped = snapDraggedVectorToParallel('v2', [4, 2.1], vectors);
@@ -87,8 +87,8 @@ describe('2D parallel snapping', () => {
   });
 
   it('scales the mathematical snap distance with the current view width', () => {
-    expect(parallelSnapDistanceForViewWidth(10)).toBeCloseTo(0.1);
-    expect(parallelSnapDistanceForViewWidth(100)).toBeCloseTo(1);
-    expect(parallelSnapDistanceForViewWidth(4)).toBeCloseTo(0.04);
+    expect(parallelSnapDistanceForViewWidth(10)).toBeCloseTo(0.2);
+    expect(parallelSnapDistanceForViewWidth(100)).toBeCloseTo(2);
+    expect(parallelSnapDistanceForViewWidth(4)).toBeCloseTo(0.08);
   });
 });

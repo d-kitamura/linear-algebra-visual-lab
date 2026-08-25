@@ -1004,10 +1004,22 @@ function createThreeSpaceRuntime(
     if (!targetPoint) {
       return;
     }
-    const coordinates = coordinatesFromWorldPoint(targetPoint);
+    const candidateCoordinates = coordinatesFromWorldPoint(targetPoint);
+    const snapResult = snapSpaceTargetToSelectedSpan(
+      candidateCoordinates,
+      spanVectors,
+      spanRank,
+      spaceSnapDistanceForViewWidth(orthographicVisibleWidth(camera)),
+    );
+    const coordinates: [number, number, number] = [...snapResult.coordinates];
+    const snapDescription = describeSpaceTargetSnap(
+      snapResult.snapKind,
+      snapResult.basisVectorIds,
+      vectors,
+    );
     onLinearCombinationTargetPlacement(coordinates);
     onInteractionMessage(
-      `ターゲット v を配置しました。${formatCoordinateStatus(coordinates)}　原点を通る画面平行面上`,
+      `ターゲット v を配置しました。${formatCoordinateStatus(coordinates)}　${snapDescription ?? '原点を通る画面平行面上'}`,
     );
   };
   const handlePointerUp = (event: PointerEvent) => {

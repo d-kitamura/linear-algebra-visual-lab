@@ -1,6 +1,5 @@
 import { analyzeVectorSet, type VectorValue } from '../domain';
 import { MAX_ABSOLUTE_COORDINATE } from '../sharing';
-import { DEFAULT_PARALLEL_SNAP_DISTANCE } from './vectorSnapping';
 
 export type SpaceTargetSnapKind = 'origin' | 'span-line' | 'span-plane' | null;
 
@@ -14,7 +13,7 @@ export function snapSpaceTargetToSelectedSpan(
   coordinates: readonly [number, number, number],
   spanVectors: readonly VectorValue[],
   spanRank: number,
-  maximumDistance = DEFAULT_PARALLEL_SNAP_DISTANCE,
+  maximumDistance: number,
 ): SpaceTargetSnapResult {
   if (!coordinates.every(Number.isFinite)) {
     throw new TypeError('3Dターゲット座標は有限値である必要があります。');
@@ -22,7 +21,7 @@ export function snapSpaceTargetToSelectedSpan(
   if (!Number.isFinite(maximumDistance) || maximumDistance <= 0) {
     throw new RangeError('3Dターゲット吸着距離は 0 より大きい有限値である必要があります。');
   }
-  if (spanRank < 0 || spanRank > 2) {
+  if (spanRank < 0 || spanRank > 3) {
     return withoutSnap(coordinates);
   }
 
@@ -35,15 +34,16 @@ export function snapSpaceTargetToSelectedSpan(
     return withoutSnap(coordinates);
   }
 
-  if (spanRank === 0) {
-    if (length(coordinates) > maximumDistance) {
-      return withoutSnap(coordinates);
-    }
+  if (length(coordinates) <= maximumDistance) {
     return {
       coordinates: [0, 0, 0],
       snapKind: 'origin',
       basisVectorIds: [],
     };
+  }
+
+  if (spanRank === 0 || spanRank === 3) {
+    return withoutSnap(coordinates);
   }
 
   if (spanRank === 1) {

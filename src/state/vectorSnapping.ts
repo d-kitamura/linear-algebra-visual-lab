@@ -3,7 +3,7 @@ import { MAX_ABSOLUTE_COORDINATE } from '../sharing';
 import { isWithinOriginSnapDistance } from './originSnapping';
 
 export const REFERENCE_PARALLEL_SNAP_VIEW_WIDTH = 10;
-export const DEFAULT_PARALLEL_SNAP_DISTANCE = 1e-1;
+export const DEFAULT_PARALLEL_SNAP_DISTANCE = 2e-1;
 
 export interface ParallelSnapResult {
   readonly coordinates: readonly [number, number];

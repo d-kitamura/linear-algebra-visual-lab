@@ -197,7 +197,7 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain('snapDraggedSpaceVectorToDependentPosition');
     expect(componentSource.match(
       /spaceSnapDistanceForViewWidth\(orthographicVisibleWidth\(camera\)\)/gu,
-    )).toHaveLength(2);
+    )).toHaveLength(3);
     expect(componentSource).not.toContain(
       'parallelSnapDistanceForViewWidth(orthographicVisibleWidth(camera))',
     );
