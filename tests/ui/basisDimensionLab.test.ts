@@ -70,17 +70,18 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain('className="inspector-tablist basis-inspector-tablist"');
     expect(source).toContain("{ id: 'vectors', label: '全ベクトルの集合'");
     expect(source).toContain("{ id: 'basis', label: '基底・次元の判定'");
-    expect(source).toContain("{ id: 'coordinates', label: '基底に関する座標'");
+    expect(source).toContain("{ id: 'polynomial', label: '多項式と係数ベクトル'");
+    expect(source).toContain("{ id: 'combination', label: '一次結合'");
     expect(source).toContain('role="tabpanel"');
     expect(source).toContain('hidden={!active}');
     expect(source).toContain("[activeDimension]: 'vectors'");
   });
 
   it('8.5で同じターゲットを2D・3Dの基底座標解析へ接続する', () => {
-    expect(source).toContain('analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target)');
-    expect(source).toContain('linearCombinationVisible');
-    expect(source).toContain('target={scene.target as readonly [number, number]}');
-    expect(source).toContain('linearCombinationTarget={scene.target as readonly [number, number, number]}');
+    expect(source).toContain('? analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target)');
+    expect(source).toContain('linearCombinationVisible={linearCombinationVisible}');
+    expect(source).toContain('target={scene.target as readonly [number, number] | null}');
+    expect(source).toContain('linearCombinationTarget={scene.target as readonly [number, number, number] | null}');
     expect(source).toContain('onLinearCombinationTargetPlacement={commitTarget}');
     expect(source).toContain('ターゲットvの第${index + 1}成分');
     expect(source).toContain('snapTargetToSelectedSpan(');
@@ -125,9 +126,33 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain('aria-label="対象の見方"');
     expect(source).toContain('>数ベクトル</button>');
     expect(source).toContain('>多項式</button>');
-    expect(source).toContain('<PolynomialCorrespondenceCard scene={scene} />');
+    expect(source).toContain('<PolynomialCorrespondenceCard');
     expect(source).toContain('標準基底：');
     expect(source).toContain('係数は定数項から昇べき順です。');
     expect(source).toContain("setRepresentations((current) => ({ ...current, [activeDimension]: 'coordinate' }))");
+  });
+
+  it('ターゲットを一次結合モードだけで配置・表示する', () => {
+    expect(source).toContain('Record<VectorDimension, boolean>');
+    expect(source).toContain('>({ 2: false, 3: false });');
+    expect(source).toContain("tab.id !== 'combination' || linearCombinationVisible");
+    expect(source).toMatch(/nextVisible\s*\? 'combination'/u);
+    expect(source).toContain("current[activeDimension] === 'combination'");
+    expect(source).toMatch(/current\[activeDimension\] === 'combination'[\s\S]*?\? 'basis'/u);
+    expect(source).toContain('一次結合モードを終了');
+    expect(source).toContain('一次結合を調べる');
+    expect(source).toContain('onClearTarget={handleClearTarget}');
+    expect(source).toContain('グラフをクリックまたはタップするか、成分を入力してターゲット');
+  });
+
+  it('新しいグラフ見出しと多項式の数式表記を使う', () => {
+    expect(source).toContain('基底候補の数ベクトルが生成する空間');
+    expect(source).toContain('基底候補の係数が生成する係数空間');
+    expect(source).toContain('<MathFunctionName /> = <GenericPolynomial');
+    expect(source).toContain('<MathSymbolicTransposedRowVector degrees={genericCoefficients} />');
+    expect(source).toContain("const base = target ? 'g' : 'f';");
+    expect(source).toContain('<span aria-hidden="true"> ⇔ </span>');
+    expect(source).toContain('className="math-scalar-base">x</span>');
+    expect(source).toContain('tab.id !== \'polynomial\' || polynomialMode');
   });
 });

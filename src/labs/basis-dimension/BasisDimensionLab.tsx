@@ -67,8 +67,9 @@ const POLYNOMIAL_AXIS_LABELS_3D = ['b₀', 'b₁', 'b₂'] as const;
 
 const BASIS_INSPECTOR_TABS = [
   { id: 'vectors', label: '全ベクトルの集合', shortLabel: '成分' },
+  { id: 'polynomial', label: '多項式と係数ベクトル', shortLabel: '多項式' },
   { id: 'basis', label: '基底・次元の判定', shortLabel: '判定' },
-  { id: 'coordinates', label: '基底に関する座標', shortLabel: '座標' },
+  { id: 'combination', label: '一次結合', shortLabel: '一次結合' },
 ] as const;
 
 type BasisInspectorTabId = typeof BASIS_INSPECTOR_TABS[number]['id'];
@@ -83,6 +84,9 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   const [representations, setRepresentations] = useState<
     Record<VectorDimension, BasisRepresentation>
   >({ 2: 'coordinate', 3: 'coordinate' });
+  const [linearCombinationVisibility, setLinearCombinationVisibility] = useState<
+    Record<VectorDimension, boolean>
+  >({ 2: false, 3: false });
   const [scenes, setScenes] = useState<Record<VectorDimension, BasisDimensionScene>>({
     2: createDefaultBasisScene(2),
     3: createDefaultBasisScene(3),
@@ -94,8 +98,8 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     3: createCoordinateDrafts(createDefaultBasisScene(3).vectors),
   });
   const [targetDrafts, setTargetDrafts] = useState<Record<VectorDimension, readonly string[]>>({
-    2: createDefaultBasisScene(2).target.map(String),
-    3: createDefaultBasisScene(3).target.map(String),
+    2: ['', ''],
+    3: ['', '', ''],
   });
   const [comparisonBasisIds, setComparisonBasisIds] = useState<
     Record<VectorDimension, readonly string[] | null>
@@ -111,6 +115,11 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   const scene = scenes[activeDimension];
   const representation = representations[activeDimension];
   const polynomialMode = representation === 'polynomial';
+  const linearCombinationVisible = linearCombinationVisibility[activeDimension];
+  const availableInspectorTabs = BASIS_INSPECTOR_TABS.filter((tab) => (
+    (tab.id !== 'polynomial' || polynomialMode)
+    && (tab.id !== 'combination' || linearCombinationVisible)
+  ));
   const analysis = useMemo(
     () => analyzeBasisCandidate(scene, scene.candidateVectorIds),
     [scene],
@@ -120,12 +129,14 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     [scene],
   );
   const coordinateAnalysis = useMemo(
-    () => analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target),
+    () => scene.target
+      ? analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target)
+      : null,
     [scene],
   );
   const comparisonAnalysis = useMemo(() => {
     const ids = comparisonBasisIds[activeDimension];
-    return ids ? analyzeBasisCoordinates(scene, ids, scene.target) : null;
+    return ids && scene.target ? analyzeBasisCoordinates(scene, ids, scene.target) : null;
   }, [activeDimension, comparisonBasisIds, scene]);
 
   function updateScene(
@@ -160,6 +171,26 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
       ...current,
       [activeDimension]: nextRepresentation,
     }));
+    if (nextRepresentation === 'coordinate' && activeInspectorTabs[activeDimension] === 'polynomial') {
+      setActiveInspectorTab('vectors');
+    }
+  }
+
+  function handleLinearCombinationVisibility(): void {
+    const nextVisible = !linearCombinationVisible;
+    setLinearCombinationVisibility((current) => ({
+      ...current,
+      [activeDimension]: nextVisible,
+    }));
+    setTargetSnapKind(null);
+    setActiveInspectorTabs((current) => ({
+      ...current,
+      [activeDimension]: nextVisible
+        ? 'combination'
+        : current[activeDimension] === 'combination'
+          ? 'basis'
+          : current[activeDimension],
+    }));
   }
 
   function handleInspectorTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>): void {
@@ -168,15 +199,15 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     }
     event.preventDefault();
     const activeTab = activeInspectorTabs[activeDimension];
-    const currentIndex = BASIS_INSPECTOR_TABS.findIndex((tab) => tab.id === activeTab);
+    const currentIndex = availableInspectorTabs.findIndex((tab) => tab.id === activeTab);
     const nextIndex = event.key === 'Home'
       ? 0
       : event.key === 'End'
-        ? BASIS_INSPECTOR_TABS.length - 1
+        ? availableInspectorTabs.length - 1
         : event.key === 'ArrowRight'
-          ? (currentIndex + 1) % BASIS_INSPECTOR_TABS.length
-          : (currentIndex - 1 + BASIS_INSPECTOR_TABS.length) % BASIS_INSPECTOR_TABS.length;
-    const nextTab = BASIS_INSPECTOR_TABS[nextIndex];
+          ? (currentIndex + 1) % availableInspectorTabs.length
+          : (currentIndex - 1 + availableInspectorTabs.length) % availableInspectorTabs.length;
+    const nextTab = availableInspectorTabs[nextIndex];
     setActiveInspectorTab(nextTab.id);
     document.getElementById(`basis-inspector-tab-${nextTab.id}`)?.focus();
   }
@@ -287,6 +318,10 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     const nextDrafts = [...targetDrafts[activeDimension]];
     nextDrafts[coordinateIndex] = value;
     setTargetDrafts((current) => ({ ...current, [activeDimension]: nextDrafts }));
+    if (nextDrafts.every((draft) => draft.trim().length === 0)) {
+      updateScene(activeDimension, (current) => ({ ...current, target: null }));
+      return;
+    }
     const parsed = nextDrafts.map(parseCoordinateInput);
     if (parsed.every((result) => result.ok)) {
       updateScene(activeDimension, (current) => updateBasisTarget(
@@ -302,8 +337,19 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
       return;
     }
     const nextDrafts = [...targetDrafts[activeDimension]];
-    nextDrafts[coordinateIndex] = formatCoordinate(scene.target[coordinateIndex]);
+    nextDrafts[coordinateIndex] = scene.target
+      ? formatCoordinate(scene.target[coordinateIndex])
+      : '';
     setTargetDrafts((current) => ({ ...current, [activeDimension]: nextDrafts }));
+  }
+
+  function handleClearTarget(): void {
+    updateScene(activeDimension, (current) => ({ ...current, target: null }));
+    setTargetDrafts((current) => ({
+      ...current,
+      [activeDimension]: Array.from({ length: activeDimension }, () => ''),
+    }));
+    setTargetSnapKind(null);
   }
 
   function saveComparisonBasis(): void {
@@ -322,13 +368,17 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     }));
     setTargetDrafts((current) => ({
       ...current,
-      [activeDimension]: resetScene.target.map(String),
+      [activeDimension]: Array.from({ length: activeDimension }, () => ''),
     }));
     setComparisonBasisIds((current) => ({ ...current, [activeDimension]: null }));
     setActiveInspectorTabs((current) => ({ ...current, [activeDimension]: 'vectors' }));
     setRepresentations((current) => ({ ...current, [activeDimension]: 'coordinate' }));
+    setLinearCombinationVisibility((current) => ({
+      ...current,
+      [activeDimension]: false,
+    }));
     if (activeDimension === 2) {
-      setPlaneViewport(createBasisAutoFitViewport(resetScene));
+      setPlaneViewport(createBasisAutoFitViewport(resetScene, false));
       setParallelSnapTargetId(null);
       setTargetSnapKind(null);
     } else {
@@ -396,12 +446,18 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               {polynomialMode ? (
                 <>
                   集合 <MathSetName /> の多項式をベクトルとして扱い、順序付きの基底候補 <MathBasisName /> を選びます。
-                  係数ベクトルとの対応から、ターゲット <MathVectorName name="v" /> = <MathFunctionName target /> の座標を調べます。
+                  係数ベクトルとの対応から、基底と座標の関係を調べます。
+                  {linearCombinationVisible
+                    ? <> 配置したターゲット <MathVectorName name="v" /> = <MathFunctionName target /> の一次結合を確認できます。</>
+                    : null}
                 </>
               ) : (
                 <>
                   集合 <MathSetName /> のベクトルから順序付きの基底候補 <MathBasisName /> を選びます。
-                  2つの基底条件を確かめ、ターゲット <MathVectorName name="v" /> の座標が一意に定まる理由と、基底を変えたときの違いを比べます。
+                  2つの基底条件を確かめ、基底の選び方と順序による違いを比べます。
+                  {linearCombinationVisible
+                    ? <> 配置したターゲット <MathVectorName name="v" /> の一次結合と座標を確認できます。</>
+                    : null}
                 </>
               )}
             </p>
@@ -431,16 +487,31 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   <div>
                     <p className="panel-kicker">Candidate span</p>
                     <h2 id="basis-plane-title">
-                      {polynomialMode ? '係数空間で見る候補span' : '候補が生成する空間'}
+                      {polynomialMode
+                        ? '基底候補の係数が生成する係数空間'
+                        : '基底候補の数ベクトルが生成する空間'}
                     </h2>
                   </div>
-                  <button
-                    className="basis-fit-button"
-                    type="button"
-                    onClick={() => setPlaneViewport(createBasisAutoFitViewport(scene))}
-                  >
-                    全体を表示
-                  </button>
+                  <div className="viewport-toolbar">
+                    <button
+                      className="target-mode-button"
+                      type="button"
+                      aria-pressed={linearCombinationVisible}
+                      onClick={handleLinearCombinationVisibility}
+                    >
+                      {linearCombinationVisible ? '一次結合モードを終了' : '一次結合を調べる'}
+                    </button>
+                    <button
+                      className="basis-fit-button"
+                      type="button"
+                      onClick={() => setPlaneViewport(createBasisAutoFitViewport(
+                        scene,
+                        linearCombinationVisible,
+                      ))}
+                    >
+                      全体を表示
+                    </button>
+                  </div>
                 </div>
                 <VectorPlane2D
                   idPrefix="basis-vector-plane"
@@ -456,11 +527,11 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   spanVectors={candidateVectors}
                   spanDimension={analysis.candidateRank}
                   showSpan
-                  linearCombinationVisible
-                  target={scene.target as readonly [number, number]}
+                  linearCombinationVisible={linearCombinationVisible}
+                  target={scene.target as readonly [number, number] | null}
                   targetSnapKind={targetSnapKind}
                   linearCombinationCoefficients={
-                    coordinateAnalysis.status === 'coordinate-vector'
+                    coordinateAnalysis?.status === 'coordinate-vector'
                     && coordinateAnalysis.coordinateVector?.length === 2
                       ? coordinateAnalysis.coordinateVector as readonly [number, number]
                       : null
@@ -473,7 +544,10 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                 <p className="viewport-help">
                   {polynomialMode
                     ? <>矢印は多項式の係数ベクトルです。灰色は基底候補 <MathBasisName /> の多項式が生成する範囲に対応します。</>
-                    : <>灰色は基底候補 <MathBasisName /> が生成する空間です。通常ベクトルとターゲット <MathVectorName name="v" /> の矢先をドラッグできます。</>}
+                    : <>灰色は基底候補 <MathBasisName /> が生成する空間です。</>}
+                  {' '}{linearCombinationVisible
+                    ? <>クリックまたはタップでターゲット <MathVectorName name="v" /> を配置し、矢先をドラッグできます。</>
+                    : '矢印先端の丸をドラッグすると数ベクトルを変更できます。'}
                 </p>
               </section>
             ) : (
@@ -482,16 +556,15 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   idPrefix="basis-space-3d"
                   axisLabels={polynomialMode ? POLYNOMIAL_AXIS_LABELS_3D : undefined}
                   spaceTitle={polynomialMode ? '3次元係数空間' : undefined}
-                  showLinearCombinationControl={false}
                   vectors={scene.vectors}
                   colors={VECTOR_COLORS}
                   spanVectors={candidateVectors}
                   spanRank={analysis.candidateRank}
                   showSpan
-                  linearCombinationVisible
-                  linearCombinationTarget={scene.target as readonly [number, number, number]}
+                  linearCombinationVisible={linearCombinationVisible}
+                  linearCombinationTarget={scene.target as readonly [number, number, number] | null}
                   linearCombinationCoefficients={
-                    coordinateAnalysis.status === 'coordinate-vector'
+                    coordinateAnalysis?.status === 'coordinate-vector'
                       ? coordinateAnalysis.coordinateVector
                       : null
                   }
@@ -501,7 +574,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   onCameraChange={setCamera}
                   onVectorCoordinatesCommit={commitVectorCoordinates}
                   onLinearCombinationTargetPlacement={commitTarget}
-                  onLinearCombinationVisibility={() => undefined}
+                  onLinearCombinationVisibility={handleLinearCombinationVisibility}
                   assistiveDescription={polynomialMode
                     ? '3D矢印は高々2次多項式の定数項、xの係数、xの2乗の係数を表す係数ベクトルです。多項式、候補の判定、ターゲットの座標は、この後のカードでも確認できます。'
                     : 'ベクトルの座標、候補の一次独立性、生成条件、ターゲットの座標ベクトルは、この後の数値入力と判定カードでも確認できます。3D表示を利用できない場合も、候補選択、数値入力、座標判定、Resetは利用できます。'}
@@ -520,10 +593,8 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               onToggle={handleCandidateToggle}
               onMove={handleCandidateMove}
             />
-            {polynomialMode ? <PolynomialCorrespondenceCard scene={scene} /> : null}
-
             <div className="inspector-tablist basis-inspector-tablist" role="tablist" aria-label="基底・次元Labの編集・解析の詳細">
-              {BASIS_INSPECTOR_TABS.map((tab) => (
+              {availableInspectorTabs.map((tab) => (
                 <button
                   key={tab.id}
                   id={`basis-inspector-tab-${tab.id}`}
@@ -549,6 +620,13 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               onCoordinateChange={handleCoordinateChange}
               onCoordinateBlur={handleCoordinateBlur}
             />
+            {polynomialMode ? (
+              <PolynomialCorrespondenceCard
+                scene={scene}
+                active={activeInspectorTabs[activeDimension] === 'polynomial'}
+                showTarget={linearCombinationVisible}
+              />
+            ) : null}
             <BasisAnalysisCard
               scene={scene}
               analysis={analysis}
@@ -564,8 +642,10 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               polynomialMode={polynomialMode}
               onTargetCoordinateChange={handleTargetCoordinateChange}
               onTargetCoordinateBlur={handleTargetCoordinateBlur}
+              onClearTarget={handleClearTarget}
               onSaveComparisonBasis={saveComparisonBasis}
-              active={activeInspectorTabs[activeDimension] === 'coordinates'}
+              active={linearCombinationVisible
+                && activeInspectorTabs[activeDimension] === 'combination'}
             />
           </aside>
         </div>
@@ -574,17 +654,31 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   );
 }
 
-function PolynomialCorrespondenceCard({ scene }: { readonly scene: BasisDimensionScene }) {
+function PolynomialCorrespondenceCard({
+  scene,
+  active,
+  showTarget,
+}: {
+  readonly scene: BasisDimensionScene;
+  readonly active: boolean;
+  readonly showTarget: boolean;
+}) {
   const standardBasis = Array.from({ length: scene.dimension }, (_, degree) => (
     degree === 0 ? '1' : degree === 1 ? 'x' : `x${degree}`
   ));
   const genericCoefficients = Array.from(
     { length: scene.dimension },
-    (_, degree) => `b${degree}`,
+    (_, degree) => degree,
   );
 
   return (
-    <section className="basis-polynomial-card" aria-labelledby="basis-polynomial-title">
+    <section
+      className="basis-polynomial-card inspector-panel"
+      id="basis-inspector-panel-polynomial"
+      role="tabpanel"
+      aria-labelledby="basis-inspector-tab-polynomial basis-polynomial-title"
+      hidden={!active}
+    >
       <p className="panel-kicker">Polynomial view</p>
       <h2 id="basis-polynomial-title">多項式と係数ベクトル</h2>
       <div className="basis-polynomial-summary">
@@ -596,9 +690,9 @@ function PolynomialCorrespondenceCard({ scene }: { readonly scene: BasisDimensio
           <MathPolynomialTuple terms={standardBasis} />
         </p>
         <p className="basis-polynomial-mapping">
-          <MathFunctionName generic /> = <GenericPolynomial dimension={scene.dimension} />
-          <span aria-hidden="true"> ↔ </span>
-          <MathTransposedRowVector values={genericCoefficients} />
+          <MathFunctionName /> = <GenericPolynomial dimension={scene.dimension} />
+          <span aria-hidden="true"> ⇔ </span>
+          <MathSymbolicTransposedRowVector degrees={genericCoefficients} />
           <span> ∈ </span><MathRealCoordinateSpace dimension={scene.dimension} />
         </p>
       </div>
@@ -606,7 +700,7 @@ function PolynomialCorrespondenceCard({ scene }: { readonly scene: BasisDimensio
         {scene.vectors.map((vector, index) => (
           <PolynomialVectorIdentity key={vector.id} vector={vector} functionIndex={index + 1} />
         ))}
-        <PolynomialTargetIdentity target={scene.target} />
+        {showTarget && scene.target ? <PolynomialTargetIdentity target={scene.target} /> : null}
       </div>
       <p className="basis-card-note">
         係数を定数項から昇べき順に並べれば、数ベクトル版と同じrank・基底・座標の計算を使えます。
@@ -841,35 +935,37 @@ function CoordinateExplorerCard({
   polynomialMode,
   onTargetCoordinateChange,
   onTargetCoordinateBlur,
+  onClearTarget,
   onSaveComparisonBasis,
   active,
 }: {
   readonly scene: BasisDimensionScene;
-  readonly analysis: BasisCoordinateAnalysis;
+  readonly analysis: BasisCoordinateAnalysis | null;
   readonly targetDrafts: readonly string[];
   readonly comparisonBasisIds: readonly string[] | null;
   readonly comparisonAnalysis: BasisCoordinateAnalysis | null;
   readonly polynomialMode: boolean;
   readonly onTargetCoordinateChange: (index: number, value: string) => void;
   readonly onTargetCoordinateBlur: (index: number) => void;
+  readonly onClearTarget: () => void;
   readonly onSaveComparisonBasis: () => void;
   readonly active: boolean;
 }) {
-  const coordinateValues = analysis.coordinateVector?.map(formatCoordinate) ?? [];
-  const particularValues = analysis.combinationAnalysis.particularSolution
+  const coordinateValues = analysis?.coordinateVector?.map(formatCoordinate) ?? [];
+  const particularValues = analysis?.combinationAnalysis.particularSolution
     ?.map(formatCoordinate) ?? [];
-  const canSaveComparison = analysis.status === 'coordinate-vector';
+  const canSaveComparison = analysis?.status === 'coordinate-vector';
 
   return (
     <section
-      className={`basis-coordinate-card inspector-panel is-${analysis.status}`}
-      id="basis-inspector-panel-coordinates"
+      className={`basis-coordinate-card inspector-panel is-${analysis?.status ?? 'empty'}`}
+      id="basis-inspector-panel-combination"
       role="tabpanel"
-      aria-labelledby="basis-inspector-tab-coordinates basis-coordinate-title"
+      aria-labelledby="basis-inspector-tab-combination basis-coordinate-title"
       hidden={!active}
     >
-      <p className="panel-kicker">Coordinates</p>
-      <h2 id="basis-coordinate-title">基底に関する座標</h2>
+      <p className="panel-kicker">Linear combination</p>
+      <h2 id="basis-coordinate-title">一次結合</h2>
       <p className="basis-coordinate-intro">
         同じターゲット <MathVectorName name="v" />
         {polynomialMode ? <> = <MathFunctionName target /></> : null}
@@ -880,7 +976,7 @@ function CoordinateExplorerCard({
         <div>
           <strong>ターゲット</strong>
           <small>グラフ上の矢先ドラッグまたは成分入力で変更できます。</small>
-          {polynomialMode ? (
+          {polynomialMode && scene.target ? (
             <span className="basis-target-polynomial">
               <MathFunctionName target /> = <MathPolynomial coefficients={scene.target} />
             </span>
@@ -889,9 +985,12 @@ function CoordinateExplorerCard({
         <span className="basis-target-equation">
           <MathVectorName name="v" /><span aria-hidden="true"> = </span>
           <span className="basis-coordinate-inputs" aria-label="ターゲットvの成分">
-            {scene.target.map((coordinate, index) => {
-              const draft = targetDrafts[index] ?? formatCoordinate(coordinate);
-              const valid = parseCoordinateInput(draft).ok;
+            {Array.from({ length: scene.dimension }, (_, index) => {
+              const coordinate = scene.target?.[index];
+              const draft = targetDrafts[index] ?? (coordinate === undefined
+                ? ''
+                : formatCoordinate(coordinate));
+              const valid = draft.trim().length === 0 || parseCoordinateInput(draft).ok;
               return (
                 <input
                   key={index}
@@ -905,6 +1004,14 @@ function CoordinateExplorerCard({
               );
             })}
           </span>
+          <button
+            className="clear-target-button"
+            type="button"
+            disabled={!scene.target && targetDrafts.every((draft) => draft.trim().length === 0)}
+            onClick={onClearTarget}
+          >
+            ターゲットを消去
+          </button>
         </span>
       </div>
 
@@ -913,13 +1020,20 @@ function CoordinateExplorerCard({
           <strong>現在の候補：</strong>
           <MathBasisName /> = <VectorTuple ids={scene.candidateVectorIds} vectors={scene.vectors} />
         </p>
-        <CoordinateResult
-          scene={scene}
-          analysis={analysis}
-          coordinateValues={coordinateValues}
-          particularValues={particularValues}
-          polynomialMode={polynomialMode}
-        />
+        {scene.target && analysis ? (
+          <CoordinateResult
+            scene={scene}
+            target={scene.target}
+            analysis={analysis}
+            coordinateValues={coordinateValues}
+            particularValues={particularValues}
+            polynomialMode={polynomialMode}
+          />
+        ) : (
+          <p className="basis-coordinate-empty">
+            グラフをクリックまたはタップするか、成分を入力してターゲット <MathVectorName name="v" /> を配置してください。
+          </p>
+        )}
       </div>
 
       <div className="basis-coordinate-comparison">
@@ -967,12 +1081,14 @@ function CoordinateExplorerCard({
 
 function CoordinateResult({
   scene,
+  target,
   analysis,
   coordinateValues,
   particularValues,
   polynomialMode,
 }: {
   readonly scene: BasisDimensionScene;
+  readonly target: readonly number[];
   readonly analysis: BasisCoordinateAnalysis;
   readonly coordinateValues: readonly string[];
   readonly particularValues: readonly string[];
@@ -983,7 +1099,7 @@ function CoordinateResult({
       return (
         <div className="basis-coordinate-success">
           <strong>座標ベクトルが唯一に定まります</strong>
-          {polynomialMode ? <PolynomialTargetIdentity target={scene.target} /> : null}
+          {polynomialMode ? <PolynomialTargetIdentity target={target} /> : null}
           <p className="basis-coordinate-formula">
             <MathVectorName name="c" /> = <MathColumnVector values={coordinateValues} />
           </p>
@@ -1094,19 +1210,17 @@ function PolynomialTargetIdentity({ target }: { readonly target: readonly number
 function MathFunctionName({
   index,
   target = false,
-  generic = false,
 }: {
   readonly index?: number;
   readonly target?: boolean;
-  readonly generic?: boolean;
 }) {
-  const base = target ? 'p' : generic ? 'q' : 'f';
+  const base = target ? 'g' : 'f';
   const accessibleName = index ? `${base}${index}(x)` : `${base}(x)`;
   return (
     <span className="basis-function-name" aria-label={accessibleName}>
-      <span aria-hidden="true" className="math-scalar">{base}</span>
+      <span aria-hidden="true" className="math-scalar-base">{base}</span>
       {index ? <sub aria-hidden="true">{index}</sub> : null}
-      <span aria-hidden="true">(</span><span aria-hidden="true" className="math-scalar">x</span><span aria-hidden="true">)</span>
+      <span aria-hidden="true">(</span><span aria-hidden="true" className="math-scalar-base">x</span><span aria-hidden="true">)</span>
     </span>
   );
 }
@@ -1123,7 +1237,7 @@ function MathPolynomial({ coefficients }: { readonly coefficients: readonly numb
           <span key={term.degree} aria-hidden="true">
             {index === 0 ? (negative ? '−' : '') : (negative ? ' − ' : ' + ')}
             {showCoefficient ? formatCoordinate(absolute) : null}
-            {term.degree > 0 ? <span className="math-scalar">x</span> : null}
+            {term.degree > 0 ? <span className="math-scalar-base">x</span> : null}
             {term.degree > 1 ? <sup>{term.degree}</sup> : null}
           </span>
         );
@@ -1134,12 +1248,12 @@ function MathPolynomial({ coefficients }: { readonly coefficients: readonly numb
 
 function GenericPolynomial({ dimension }: { readonly dimension: VectorDimension }) {
   return (
-    <span className="basis-polynomial" aria-label={`b0からb${dimension - 1}までを係数とする多項式`}>
+    <span className="basis-polynomial" aria-label={`c0からc${dimension - 1}までを係数とする多項式`}>
       {Array.from({ length: dimension }, (_, degree) => (
         <span key={degree} aria-hidden="true">
           {degree > 0 ? ' + ' : ''}
-          <span className="math-scalar">b</span><sub>{degree}</sub>
-          {degree > 0 ? <span className="math-scalar">x</span> : null}
+          <MathCoefficientName degree={degree} />
+          {degree > 0 ? <span className="math-scalar-base">x</span> : null}
           {degree > 1 ? <sup>{degree}</sup> : null}
         </span>
       ))}
@@ -1155,7 +1269,7 @@ function MathPolynomialTuple({ terms }: { readonly terms: readonly string[] }) {
         return (
           <span key={term}>
             {index > 0 ? ', ' : ''}
-            {match ? <><span className="math-scalar">x</span><sup>{match[1]}</sup></> : term === 'x' ? <span className="math-scalar">x</span> : term}
+            {match ? <><span className="math-scalar-base">x</span><sup>{match[1]}</sup></> : term === 'x' ? <span className="math-scalar-base">x</span> : term}
           </span>
         );
       })}</span>)
@@ -1241,8 +1355,34 @@ function MathRealCoordinateSpace({ dimension }: { readonly dimension: VectorDime
 function MathPolynomialSpace({ degree }: { readonly degree: number }) {
   return (
     <span className="basis-coordinate-space" aria-label={`高々${degree}次の実数係数多項式空間`}>
-      <span aria-hidden="true">ℝ[</span><span aria-hidden="true" className="math-scalar">x</span><span aria-hidden="true">]</span>
+      <span aria-hidden="true">ℝ[</span><span aria-hidden="true" className="math-scalar-base">x</span><span aria-hidden="true">]</span>
       <sub aria-hidden="true">{degree}</sub>
+    </span>
+  );
+}
+
+function MathCoefficientName({ degree }: { readonly degree: number }) {
+  return (
+    <span className="basis-coefficient-name">
+      <span className="math-scalar-base">c</span><sub>{degree}</sub>
+    </span>
+  );
+}
+
+function MathSymbolicTransposedRowVector({ degrees }: { readonly degrees: readonly number[] }) {
+  return (
+    <span
+      className="transposed-row-vector"
+      aria-label={`転置した行表示 ${degrees.map((degree) => `c${degree}`).join('、')}`}
+    >
+      <sup aria-hidden="true">t</sup>
+      <span aria-hidden="true">[</span>
+      {degrees.map((degree, index) => (
+        <span key={degree} aria-hidden="true">
+          {index > 0 ? ', ' : null}<MathCoefficientName degree={degree} />
+        </span>
+      ))}
+      <span aria-hidden="true">]</span>
     </span>
   );
 }
@@ -1295,10 +1435,15 @@ function resolveVectors(
   });
 }
 
-function createBasisAutoFitViewport(scene: BasisDimensionScene): PlaneViewport {
+function createBasisAutoFitViewport(
+  scene: BasisDimensionScene,
+  includeTarget = true,
+): PlaneViewport {
   return createAutoFitViewport([
     ...scene.vectors,
-    { id: '__basis_coordinate_target__', name: 'v', coordinates: scene.target },
+    ...(includeTarget && scene.target
+      ? [{ id: '__basis_coordinate_target__', name: 'v', coordinates: scene.target }]
+      : []),
   ]);
 }
 

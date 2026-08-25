@@ -9,7 +9,7 @@ export interface BasisDimensionScene {
   readonly dimension: VectorDimension;
   readonly vectors: readonly VectorValue[];
   readonly candidateVectorIds: readonly string[];
-  readonly target: readonly number[];
+  readonly target: readonly number[] | null;
 }
 
 export interface BasisPlaneVectorDragResult {
@@ -27,7 +27,7 @@ export const DEFAULT_BASIS_SCENES: Readonly<Record<VectorDimension, BasisDimensi
       { id: 'a3', name: 'a3', coordinates: [3, 3] },
     ],
     candidateVectorIds: ['a1', 'a2'],
-    target: [3, 0],
+    target: null,
   },
   3: {
     dimension: 3,
@@ -38,7 +38,7 @@ export const DEFAULT_BASIS_SCENES: Readonly<Record<VectorDimension, BasisDimensi
       { id: 'a4', name: 'a4', coordinates: [1, 1, 1] },
     ],
     candidateVectorIds: ['a1', 'a2', 'a3'],
-    target: [1, 2, 3],
+    target: null,
   },
 };
 
@@ -51,7 +51,7 @@ export function createDefaultBasisScene(dimension: VectorDimension): BasisDimens
       coordinates: [...vector.coordinates],
     })),
     candidateVectorIds: [...source.candidateVectorIds],
-    target: [...source.target],
+    target: source.target ? [...source.target] : null,
   };
 }
 

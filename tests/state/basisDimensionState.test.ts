@@ -18,8 +18,8 @@ describe('基底・次元Labの画面状態', () => {
 
     expect(first.candidateVectorIds).toEqual(['a1', 'a2']);
     expect(space.candidateVectorIds).toEqual(['a1', 'a2', 'a3']);
-    expect(first.target).toEqual([3, 0]);
-    expect(space.target).toEqual([1, 2, 3]);
+    expect(first.target).toBeNull();
+    expect(space.target).toBeNull();
     expect(first).not.toBe(second);
     expect(first.vectors).not.toBe(second.vectors);
   });

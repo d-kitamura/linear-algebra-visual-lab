@@ -3254,10 +3254,18 @@
 
 .basis-function-name sub,
 .basis-polynomial sub,
+.basis-coefficient-name sub,
 .basis-coordinate-space sub {
   margin-left: 0.02em;
   font-size: 0.65em;
   font-style: normal;
+}
+
+.basis-coefficient-name {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  white-space: nowrap;
 }
 
 .basis-polynomial sup,
