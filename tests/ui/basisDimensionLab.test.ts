@@ -153,6 +153,8 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain("const base = target ? 'g' : 'f';");
     expect(source).toContain('<span aria-hidden="true"> ⇔ </span>');
     expect(source).toContain('className="math-scalar-base">x</span>');
+    expect(source).toContain('className="math-scalar-base">b</span>');
+    expect(source).toContain('<MathPolynomialCoefficientName degree={degree} />');
     expect(source).toContain('tab.id !== \'polynomial\' || polynomialMode');
   });
 });

@@ -3480,6 +3480,12 @@
   font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
 }
 
+.basis-target-equation .clear-target-button {
+  grid-column: 1 / -1;
+  justify-self: end;
+  white-space: nowrap;
+}
+
 .basis-coordinate-current,
 .basis-coordinate-comparison {
   margin-top: 14px;

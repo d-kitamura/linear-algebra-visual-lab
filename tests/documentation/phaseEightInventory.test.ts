@@ -28,9 +28,9 @@ describe('フェーズ8開始後の棚卸し記録', () => {
     expect(projectStatus).not.toContain('D-060の表示幅3%について');
   });
 
-  it('仕様書版と8.6aの実装状態を現在地へ揃える', () => {
-    expect(specification).toContain('| 文書バージョン | 0.76 |');
-    expect(specification).toContain('フェーズ8.5bまで利用者確認済み、8.6・8.6a実装・自動検証済み');
+  it('仕様書版と8.6bの実装状態を現在地へ揃える', () => {
+    expect(specification).toContain('| 文書バージョン | 0.77 |');
+    expect(specification).toContain('フェーズ8.5bまで利用者確認済み、8.6〜8.6b実装・自動検証済み');
     expect(decisions).toContain('### D-061 フェーズ8開始後の棚卸しと8.3への引渡し');
     expect(decisions).toContain('### D-062 基底・次元の対象空間、判定API、数式表記');
     expect(decisions).toContain('### D-063 2D/3D基底エクスプローラの画面と段階的共有境界');
@@ -42,7 +42,8 @@ describe('フェーズ8開始後の棚卸し記録', () => {
     expect(decisions).toContain('### D-069 2D吸着距離2%とターゲット原点優先の全Lab統一');
     expect(decisions).toContain('### D-070 多項式を係数ベクトルとして読む段階的表示');
     expect(decisions).toContain('### D-071 基底・次元Labの一次結合モードと多項式表記の既存Lab統一');
-    expect(projectStatus).toContain('次の確認ゲート: D-070・D-071');
+    expect(decisions).toContain('### D-072 多項式係数と一次結合係数の記号分担、基底Labの表示補修');
+    expect(projectStatus).toContain('次の確認ゲート: D-070〜D-072');
     expect(projectStatus).toContain(String.raw`\mathbb{R}[x]_1`);
     expect(projectStatus).toContain(String.raw`\mathbb{R}[x]_2`);
   });

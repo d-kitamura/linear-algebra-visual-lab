@@ -30,6 +30,11 @@ export function splitVectorName(name: string): VectorNameParts {
     return { base: underscoreMatch[1], subscript: underscoreMatch[2] };
   }
 
+  const asciiMatch = /^(.*?)([0-9]+)$/u.exec(name);
+  if (asciiMatch && asciiMatch[1].length > 0) {
+    return { base: asciiMatch[1], subscript: asciiMatch[2] };
+  }
+
   return { base: name };
 }
 

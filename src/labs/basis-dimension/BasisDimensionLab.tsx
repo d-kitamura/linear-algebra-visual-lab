@@ -1248,11 +1248,11 @@ function MathPolynomial({ coefficients }: { readonly coefficients: readonly numb
 
 function GenericPolynomial({ dimension }: { readonly dimension: VectorDimension }) {
   return (
-    <span className="basis-polynomial" aria-label={`c0からc${dimension - 1}までを係数とする多項式`}>
+    <span className="basis-polynomial" aria-label={`b0からb${dimension - 1}までを係数とする多項式`}>
       {Array.from({ length: dimension }, (_, degree) => (
         <span key={degree} aria-hidden="true">
           {degree > 0 ? ' + ' : ''}
-          <MathCoefficientName degree={degree} />
+          <MathPolynomialCoefficientName degree={degree} />
           {degree > 0 ? <span className="math-scalar-base">x</span> : null}
           {degree > 1 ? <sup>{degree}</sup> : null}
         </span>
@@ -1361,10 +1361,10 @@ function MathPolynomialSpace({ degree }: { readonly degree: number }) {
   );
 }
 
-function MathCoefficientName({ degree }: { readonly degree: number }) {
+function MathPolynomialCoefficientName({ degree }: { readonly degree: number }) {
   return (
     <span className="basis-coefficient-name">
-      <span className="math-scalar-base">c</span><sub>{degree}</sub>
+      <span className="math-scalar-base">b</span><sub>{degree}</sub>
     </span>
   );
 }
@@ -1373,13 +1373,13 @@ function MathSymbolicTransposedRowVector({ degrees }: { readonly degrees: readon
   return (
     <span
       className="transposed-row-vector"
-      aria-label={`転置した行表示 ${degrees.map((degree) => `c${degree}`).join('、')}`}
+      aria-label={`転置した行表示 ${degrees.map((degree) => `b${degree}`).join('、')}`}
     >
       <sup aria-hidden="true">t</sup>
       <span aria-hidden="true">[</span>
       {degrees.map((degree, index) => (
         <span key={degree} aria-hidden="true">
-          {index > 0 ? ', ' : null}<MathCoefficientName degree={degree} />
+          {index > 0 ? ', ' : null}<MathPolynomialCoefficientName degree={degree} />
         </span>
       ))}
       <span aria-hidden="true">]</span>

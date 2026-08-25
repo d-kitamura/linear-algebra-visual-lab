@@ -11,6 +11,11 @@ describe('mathematical vector-name notation', () => {
     expect(splitVectorName('v_2')).toEqual({ base: 'v', subscript: '2' });
   });
 
+  it('supports trailing ASCII digits used by local Lab state', () => {
+    expect(splitVectorName('a1')).toEqual({ base: 'a', subscript: '1' });
+    expect(splitVectorName('a12')).toEqual({ base: 'a', subscript: '12' });
+  });
+
   it('keeps an unsubscripted vector name intact', () => {
     expect(splitVectorName('u')).toEqual({ base: 'u' });
   });
