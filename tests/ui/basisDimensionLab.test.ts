@@ -31,11 +31,17 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain("failureReasons.includes('does-not-span-target')");
   });
 
-  it('dimとrankの値を結び付けつつ意味を区別する', () => {
-    expect(source).toContain('dim(<MathSpaceName />) = rank(<MathMatrixName />)');
-    expect(source).toContain('値は同じでも意味を区別します');
-    expect(source).toContain('基底が一意であることを意味しません');
+  it('対象空間と現在の候補を示し、基底例の非一意性を説明する', () => {
+    expect(source).toContain('<MathSpaceName /> = <MathRealCoordinateSpace dimension={scene.dimension} />');
+    expect(source).toContain('<MathBasisName /> = <VectorTuple ids={scene.candidateVectorIds}');
+    expect(source).toContain('この例以外にも基底の取り方があり得る可能性があります');
     expect(source).toContain('maximumIndependentCount');
+  });
+
+  it('集合Sを候補Bの上に示し、成分を転置した行表示にする', () => {
+    expect(source).toContain('<MathSetName /> = <VectorCollection vectors={vectors} />');
+    expect(source).toContain('<MathTransposedRowVector values={vector.coordinates.map(formatCoordinate)} />');
+    expect(source).not.toContain("join(' ; ')");
   });
 
   it('成分入力と矢先ドラッグの両方で再計算できる', () => {

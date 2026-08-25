@@ -2087,6 +2087,9 @@ function describeSpaceVectorSnap(
   if (!snapKind) {
     return null;
   }
+  if (snapKind === 'origin') {
+    return '原点にスナップ（零ベクトル）';
+  }
   const names = targetVectorIds.map((id) => (
     vectors.find((vector) => vector.id === id)?.name ?? id
   ));

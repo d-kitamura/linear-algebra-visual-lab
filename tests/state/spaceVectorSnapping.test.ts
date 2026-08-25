@@ -63,6 +63,15 @@ describe('3Dの平行・同一平面スナップ', () => {
     expect(result.targetVectorIds).toEqual(['a1']);
   });
 
+  it('平行・同一平面吸着より原点吸着を優先して零ベクトルを作る', () => {
+    expect(snapDraggedSpaceVectorToDependentPosition(
+      'a3',
+      [0.04, -0.03, 0.02],
+      vectors,
+      0.1,
+    )).toEqual({ coordinates: [0, 0, 0], snapKind: 'origin', targetVectorIds: [] });
+  });
+
   it('閾値の外では座標を変更しない', () => {
     const coordinates = [2.2, 3, 2.8] as const;
     expect(snapDraggedSpaceVectorToDependentPosition('a3', coordinates, vectors, 0.1))

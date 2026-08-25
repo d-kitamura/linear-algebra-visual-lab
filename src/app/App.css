@@ -3022,8 +3022,7 @@
   background: #fff2ef;
 }
 
-.basis-card-note,
-.basis-maximum-note {
+.basis-card-note {
   margin: 14px 0 0;
   color: var(--muted);
   font-size: 0.72rem;
@@ -3039,6 +3038,11 @@
   color: #244e70;
   background: color-mix(in srgb, #2f6690 6%, #fffdf8);
   font-size: 1.1rem;
+}
+
+.basis-tuple p {
+  margin: 0;
+  line-height: 1.65;
 }
 
 .basis-candidate-options {
@@ -3085,6 +3089,10 @@
   font: 0.68rem var(--mono-font);
   text-align: right;
   overflow-wrap: anywhere;
+}
+
+.basis-candidate-coordinates .transposed-row-vector {
+  font-size: 0.82rem;
 }
 
 .basis-order-controls {
@@ -3144,6 +3152,12 @@
 
 .basis-target-summary p {
   font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+
+.basis-target-summary p strong {
+  margin-right: 0.35em;
+  font-family: var(--body-font);
+  font-size: 0.78rem;
 }
 
 .basis-target-summary small,
@@ -3230,27 +3244,25 @@
   font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
 }
 
-.basis-vector-symbol > span,
-.basis-matrix-symbol {
-  font-style: italic;
-  font-weight: 800;
-}
-
-.basis-vector-symbol sub {
-  margin-left: 0.04em;
-  font-style: normal;
-  font-weight: 400;
-  vertical-align: -0.25em;
-}
-
-.basis-set-symbol,
 .basis-script-symbol {
   font-style: italic;
   font-weight: 400;
 }
 
-.basis-vector-tuple .basis-vector-symbol {
+.basis-vector-tuple .math-vector {
   white-space: nowrap;
+}
+
+.basis-coordinate-space {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-style: normal;
+}
+
+.basis-coordinate-space sup {
+  margin-left: 0.03em;
+  font-size: 0.64em;
 }
 
 @media (max-width: 980px) {

@@ -50,6 +50,13 @@ describe('2D parallel snapping', () => {
     expect(result.coordinates[1]).toBeLessThan(0);
   });
 
+  it('平行吸着より原点吸着を優先して零ベクトルを作る', () => {
+    expect(snapDraggedVectorToParallel('v2', [0.06, 0.04], vectors, 0.1))
+      .toEqual({ coordinates: [0, 0], targetVectorId: null });
+    expect(snapDraggedVectorToParallel('v2', [0.11, 0], vectors, 0.1).coordinates)
+      .not.toEqual([0, 0]);
+  });
+
   it('ignores zero vectors as the dragged vector or snap target', () => {
     const withZeroTarget: readonly VectorValue[] = [
       { id: 'zero', name: 'z', coordinates: [0, 0] },

@@ -67,4 +67,13 @@ describe('基底・次元Labの画面状態', () => {
     expect(updateBasisPlaneVectorDrag(scene, 'a2', [4, 2.15], 20).snapTargetVectorId)
       .toBe('a1');
   });
+
+  it('2D基底候補の矢先を原点へ吸着して零ベクトルにする', () => {
+    const scene = createDefaultBasisScene(2);
+    const result = updateBasisPlaneVectorDrag(scene, 'a2', [0.06, 0.04], 10);
+
+    expect(result.coordinates).toEqual([0, 0]);
+    expect(result.scene.vectors.find((vector) => vector.id === 'a2')?.coordinates)
+      .toEqual([0, 0]);
+  });
 });

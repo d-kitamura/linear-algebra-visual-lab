@@ -402,9 +402,10 @@ function CandidateSelector({
     <section className="basis-candidate-card" aria-labelledby="basis-candidate-title">
       <p className="panel-kicker">Ordered candidate</p>
       <h2 id="basis-candidate-title">基底候補 <MathBasisName /></h2>
-      <p className="basis-tuple" aria-live="polite">
-        <MathBasisName /> = <VectorTuple ids={candidateVectorIds} vectors={vectors} />
-      </p>
+      <div className="basis-tuple" aria-live="polite">
+        <p><MathSetName /> = <VectorCollection vectors={vectors} /></p>
+        <p><MathBasisName /> = <VectorTuple ids={candidateVectorIds} vectors={vectors} /></p>
+      </div>
       <div className="basis-candidate-options">
         {vectors.map((vector) => {
           const orderIndex = candidateVectorIds.indexOf(vector.id);
@@ -418,7 +419,9 @@ function CandidateSelector({
                   onChange={() => onToggle(vector.id)}
                 />
                 <MathVectorName name={vector.name} />
-                <small>{formatColumnVector(vector.coordinates)}</small>
+                <small className="basis-candidate-coordinates">
+                  <MathTransposedRowVector values={vector.coordinates.map(formatCoordinate)} />
+                </small>
               </label>
               {selected ? (
                 <div className="basis-order-controls" aria-label={`${vector.name}の候補内の順序`}>
@@ -461,16 +464,14 @@ function BasisAnalysisCard({
       </h2>
 
       <div className="basis-target-summary">
-        <p><MathSetName /> = <VectorCollection vectors={scene.vectors} /></p>
-        <p><MathMatrixName /> = <VectorMatrixColumns vectors={scene.vectors} /></p>
-        <p><MathSpaceName /> = span(<MathSetName />)</p>
         <p>
-          dim(<MathSpaceName />) = rank(<MathMatrixName />) = <strong>{analysis.targetDimension}</strong>
+          <strong>対象としている空間：</strong>
+          <MathSpaceName /> = <MathRealCoordinateSpace dimension={scene.dimension} />
         </p>
-        <small>
-          dim(<MathSpaceName />)は対象空間の次元、rank(<MathMatrixName />)は行列の階数です。
-          値は同じでも意味を区別します。
-        </small>
+        <p>
+          <strong>現在選んでいるベクトルの組：</strong>
+          <MathBasisName /> = <VectorTuple ids={scene.candidateVectorIds} vectors={scene.vectors} />
+        </p>
       </div>
 
       <div className="basis-condition-list">
@@ -500,11 +501,11 @@ function BasisAnalysisCard({
       <div className="basis-example">
         <p><strong>基底の一例</strong></p>
         <p><MathBasisName />₀ = <VectorTuple ids={analysis.basisExampleVectorIds} vectors={scene.vectors} /></p>
-        <small>これは入力順から得た一例です。基底が一意であることを意味しません。</small>
+        <small>
+          これは入力順から得た一例です。この例以外にも基底の取り方があり得る可能性があります。
+          <MathSetName />から選べる一次独立なベクトルの最大個数は{analysis.maximumIndependentCount}本です。
+        </small>
       </div>
-      <p className="basis-maximum-note">
-        <MathSetName /> から選べる一次独立なベクトルの最大個数も {analysis.maximumIndependentCount} 本です。
-      </p>
     </section>
   );
 }
@@ -538,8 +539,9 @@ function BasisSpaceLoading() {
 function MathVectorName({ name }: { readonly name: string }) {
   const match = /^([A-Za-z]+)(\d+)$/u.exec(name);
   return (
-    <span className="basis-math basis-vector-symbol">
-      <span>{match?.[1] ?? name}</span>{match?.[2] ? <sub>{match[2]}</sub> : null}
+    <span className="math-symbol math-vector">
+      <span className="math-vector-base">{match?.[1] ?? name}</span>
+      {match?.[2] ? <sub className="math-vector-subscript">{match[2]}</sub> : null}
     </span>
   );
 }
@@ -549,15 +551,19 @@ function MathBasisName() {
 }
 
 function MathSetName() {
-  return <span className="basis-math basis-set-symbol">S</span>;
+  return <MathScalarName name="S" />;
 }
 
 function MathSpaceName() {
-  return <span className="basis-math basis-set-symbol">V</span>;
+  return <MathScalarName name="V" />;
 }
 
-function MathMatrixName() {
-  return <span className="basis-math basis-matrix-symbol">A</span>;
+function MathScalarName({ name }: { readonly name: string }) {
+  return (
+    <span className="math-scalar">
+      <span className="math-scalar-base">{name}</span>
+    </span>
+  );
 }
 
 function VectorTuple({ ids, vectors }: {
@@ -593,14 +599,26 @@ function VectorCollection({ vectors }: { readonly vectors: readonly VectorValue[
   );
 }
 
-function VectorMatrixColumns({ vectors }: { readonly vectors: readonly VectorValue[] }) {
+function MathRealCoordinateSpace({ dimension }: { readonly dimension: VectorDimension }) {
   return (
-    <span className="basis-math basis-vector-tuple">
-      [ {vectors.map((vector, index) => (
-        <span key={vector.id}>
-          {index > 0 ? '\u2003' : ''}<MathVectorName name={vector.name} />
+    <span className="basis-coordinate-space" aria-label={`${dimension}次元実数ベクトル空間`}>
+      <span aria-hidden="true">ℝ</span><sup aria-hidden="true">{dimension}</sup>
+    </span>
+  );
+}
+
+function MathTransposedRowVector({ values }: { readonly values: readonly string[] }) {
+  return (
+    <span className="transposed-row-vector" aria-label={`転置した行表示 ${values.join('、')}`}>
+      <sup aria-hidden="true">t</sup>
+      <span aria-hidden="true">[</span>
+      {values.map((value, index) => (
+        <span key={index}>
+          {index > 0 ? <span aria-hidden="true">, </span> : null}
+          {value}
         </span>
-      ))} ]
+      ))}
+      <span aria-hidden="true">]</span>
     </span>
   );
 }
@@ -618,8 +636,4 @@ function resolveVectors(
 
 function formatCoordinate(value: number): string {
   return String(Number(value.toPrecision(10)));
-}
-
-function formatColumnVector(coordinates: readonly number[]): string {
-  return `[ ${coordinates.map(formatCoordinate).join(' ; ')} ]`;
 }

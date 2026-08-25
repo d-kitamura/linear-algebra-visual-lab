@@ -3,7 +3,7 @@ import { MAX_ABSOLUTE_COORDINATE } from '../sharing';
 
 export const SPACE_SNAP_DISTANCE_RATIO = 0.03;
 
-export type SpaceVectorSnapKind = 'parallel' | 'coplanar' | null;
+export type SpaceVectorSnapKind = 'origin' | 'parallel' | 'coplanar' | null;
 
 export interface SpaceVectorSnapResult {
   readonly coordinates: readonly [number, number, number];
@@ -36,8 +36,8 @@ export function snapDraggedSpaceVectorToDependentPosition(
   if (coordinates.some((coordinate) => !Number.isFinite(coordinate))) {
     throw new TypeError('3Dスナップの座標は有限値である必要があります。');
   }
-  if (length(coordinates) === 0) {
-    return withoutSnap(coordinates);
+  if (length(coordinates) <= maximumDistance) {
+    return { coordinates: [0, 0, 0], snapKind: 'origin', targetVectorIds: [] };
   }
 
   const targets = vectors.filter((vector) => (

@@ -20,8 +20,8 @@ export function snapDraggedVectorToParallel(
   }
 
   const draggedLength = Math.hypot(coordinates[0], coordinates[1]);
-  if (draggedLength === 0) {
-    return { coordinates, targetVectorId: null };
+  if (draggedLength <= maximumDistance) {
+    return { coordinates: [0, 0], targetVectorId: null };
   }
 
   let closestTarget: VectorValue | null = null;
