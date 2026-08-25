@@ -47,6 +47,7 @@ interface VectorPlane2DProps {
   readonly onTargetChange?: (coordinates: readonly [number, number]) => void;
   readonly onTargetDragEnd?: () => void;
   readonly idPrefix?: string;
+  readonly axisLabels?: readonly [string, string];
 }
 
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
@@ -74,6 +75,7 @@ export function VectorPlane2D({
   onTargetChange,
   onTargetDragEnd,
   idPrefix = 'vector-plane',
+  axisLabels = ['x', 'y'],
 }: VectorPlane2DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportRef = useRef(viewport);
@@ -533,14 +535,14 @@ export function VectorPlane2D({
           <>
             <line x1={plotLeft} y1={origin[1]} x2={plotRight} y2={origin[1]} />
             <path d={`M ${plotRight - 10} ${origin[1] - 5} L ${plotRight} ${origin[1]} L ${plotRight - 10} ${origin[1] + 5}`} />
-            <text className="axis-symbol" x={plotRight + 18} y={origin[1] + 5}>x</text>
+            <text className="axis-symbol" x={plotRight + 18} y={origin[1] + 5}>{axisLabels[0]}</text>
           </>
         ) : null}
         {showsYAxis ? (
           <>
             <line x1={origin[0]} y1={plotBottom} x2={origin[0]} y2={plotTop} />
             <path d={`M ${origin[0] - 5} ${plotTop + 10} L ${origin[0]} ${plotTop} L ${origin[0] + 5} ${plotTop + 10}`} />
-            <text className="axis-symbol" x={origin[0] + 8} y={plotTop - 16}>y</text>
+            <text className="axis-symbol" x={origin[0] + 8} y={plotTop - 16}>{axisLabels[1]}</text>
           </>
         ) : null}
       </g>

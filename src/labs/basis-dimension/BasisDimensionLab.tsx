@@ -9,6 +9,9 @@ import {
 import {
   analyzeBasisCoordinates,
   analyzeBasisCandidate,
+  createPolynomialTerms,
+  formatPolynomialExpression,
+  polynomialCoefficientLabel,
   type BasisCandidateAnalysis,
   type BasisCoordinateAnalysis,
   type VectorDimension,
@@ -60,6 +63,8 @@ const DIMENSION_TABS = [
   { dimension: 3 as const, label: '3次元', shortLabel: '3D' },
 ];
 
+const POLYNOMIAL_AXIS_LABELS_3D = ['b₀', 'b₁', 'b₂'] as const;
+
 const BASIS_INSPECTOR_TABS = [
   { id: 'vectors', label: '全ベクトルの集合', shortLabel: '成分' },
   { id: 'basis', label: '基底・次元の判定', shortLabel: '判定' },
@@ -67,6 +72,7 @@ const BASIS_INSPECTOR_TABS = [
 ] as const;
 
 type BasisInspectorTabId = typeof BASIS_INSPECTOR_TABS[number]['id'];
+type BasisRepresentation = 'coordinate' | 'polynomial';
 
 interface BasisDimensionLabProps {
   readonly active: boolean;
@@ -74,6 +80,9 @@ interface BasisDimensionLabProps {
 
 export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   const [activeDimension, setActiveDimension] = useState<VectorDimension>(2);
+  const [representations, setRepresentations] = useState<
+    Record<VectorDimension, BasisRepresentation>
+  >({ 2: 'coordinate', 3: 'coordinate' });
   const [scenes, setScenes] = useState<Record<VectorDimension, BasisDimensionScene>>({
     2: createDefaultBasisScene(2),
     3: createDefaultBasisScene(3),
@@ -100,6 +109,8 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   const [camera, setCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
   const [spaceResetKey, setSpaceResetKey] = useState(0);
   const scene = scenes[activeDimension];
+  const representation = representations[activeDimension];
+  const polynomialMode = representation === 'polynomial';
   const analysis = useMemo(
     () => analyzeBasisCandidate(scene, scene.candidateVectorIds),
     [scene],
@@ -142,6 +153,13 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
 
   function setActiveInspectorTab(tab: BasisInspectorTabId): void {
     setActiveInspectorTabs((current) => ({ ...current, [activeDimension]: tab }));
+  }
+
+  function setRepresentation(nextRepresentation: BasisRepresentation): void {
+    setRepresentations((current) => ({
+      ...current,
+      [activeDimension]: nextRepresentation,
+    }));
   }
 
   function handleInspectorTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>): void {
@@ -308,6 +326,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     }));
     setComparisonBasisIds((current) => ({ ...current, [activeDimension]: null }));
     setActiveInspectorTabs((current) => ({ ...current, [activeDimension]: 'vectors' }));
+    setRepresentations((current) => ({ ...current, [activeDimension]: 'coordinate' }));
     if (activeDimension === 2) {
       setPlaneViewport(createBasisAutoFitViewport(resetScene));
       setParallelSnapTargetId(null);
@@ -343,18 +362,48 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               </button>
             ))}
           </div>
-          <p aria-live="polite">{activeDimension}次元の基底候補と座標を調べています。</p>
+          <div className="basis-representation-switcher" role="group" aria-label="対象の見方">
+            <span>対象の見方</span>
+            <button
+              type="button"
+              aria-pressed={!polynomialMode}
+              onClick={() => setRepresentation('coordinate')}
+            >数ベクトル</button>
+            <button
+              type="button"
+              aria-pressed={polynomialMode}
+              onClick={() => setRepresentation('polynomial')}
+            >多項式</button>
+          </div>
+          <p aria-live="polite">
+            {polynomialMode
+              ? `高々${activeDimension - 1}次の実数係数多項式を、${activeDimension}個の係数で調べています。`
+              : `${activeDimension}次元の数ベクトルとして基底候補と座標を調べています。`}
+          </p>
         </nav>
 
         <section className="lab-intro" aria-labelledby="basis-dimension-title">
           <div>
-            <p className="eyebrow">基底・次元 / {activeDimension}D</p>
+            <p className="eyebrow">
+              基底・次元 / {polynomialMode
+                ? <MathPolynomialSpace degree={activeDimension - 1} />
+                : `${activeDimension}D`}
+            </p>
             <h1 id="basis-dimension-title">基底を選んで、座標を読み解く。</h1>
           </div>
           <div className="lab-intro-side">
             <p className="lab-intro-copy">
-              集合 <MathSetName /> のベクトルから順序付きの基底候補 <MathBasisName /> を選びます。
-              2つの基底条件を確かめ、ターゲット <MathVectorName name="v" /> の座標が一意に定まる理由と、基底を変えたときの違いを比べます。
+              {polynomialMode ? (
+                <>
+                  集合 <MathSetName /> の多項式をベクトルとして扱い、順序付きの基底候補 <MathBasisName /> を選びます。
+                  係数ベクトルとの対応から、ターゲット <MathVectorName name="v" /> = <MathFunctionName target /> の座標を調べます。
+                </>
+              ) : (
+                <>
+                  集合 <MathSetName /> のベクトルから順序付きの基底候補 <MathBasisName /> を選びます。
+                  2つの基底条件を確かめ、ターゲット <MathVectorName name="v" /> の座標が一意に定まる理由と、基底を変えたときの違いを比べます。
+                </>
+              )}
             </p>
             <LabActionControls
               exportDisabled
@@ -381,7 +430,9 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                 <div className="card-heading">
                   <div>
                     <p className="panel-kicker">Candidate span</p>
-                    <h2 id="basis-plane-title">候補が生成する空間</h2>
+                    <h2 id="basis-plane-title">
+                      {polynomialMode ? '係数空間で見る候補span' : '候補が生成する空間'}
+                    </h2>
                   </div>
                   <button
                     className="basis-fit-button"
@@ -393,6 +444,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                 </div>
                 <VectorPlane2D
                   idPrefix="basis-vector-plane"
+                  axisLabels={polynomialMode ? ['b₀', 'b₁'] : undefined}
                   vectors={scene.vectors}
                   colors={VECTOR_COLORS}
                   viewport={planeViewport}
@@ -419,13 +471,17 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   onTargetDragEnd={() => setTargetSnapKind(null)}
                 />
                 <p className="viewport-help">
-                  灰色は基底候補 <MathBasisName /> が生成する空間です。通常ベクトルとターゲット <MathVectorName name="v" /> の矢先をドラッグできます。
+                  {polynomialMode
+                    ? <>矢印は多項式の係数ベクトルです。灰色は基底候補 <MathBasisName /> の多項式が生成する範囲に対応します。</>
+                    : <>灰色は基底候補 <MathBasisName /> が生成する空間です。通常ベクトルとターゲット <MathVectorName name="v" /> の矢先をドラッグできます。</>}
                 </p>
               </section>
             ) : (
               <Suspense fallback={<BasisSpaceLoading />}>
                 <VectorSpace3D
                   idPrefix="basis-space-3d"
+                  axisLabels={polynomialMode ? POLYNOMIAL_AXIS_LABELS_3D : undefined}
+                  spaceTitle={polynomialMode ? '3次元係数空間' : undefined}
                   showLinearCombinationControl={false}
                   vectors={scene.vectors}
                   colors={VECTOR_COLORS}
@@ -446,7 +502,9 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   onVectorCoordinatesCommit={commitVectorCoordinates}
                   onLinearCombinationTargetPlacement={commitTarget}
                   onLinearCombinationVisibility={() => undefined}
-                  assistiveDescription="ベクトルの座標、候補の一次独立性、生成条件、ターゲットの座標ベクトルは、この後の数値入力と判定カードでも確認できます。3D表示を利用できない場合も、候補選択、数値入力、座標判定、Resetは利用できます。"
+                  assistiveDescription={polynomialMode
+                    ? '3D矢印は高々2次多項式の定数項、xの係数、xの2乗の係数を表す係数ベクトルです。多項式、候補の判定、ターゲットの座標は、この後のカードでも確認できます。'
+                    : 'ベクトルの座標、候補の一次独立性、生成条件、ターゲットの座標ベクトルは、この後の数値入力と判定カードでも確認できます。3D表示を利用できない場合も、候補選択、数値入力、座標判定、Resetは利用できます。'}
                   unavailableFallbackDescription="候補選択、数値入力、基底と座標の判定カード、Resetはそのまま利用できます。"
                 />
               </Suspense>
@@ -458,9 +516,11 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
             <CandidateSelector
               vectors={scene.vectors}
               candidateVectorIds={scene.candidateVectorIds}
+              polynomialMode={polynomialMode}
               onToggle={handleCandidateToggle}
               onMove={handleCandidateMove}
             />
+            {polynomialMode ? <PolynomialCorrespondenceCard scene={scene} /> : null}
 
             <div className="inspector-tablist basis-inspector-tablist" role="tablist" aria-label="基底・次元Labの編集・解析の詳細">
               {BASIS_INSPECTOR_TABS.map((tab) => (
@@ -484,6 +544,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
             <VectorSourceEditor
               scene={scene}
               drafts={coordinateDrafts[activeDimension]}
+              polynomialMode={polynomialMode}
               active={activeInspectorTabs[activeDimension] === 'vectors'}
               onCoordinateChange={handleCoordinateChange}
               onCoordinateBlur={handleCoordinateBlur}
@@ -491,6 +552,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
             <BasisAnalysisCard
               scene={scene}
               analysis={analysis}
+              polynomialMode={polynomialMode}
               active={activeInspectorTabs[activeDimension] === 'basis'}
             />
             <CoordinateExplorerCard
@@ -499,6 +561,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               targetDrafts={targetDrafts[activeDimension]}
               comparisonBasisIds={comparisonBasisIds[activeDimension]}
               comparisonAnalysis={comparisonAnalysis}
+              polynomialMode={polynomialMode}
               onTargetCoordinateChange={handleTargetCoordinateChange}
               onTargetCoordinateBlur={handleTargetCoordinateBlur}
               onSaveComparisonBasis={saveComparisonBasis}
@@ -511,15 +574,58 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   );
 }
 
+function PolynomialCorrespondenceCard({ scene }: { readonly scene: BasisDimensionScene }) {
+  const standardBasis = Array.from({ length: scene.dimension }, (_, degree) => (
+    degree === 0 ? '1' : degree === 1 ? 'x' : `x${degree}`
+  ));
+  const genericCoefficients = Array.from(
+    { length: scene.dimension },
+    (_, degree) => `b${degree}`,
+  );
+
+  return (
+    <section className="basis-polynomial-card" aria-labelledby="basis-polynomial-title">
+      <p className="panel-kicker">Polynomial view</p>
+      <h2 id="basis-polynomial-title">多項式と係数ベクトル</h2>
+      <div className="basis-polynomial-summary">
+        <p>
+          <MathSpaceName /> = <MathPolynomialSpace degree={scene.dimension - 1} />
+        </p>
+        <p>
+          <strong>標準基底：</strong>
+          <MathPolynomialTuple terms={standardBasis} />
+        </p>
+        <p className="basis-polynomial-mapping">
+          <MathFunctionName generic /> = <GenericPolynomial dimension={scene.dimension} />
+          <span aria-hidden="true"> ↔ </span>
+          <MathTransposedRowVector values={genericCoefficients} />
+          <span> ∈ </span><MathRealCoordinateSpace dimension={scene.dimension} />
+        </p>
+      </div>
+      <div className="basis-polynomial-list">
+        {scene.vectors.map((vector, index) => (
+          <PolynomialVectorIdentity key={vector.id} vector={vector} functionIndex={index + 1} />
+        ))}
+        <PolynomialTargetIdentity target={scene.target} />
+      </div>
+      <p className="basis-card-note">
+        係数を定数項から昇べき順に並べれば、数ベクトル版と同じrank・基底・座標の計算を使えます。
+      </p>
+    </section>
+  );
+}
+
 function VectorSourceEditor({
   scene,
   drafts,
+  polynomialMode,
   active,
   onCoordinateChange,
   onCoordinateBlur,
 }: {
   readonly scene: BasisDimensionScene;
   readonly drafts: Readonly<Record<string, readonly string[]>>;
+  readonly polynomialMode: boolean;
   readonly active: boolean;
   readonly onCoordinateChange: (vectorId: string, index: number, value: string) => void;
   readonly onCoordinateBlur: (vector: VectorValue, index: number) => void;
@@ -533,7 +639,9 @@ function VectorSourceEditor({
       hidden={!active}
     >
       <p className="panel-kicker">Vector set</p>
-      <h2 id="basis-source-title">全ベクトルの集合 <MathSetName /></h2>
+      <h2 id="basis-source-title">
+        {polynomialMode ? '全多項式の集合 ' : '全ベクトルの集合 '}<MathSetName />
+      </h2>
       <div className="basis-vector-input-grid">
         {scene.vectors.map((vector, vectorIndex) => (
           <div className="basis-vector-input" key={vector.id}>
@@ -542,7 +650,10 @@ function VectorSourceEditor({
             </span>
             <MathVectorName name={vector.name} />
             <span aria-hidden="true">=</span>
-            <span className="basis-coordinate-inputs" aria-label={`${vector.name}の成分`}>
+            <span
+              className="basis-coordinate-inputs"
+              aria-label={polynomialMode ? `f${vectorIndex + 1}(x)の係数` : `${vector.name}の成分`}
+            >
               {vector.coordinates.map((coordinate, coordinateIndex) => {
                 const draft = drafts[vector.id]?.[coordinateIndex] ?? formatCoordinate(coordinate);
                 const valid = parseCoordinateInput(draft).ok;
@@ -551,7 +662,9 @@ function VectorSourceEditor({
                     key={coordinateIndex}
                     value={draft}
                     inputMode="decimal"
-                    aria-label={`${vector.name}の第${coordinateIndex + 1}成分`}
+                    aria-label={polynomialMode
+                      ? `f${vectorIndex + 1}(x)の${polynomialCoefficientLabel(coordinateIndex)}`
+                      : `${vector.name}の第${coordinateIndex + 1}成分`}
                     aria-invalid={!valid}
                     onChange={(event) =>
                       onCoordinateChange(vector.id, coordinateIndex, event.target.value)}
@@ -560,10 +673,19 @@ function VectorSourceEditor({
                 );
               })}
             </span>
+            {polynomialMode ? (
+              <span className="basis-polynomial-preview">
+                <PolynomialVectorIdentity vector={vector} functionIndex={vectorIndex + 1} />
+              </span>
+            ) : null}
           </div>
         ))}
       </div>
-      <p className="basis-card-note">成分を変えると、対象空間と候補の判定を同時に再計算します。</p>
+      <p className="basis-card-note">
+        {polynomialMode
+          ? '係数は定数項から昇べき順です。係数を変えると、多項式と候補の判定を同時に再計算します。'
+          : '成分を変えると、対象空間と候補の判定を同時に再計算します。'}
+      </p>
     </section>
   );
 }
@@ -571,11 +693,13 @@ function VectorSourceEditor({
 function CandidateSelector({
   vectors,
   candidateVectorIds,
+  polynomialMode,
   onToggle,
   onMove,
 }: {
   readonly vectors: readonly VectorValue[];
   readonly candidateVectorIds: readonly string[];
+  readonly polynomialMode: boolean;
   readonly onToggle: (vectorId: string) => void;
   readonly onMove: (vectorId: string, offset: -1 | 1) => void;
 }) {
@@ -588,7 +712,7 @@ function CandidateSelector({
         <p><MathBasisName /> = <VectorTuple ids={candidateVectorIds} vectors={vectors} /></p>
       </div>
       <div className="basis-candidate-options">
-        {vectors.map((vector) => {
+        {vectors.map((vector, vectorIndex) => {
           const orderIndex = candidateVectorIds.indexOf(vector.id);
           const selected = orderIndex >= 0;
           return (
@@ -601,7 +725,9 @@ function CandidateSelector({
                 />
                 <MathVectorName name={vector.name} />
                 <small className="basis-candidate-coordinates">
-                  <MathTransposedRowVector values={vector.coordinates.map(formatCoordinate)} />
+                  {polynomialMode
+                    ? <><MathFunctionName index={vectorIndex + 1} /> = <MathPolynomial coefficients={vector.coordinates} /></>
+                    : <MathTransposedRowVector values={vector.coordinates.map(formatCoordinate)} />}
                 </small>
               </label>
               {selected ? (
@@ -625,7 +751,10 @@ function CandidateSelector({
           );
         })}
       </div>
-      <p className="basis-card-note">基底は集合ではなく順序付きの組です。矢印で順序を変更できます。</p>
+      <p className="basis-card-note">
+        基底は集合ではなく順序付きの組です。矢印で順序を変更できます。
+        {polynomialMode ? ' 多項式もベクトルであり、係数に同じ判定を適用します。' : ''}
+      </p>
     </section>
   );
 }
@@ -633,10 +762,12 @@ function CandidateSelector({
 function BasisAnalysisCard({
   scene,
   analysis,
+  polynomialMode,
   active,
 }: {
   readonly scene: BasisDimensionScene;
   readonly analysis: BasisCandidateAnalysis;
+  readonly polynomialMode: boolean;
   readonly active: boolean;
 }) {
   return (
@@ -655,7 +786,9 @@ function BasisAnalysisCard({
       <div className="basis-target-summary">
         <p>
           <strong>対象としている空間：</strong>
-          <MathSpaceName /> = <MathRealCoordinateSpace dimension={scene.dimension} />
+          <MathSpaceName /> = {polynomialMode
+            ? <MathPolynomialSpace degree={scene.dimension - 1} />
+            : <MathRealCoordinateSpace dimension={scene.dimension} />}
         </p>
         <p>
           <strong>現在選んでいるベクトルの組：</strong>
@@ -705,6 +838,7 @@ function CoordinateExplorerCard({
   targetDrafts,
   comparisonBasisIds,
   comparisonAnalysis,
+  polynomialMode,
   onTargetCoordinateChange,
   onTargetCoordinateBlur,
   onSaveComparisonBasis,
@@ -715,6 +849,7 @@ function CoordinateExplorerCard({
   readonly targetDrafts: readonly string[];
   readonly comparisonBasisIds: readonly string[] | null;
   readonly comparisonAnalysis: BasisCoordinateAnalysis | null;
+  readonly polynomialMode: boolean;
   readonly onTargetCoordinateChange: (index: number, value: string) => void;
   readonly onTargetCoordinateBlur: (index: number) => void;
   readonly onSaveComparisonBasis: () => void;
@@ -736,13 +871,20 @@ function CoordinateExplorerCard({
       <p className="panel-kicker">Coordinates</p>
       <h2 id="basis-coordinate-title">基底に関する座標</h2>
       <p className="basis-coordinate-intro">
-        同じターゲット <MathVectorName name="v" /> でも、基底の選び方と順序によって座標ベクトルは変わります。
+        同じターゲット <MathVectorName name="v" />
+        {polynomialMode ? <> = <MathFunctionName target /></> : null}
+        でも、基底の選び方と順序によって座標ベクトルは変わります。
       </p>
 
       <div className="basis-target-editor">
         <div>
           <strong>ターゲット</strong>
           <small>グラフ上の矢先ドラッグまたは成分入力で変更できます。</small>
+          {polynomialMode ? (
+            <span className="basis-target-polynomial">
+              <MathFunctionName target /> = <MathPolynomial coefficients={scene.target} />
+            </span>
+          ) : null}
         </div>
         <span className="basis-target-equation">
           <MathVectorName name="v" /><span aria-hidden="true"> = </span>
@@ -776,6 +918,7 @@ function CoordinateExplorerCard({
           analysis={analysis}
           coordinateValues={coordinateValues}
           particularValues={particularValues}
+          polynomialMode={polynomialMode}
         />
       </div>
 
@@ -827,17 +970,20 @@ function CoordinateResult({
   analysis,
   coordinateValues,
   particularValues,
+  polynomialMode,
 }: {
   readonly scene: BasisDimensionScene;
   readonly analysis: BasisCoordinateAnalysis;
   readonly coordinateValues: readonly string[];
   readonly particularValues: readonly string[];
+  readonly polynomialMode: boolean;
 }) {
   switch (analysis.status) {
     case 'coordinate-vector':
       return (
         <div className="basis-coordinate-success">
           <strong>座標ベクトルが唯一に定まります</strong>
+          {polynomialMode ? <PolynomialTargetIdentity target={scene.target} /> : null}
           <p className="basis-coordinate-formula">
             <MathVectorName name="c" /> = <MathColumnVector values={coordinateValues} />
           </p>
@@ -915,6 +1061,108 @@ function BasisSpaceLoading() {
   );
 }
 
+function PolynomialVectorIdentity({
+  vector,
+  functionIndex,
+}: {
+  readonly vector: VectorValue;
+  readonly functionIndex: number;
+}) {
+  return (
+    <span className="basis-polynomial-identity">
+      <MathVectorName name={vector.name} />
+      <span aria-hidden="true"> = </span>
+      <MathFunctionName index={functionIndex} />
+      <span aria-hidden="true"> = </span>
+      <MathPolynomial coefficients={vector.coordinates} />
+    </span>
+  );
+}
+
+function PolynomialTargetIdentity({ target }: { readonly target: readonly number[] }) {
+  return (
+    <span className="basis-polynomial-identity is-target">
+      <MathVectorName name="v" />
+      <span aria-hidden="true"> = </span>
+      <MathFunctionName target />
+      <span aria-hidden="true"> = </span>
+      <MathPolynomial coefficients={target} />
+    </span>
+  );
+}
+
+function MathFunctionName({
+  index,
+  target = false,
+  generic = false,
+}: {
+  readonly index?: number;
+  readonly target?: boolean;
+  readonly generic?: boolean;
+}) {
+  const base = target ? 'p' : generic ? 'q' : 'f';
+  const accessibleName = index ? `${base}${index}(x)` : `${base}(x)`;
+  return (
+    <span className="basis-function-name" aria-label={accessibleName}>
+      <span aria-hidden="true" className="math-scalar">{base}</span>
+      {index ? <sub aria-hidden="true">{index}</sub> : null}
+      <span aria-hidden="true">(</span><span aria-hidden="true" className="math-scalar">x</span><span aria-hidden="true">)</span>
+    </span>
+  );
+}
+
+function MathPolynomial({ coefficients }: { readonly coefficients: readonly number[] }) {
+  const terms = createPolynomialTerms(coefficients);
+  return (
+    <span className="basis-polynomial" aria-label={formatPolynomialExpression(coefficients)}>
+      {terms.map((term, index) => {
+        const negative = term.coefficient < 0;
+        const absolute = Math.abs(term.coefficient);
+        const showCoefficient = term.degree === 0 || absolute !== 1;
+        return (
+          <span key={term.degree} aria-hidden="true">
+            {index === 0 ? (negative ? '−' : '') : (negative ? ' − ' : ' + ')}
+            {showCoefficient ? formatCoordinate(absolute) : null}
+            {term.degree > 0 ? <span className="math-scalar">x</span> : null}
+            {term.degree > 1 ? <sup>{term.degree}</sup> : null}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+function GenericPolynomial({ dimension }: { readonly dimension: VectorDimension }) {
+  return (
+    <span className="basis-polynomial" aria-label={`b0からb${dimension - 1}までを係数とする多項式`}>
+      {Array.from({ length: dimension }, (_, degree) => (
+        <span key={degree} aria-hidden="true">
+          {degree > 0 ? ' + ' : ''}
+          <span className="math-scalar">b</span><sub>{degree}</sub>
+          {degree > 0 ? <span className="math-scalar">x</span> : null}
+          {degree > 1 ? <sup>{degree}</sup> : null}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function MathPolynomialTuple({ terms }: { readonly terms: readonly string[] }) {
+  return (
+    <span className="basis-math basis-polynomial-tuple" aria-label={`標準基底 ${terms.join('、')}`}>
+      (<span aria-hidden="true">{terms.map((term, index) => {
+        const match = /^x(\d+)$/u.exec(term);
+        return (
+          <span key={term}>
+            {index > 0 ? ', ' : ''}
+            {match ? <><span className="math-scalar">x</span><sup>{match[1]}</sup></> : term === 'x' ? <span className="math-scalar">x</span> : term}
+          </span>
+        );
+      })}</span>)
+    </span>
+  );
+}
+
 function MathVectorName({ name }: { readonly name: string }) {
   const match = /^([A-Za-z]+)(\d+)$/u.exec(name);
   return (
@@ -986,6 +1234,15 @@ function MathRealCoordinateSpace({ dimension }: { readonly dimension: VectorDime
   return (
     <span className="basis-coordinate-space" aria-label={`${dimension}次元実数ベクトル空間`}>
       <span aria-hidden="true">ℝ</span><sup aria-hidden="true">{dimension}</sup>
+    </span>
+  );
+}
+
+function MathPolynomialSpace({ degree }: { readonly degree: number }) {
+  return (
+    <span className="basis-coordinate-space" aria-label={`高々${degree}次の実数係数多項式空間`}>
+      <span aria-hidden="true">ℝ[</span><span aria-hidden="true" className="math-scalar">x</span><span aria-hidden="true">]</span>
+      <sub aria-hidden="true">{degree}</sub>
     </span>
   );
 }

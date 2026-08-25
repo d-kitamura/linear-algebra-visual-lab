@@ -2912,6 +2912,54 @@
   align-items: start;
 }
 
+.basis-dimension-lab .dimension-switcher {
+  flex-wrap: wrap;
+}
+
+.basis-representation-switcher {
+  min-height: 44px;
+  padding: 4px;
+  display: inline-grid;
+  grid-template-columns: auto repeat(2, minmax(84px, 1fr));
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--ink) 5%, var(--paper));
+}
+
+.basis-representation-switcher > span {
+  padding: 0 7px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 760;
+}
+
+.basis-representation-switcher button {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 0.73rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.basis-representation-switcher button[aria-pressed='true'] {
+  border-color: var(--line);
+  color: #244e70;
+  background: var(--paper);
+  box-shadow: 0 4px 12px rgba(18, 28, 36, 0.07);
+}
+
+.basis-representation-switcher button:focus-visible {
+  outline: 3px solid color-mix(in srgb, #2f6690 28%, transparent);
+  outline-offset: 2px;
+}
+
 .basis-visual-column,
 .basis-analysis-column {
   min-width: 0;
@@ -2926,6 +2974,7 @@
 
 .basis-source-card,
 .basis-candidate-card,
+.basis-polynomial-card,
 .basis-result-card,
 .basis-coordinate-card {
   min-width: 0;
@@ -2938,6 +2987,7 @@
 
 .basis-source-card h2,
 .basis-candidate-card h2,
+.basis-polynomial-card h2,
 .basis-result-card h2,
 .basis-coordinate-card h2 {
   margin: 0;
@@ -2989,6 +3039,15 @@
   border: 1px solid var(--line);
   border-radius: 13px;
   background: #fffdf8;
+}
+
+.basis-polynomial-preview {
+  min-width: 0;
+  grid-column: 2 / -1;
+  padding-top: 3px;
+  overflow-wrap: anywhere;
+  color: #244e70;
+  font-size: 0.82rem;
 }
 
 .basis-vector-number {
@@ -3121,6 +3180,103 @@
 
 .basis-candidate-coordinates .transposed-row-vector {
   font-size: 0.82rem;
+}
+
+.basis-candidate-coordinates .basis-function-name,
+.basis-candidate-coordinates .basis-polynomial {
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 0.84rem;
+}
+
+.basis-polynomial-summary {
+  margin-top: 14px;
+  padding: 13px 14px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, #2f6690 24%, var(--line));
+  border-radius: 12px;
+  color: #244e70;
+  background: color-mix(in srgb, #2f6690 6%, #fffdf8);
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+
+.basis-polynomial-summary p {
+  margin: 0;
+  line-height: 1.65;
+}
+
+.basis-polynomial-summary strong {
+  font-family: var(--body-font);
+  font-size: 0.74rem;
+}
+
+.basis-polynomial-mapping {
+  overflow-wrap: anywhere;
+}
+
+.basis-polynomial-list {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.basis-polynomial-identity {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fffdf8;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.basis-polynomial-identity.is-target {
+  border-color: color-mix(in srgb, #2f6690 30%, var(--line));
+  color: #244e70;
+  background: color-mix(in srgb, #2f6690 5%, #fffdf8);
+}
+
+.basis-function-name,
+.basis-polynomial,
+.basis-polynomial-tuple {
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.basis-function-name {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.basis-function-name sub,
+.basis-polynomial sub,
+.basis-coordinate-space sub {
+  margin-left: 0.02em;
+  font-size: 0.65em;
+  font-style: normal;
+}
+
+.basis-polynomial sup,
+.basis-polynomial-tuple sup {
+  font-size: 0.64em;
+  font-style: normal;
+}
+
+.basis-target-polynomial {
+  display: block;
+  margin-top: 7px;
+  color: #244e70;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 0.82rem;
+}
+
+.basis-coordinate-success > .basis-polynomial-identity {
+  display: block;
+  margin: 7px 0;
 }
 
 .basis-order-controls {
@@ -3531,6 +3687,15 @@
   .basis-dimension-workspace {
     grid-template-columns: 1fr;
   }
+
+  .basis-dimension-lab .dimension-switcher {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .basis-dimension-lab .dimension-switcher > p {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (min-width: 981px) and (min-height: 820px) {
@@ -3592,6 +3757,10 @@
   .dimension-switcher {
     display: grid;
     gap: 9px;
+  }
+
+  .basis-dimension-lab .dimension-switcher {
+    grid-template-columns: 1fr;
   }
 
   .dimension-tablist {
@@ -3766,6 +3935,20 @@
   }
 
   .basis-vector-input-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .basis-representation-switcher {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .basis-representation-switcher > span {
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+
+  .basis-polynomial-list {
     grid-template-columns: 1fr;
   }
 

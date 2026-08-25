@@ -42,3 +42,11 @@ export type {
   BasisCoordinateAnalysis,
   BasisCoordinateStatus,
 } from './basisCoordinates';
+
+export {
+  createPolynomialTerms,
+  formatPolynomialExpression,
+  polynomialCoefficientLabel,
+} from './polynomial';
+
+export type { PolynomialTerm } from './polynomial';

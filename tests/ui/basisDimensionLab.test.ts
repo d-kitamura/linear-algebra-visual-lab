@@ -32,7 +32,8 @@ describe('8.4 基底・次元エクスプローラ', () => {
   });
 
   it('対象空間と現在の候補を示し、基底例の非一意性を説明する', () => {
-    expect(source).toContain('<MathSpaceName /> = <MathRealCoordinateSpace dimension={scene.dimension} />');
+    expect(source).toContain('<MathPolynomialSpace degree={scene.dimension - 1} />');
+    expect(source).toContain('<MathRealCoordinateSpace dimension={scene.dimension} />');
     expect(source).toContain('<MathBasisName /> = <VectorTuple ids={scene.candidateVectorIds}');
     expect(source).toContain('この例以外にも基底の取り方があり得る可能性があります');
     expect(source).toContain('maximumIndependentCount');
@@ -117,5 +118,16 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain('<MathVectorName name="c" /> = <MathColumnVector values={coordinateValues} />');
     expect(source).toContain('例{index + 1}：<MathVectorName name="c" />');
     expect(source).toContain('この一意な係数ベクトル <MathVectorName name="c" />');
+  });
+
+  it('数ベクトルと多項式を同じ係数・基底解析で切り替える', () => {
+    expect(source).toContain("type BasisRepresentation = 'coordinate' | 'polynomial'");
+    expect(source).toContain('aria-label="対象の見方"');
+    expect(source).toContain('>数ベクトル</button>');
+    expect(source).toContain('>多項式</button>');
+    expect(source).toContain('<PolynomialCorrespondenceCard scene={scene} />');
+    expect(source).toContain('標準基底：');
+    expect(source).toContain('係数は定数項から昇べき順です。');
+    expect(source).toContain("setRepresentations((current) => ({ ...current, [activeDimension]: 'coordinate' }))");
   });
 });

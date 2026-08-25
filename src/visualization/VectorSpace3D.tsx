@@ -68,6 +68,8 @@ interface VectorSpace3DProps {
   readonly showLinearCombinationControl?: boolean;
   readonly assistiveDescription?: string;
   readonly unavailableFallbackDescription?: string;
+  readonly axisLabels?: readonly [string, string, string];
+  readonly spaceTitle?: string;
 }
 
 interface ThreeSpaceRuntime {
@@ -128,6 +130,7 @@ const AXIS_COLORS = {
 const SPAN_COLOR = '#737b82';
 const TARGET_COLOR = '#245b8d';
 const COMBINATION_HELPER_COLOR = '#596b78';
+const DEFAULT_AXIS_LABELS = ['x', 'y', 'z'] as const;
 const TARGET_TAP_MOVEMENT_THRESHOLD = 8;
 const VECTOR_LABEL_CENTERS = [
   [-0.42, 1.42],
@@ -162,6 +165,8 @@ export function VectorSpace3D({
   showLinearCombinationControl = true,
   assistiveDescription = 'ベクトルの座標、rank、生成する空間、一次独立性、一次結合の解は、3D表示の後にある数値入力と解析カードでも確認できます。3D表示を利用できない場合も、数値入力、共有URL、Resetは利用できます。',
   unavailableFallbackDescription = '数値入力と解析カード、共有URL、Resetはそのまま利用できます。',
+  axisLabels = DEFAULT_AXIS_LABELS,
+  spaceTitle = '3次元座標空間',
 }: VectorSpace3DProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<ThreeSpaceRuntime | null>(null);
@@ -207,6 +212,8 @@ export function VectorSpace3D({
         linearCombinationVisible,
         linearCombinationTarget,
         linearCombinationCoefficients,
+        axisLabels,
+        spaceTitle,
         cameraRef.current,
         (nextCamera) => onCameraChangeRef.current(nextCamera),
         (vectorId, coordinates) => {
@@ -240,11 +247,13 @@ export function VectorSpace3D({
       return undefined;
     }
   }, [
+    axisLabels,
     colors,
     linearCombinationCoefficients,
     linearCombinationTarget,
     linearCombinationVisible,
     showSpan,
+    spaceTitle,
     spanRank,
     spanVectors,
     vectors,
@@ -268,7 +277,7 @@ export function VectorSpace3D({
       <div className="three-dimensional-heading">
         <div>
           <p className="panel-kicker">3D coordinate space</p>
-          <h2 id={`${idPrefix}-title`}>3次元座標空間</h2>
+          <h2 id={`${idPrefix}-title`}>{spaceTitle}</h2>
         </div>
         <div className="three-dimensional-toolbar">
           {showLinearCombinationControl ? (
@@ -320,7 +329,7 @@ export function VectorSpace3D({
         className={`three-dimensional-render-frame ${errorMessage ? 'has-error' : ''}`}
         role="group"
         aria-describedby={`${idPrefix}-canvas-alternative`}
-        aria-label={`右手座標系の3次元座標空間。x軸、y軸、z軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `選択したベクトルが生成する${describeSpaceSpan(spanRank)}を灰色の幾何形状で表示しています。` : '生成する空間の幾何表示はオフです。'}${linearCombinationVisible ? linearCombinationTarget ? 'ターゲットvと一次結合の幾何表示があります。' : '一次結合モードでターゲットは未配置です。' : ''}`}
+        aria-label={`右手座標系の${spaceTitle}。${axisLabels.join('軸、')}軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `選択したベクトルが生成する${describeSpaceSpan(spanRank)}を灰色の幾何形状で表示しています。` : '生成する空間の幾何表示はオフです。'}${linearCombinationVisible ? linearCombinationTarget ? 'ターゲットvと一次結合の幾何表示があります。' : '一次結合モードでターゲットは未配置です。' : ''}`}
       >
         <div className="three-dimensional-render-host" ref={hostRef} />
         {interactionMessage ? (
@@ -361,6 +370,8 @@ function createThreeSpaceRuntime(
   linearCombinationVisible: boolean,
   linearCombinationTarget: readonly [number, number, number] | null,
   linearCombinationCoefficients: readonly number[] | null,
+  axisLabels: readonly [string, string, string],
+  spaceTitle: string,
   initialCamera: SharedCameraState | null,
   onCameraChange: (camera: SharedCameraState) => void,
   onVectorCoordinatesCommit: (
@@ -417,7 +428,7 @@ function createThreeSpaceRuntime(
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute(
     'aria-label',
-    `3D座標空間。通常ベクトルの矢先をドラッグすると画面に平行な面内で移動し、平行または同一平面上へ吸着できます。${linearCombinationVisible ? `背景を短くクリックまたはタップするとターゲットvを配置できます。${linearCombinationTarget ? 'ターゲットvの矢先をドラッグすると一次結合の幾何表示とともに画面平行面内で移動し、選択したベクトルが生成する原点・直線・平面へ吸着できます。' : ''}` : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
+    `${spaceTitle}。通常ベクトルの矢先をドラッグすると画面に平行な面内で移動し、平行または同一平面上へ吸着できます。${linearCombinationVisible ? `背景を短くクリックまたはタップするとターゲットvを配置できます。${linearCombinationTarget ? 'ターゲットvの矢先をドラッグすると一次結合の幾何表示とともに画面平行面内で移動し、選択したベクトルが生成する原点・直線・平面へ吸着できます。' : ''}` : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
   );
   host.append(renderer.domElement);
 
@@ -434,7 +445,7 @@ function createThreeSpaceRuntime(
   scene.add(spanGeometryGroup);
   const spanDragPreview = new THREE.Group();
   scene.add(spanDragPreview);
-  addAxes(scene, extent);
+  addAxes(scene, extent, axisLabels);
   addOrigin(scene, extent);
   const combinationGeometryGroup = new THREE.Group();
   if (combinationGeometry) {
@@ -1323,19 +1334,24 @@ function addSpanSpace(
   ));
 }
 
-function addAxes(scene: THREE.Scene, extent: SpaceExtent): void {
+function addAxes(
+  scene: THREE.Scene,
+  extent: SpaceExtent,
+  axisLabels: readonly [string, string, string],
+): void {
   const length = extent.halfRange * 1.08;
   const headLength = Math.max(0.24, extent.halfRange * 0.055);
   const headWidth = headLength * 0.5;
 
-  addAxis(scene, 'x', new THREE.Vector3(1, 0, 0), length, headLength, headWidth);
-  addAxis(scene, 'y', new THREE.Vector3(0, 1, 0), length, headLength, headWidth);
-  addAxis(scene, 'z', new THREE.Vector3(0, 0, 1), length, headLength, headWidth);
+  addAxis(scene, 'x', axisLabels[0], new THREE.Vector3(1, 0, 0), length, headLength, headWidth);
+  addAxis(scene, 'y', axisLabels[1], new THREE.Vector3(0, 1, 0), length, headLength, headWidth);
+  addAxis(scene, 'z', axisLabels[2], new THREE.Vector3(0, 0, 1), length, headLength, headWidth);
 }
 
 function addAxis(
   scene: THREE.Scene,
   axis: keyof typeof AXIS_COLORS,
+  label: string,
   direction: THREE.Vector3,
   length: number,
   headLength: number,
@@ -1359,7 +1375,7 @@ function addAxis(
 
   scene.add(new THREE.ArrowHelper(direction, ORIGIN, length, color, headLength, headWidth));
   const labelPosition = direction.clone().multiplyScalar(length + headLength * 0.65);
-  scene.add(createTextLabel(axis, `axis-label axis-${axis}`, labelPosition));
+  scene.add(createTextLabel(label, `axis-label axis-${axis}`, labelPosition));
 }
 
 function addOrigin(scene: THREE.Scene, extent: SpaceExtent): void {
