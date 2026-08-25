@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "lab": "basis-dimension",
+  "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoxLCJsYWIiOiJiYXNpcy1kaW1lbnNpb24iLCJkaW0iOjIsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzEsMF19LHsiaWQiOiJhMiIsIm5hbWUiOiJhMiIsImNvb3JkaW5hdGVzIjpbMCwxXX0seyJpZCI6ImEzIiwibmFtZSI6ImEzIiwiY29vcmRpbmF0ZXMiOlsxLDFdfV0sImNhbmRpZGF0ZVZlY3RvcklkcyI6WyJhMyIsImEyIl0sInJlcHJlc2VudGF0aW9uIjoiY29vcmRpbmF0ZSIsImxpbmVhckNvbWJpbmF0aW9uIjp7InZpc2libGUiOnRydWUsInRhcmdldCI6WzMsMl19LCJjb21wYXJpc29uQmFzaXNJZHMiOlsiYTEiLCJhMiJdLCJjYW1lcmEiOm51bGx9",
+  "expectedState": {
+    "v": 1,
+    "lab": "basis-dimension",
+    "dim": 2,
+    "vectors": [
+      { "id": "a1", "name": "a1", "coordinates": [1, 0] },
+      { "id": "a2", "name": "a2", "coordinates": [0, 1] },
+      { "id": "a3", "name": "a3", "coordinates": [1, 1] }
+    ],
+    "candidateVectorIds": ["a3", "a2"],
+    "representation": "coordinate",
+    "linearCombination": { "visible": true, "target": [3, 2] },
+    "comparisonBasisIds": ["a1", "a2"],
+    "camera": null
+  }
+}

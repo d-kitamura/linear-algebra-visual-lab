@@ -1,5 +1,6 @@
 import type { LinearCombinationStatus } from '../domain';
-import type { ShareState } from '../sharing';
+import type { BasisCoordinateStatus } from '../domain';
+import type { BasisDimensionShareState, ShareState } from '../sharing';
 
 export interface TeachingScenario {
   readonly id: string;
@@ -18,5 +19,18 @@ export interface LinearCombinationTeachingScenario extends TeachingScenario {
     readonly status: LinearCombinationStatus;
     readonly rank: number;
     readonly augmentedRank: number;
+  };
+}
+
+export interface BasisDimensionTeachingScenario {
+  readonly id: string;
+  readonly title: string;
+  readonly learningPoint: string;
+  readonly state: BasisDimensionShareState;
+  readonly expected: {
+    readonly sourceRank: number;
+    readonly candidateRank: number;
+    readonly isBasis: boolean;
+    readonly coordinateStatus: BasisCoordinateStatus;
   };
 }

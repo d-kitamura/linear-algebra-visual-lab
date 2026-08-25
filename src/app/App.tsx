@@ -3,11 +3,17 @@ import { BasisDimensionLab } from '../labs/basis-dimension/BasisDimensionLab';
 import { VectorSpaceLab } from '../labs/vector-space/VectorSpaceLab';
 import { LabMenu, type LabId } from './LabMenu';
 import { projectInfo } from './projectInfo';
+import { readShareStateFromUrl } from '../sharing';
 import './App.css';
 
 export function App() {
   const usageDialogRef = useRef<HTMLDialogElement>(null);
-  const [activeLabId, setActiveLabId] = useState<LabId>('vector-space');
+  const [activeLabId, setActiveLabId] = useState<LabId>(() => {
+    const result = readShareStateFromUrl(window.location.href);
+    return result.status === 'success' && result.state.lab === 'basis-dimension'
+      ? 'basis-dimension'
+      : 'vector-space';
+  });
 
   function handleOpenUsageDialog(): void {
     usageDialogRef.current?.showModal();

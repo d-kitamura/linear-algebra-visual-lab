@@ -2,8 +2,10 @@ import {
   lazy,
   Suspense,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
 import {
@@ -17,7 +19,16 @@ import {
   type VectorDimension,
   type VectorValue,
 } from '../../domain';
-import { DEFAULT_3D_CAMERA_STATE, type SharedCameraState } from '../../sharing';
+import {
+  ShareUrlBuildError,
+  buildShareUrl,
+  createShareQrCodeDataUrl,
+  createShareQrCodeFileName,
+  createShareTextFileContents,
+  createShareTextFileName,
+  type BasisRepresentation,
+  type SharedCameraState,
+} from '../../sharing';
 import {
   parallelSnapDistanceForViewWidth,
   parseCoordinateInput,
@@ -33,7 +44,6 @@ import {
 import { LabActionControls } from '../../app/LabActionControls';
 import {
   createCoordinateDrafts,
-  createDefaultBasisScene,
   moveBasisCandidate,
   toggleBasisCandidate,
   updateBasisTarget,
@@ -41,6 +51,10 @@ import {
   updateBasisPlaneVectorDrag,
   type BasisDimensionScene,
 } from './basisDimensionState';
+import {
+  createBasisDimensionInitialization,
+  createBasisDimensionShareState,
+} from './basisDimensionInitialization';
 
 const VectorSpace3D = lazy(async () => {
   const module = await import('../../visualization/VectorSpace3D');
@@ -73,45 +87,79 @@ const BASIS_INSPECTOR_TABS = [
 ] as const;
 
 type BasisInspectorTabId = typeof BASIS_INSPECTOR_TABS[number]['id'];
-type BasisRepresentation = 'coordinate' | 'polynomial';
+type ShareFeedback = {
+  readonly kind: 'success' | 'error';
+  readonly message: string;
+} | null;
 
 interface BasisDimensionLabProps {
   readonly active: boolean;
 }
 
 export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
-  const [activeDimension, setActiveDimension] = useState<VectorDimension>(2);
+  const [initialization] = useState(() => createBasisDimensionInitialization(window.location.href));
+  const initial2DState = initialization.initialStates[2];
+  const initial3DState = initialization.initialStates[3];
+  const [activeDimension, setActiveDimension] = useState<VectorDimension>(
+    initialization.activeDimension,
+  );
   const [representations, setRepresentations] = useState<
     Record<VectorDimension, BasisRepresentation>
-  >({ 2: 'coordinate', 3: 'coordinate' });
+  >({ 2: initial2DState.representation, 3: initial3DState.representation });
   const [linearCombinationVisibility, setLinearCombinationVisibility] = useState<
     Record<VectorDimension, boolean>
-  >({ 2: false, 3: false });
+  >({
+    2: initial2DState.linearCombinationVisible,
+    3: initial3DState.linearCombinationVisible,
+  });
   const [scenes, setScenes] = useState<Record<VectorDimension, BasisDimensionScene>>({
-    2: createDefaultBasisScene(2),
-    3: createDefaultBasisScene(3),
+    2: initial2DState.scene,
+    3: initial3DState.scene,
   });
   const [coordinateDrafts, setCoordinateDrafts] = useState<
     Record<VectorDimension, Readonly<Record<string, readonly string[]>>>
   >({
-    2: createCoordinateDrafts(createDefaultBasisScene(2).vectors),
-    3: createCoordinateDrafts(createDefaultBasisScene(3).vectors),
+    2: createCoordinateDrafts(initial2DState.scene.vectors),
+    3: createCoordinateDrafts(initial3DState.scene.vectors),
   });
   const [targetDrafts, setTargetDrafts] = useState<Record<VectorDimension, readonly string[]>>({
-    2: ['', ''],
-    3: ['', '', ''],
+    2: createBasisTargetDrafts(initial2DState.scene),
+    3: createBasisTargetDrafts(initial3DState.scene),
   });
   const [comparisonBasisIds, setComparisonBasisIds] = useState<
     Record<VectorDimension, readonly string[] | null>
-  >({ 2: null, 3: null });
+  >({
+    2: initial2DState.comparisonBasisIds,
+    3: initial3DState.comparisonBasisIds,
+  });
   const [activeInspectorTabs, setActiveInspectorTabs] = useState<
     Record<VectorDimension, BasisInspectorTabId>
-  >({ 2: 'vectors', 3: 'vectors' });
-  const [planeViewport, setPlaneViewport] = useState<PlaneViewport>(DEFAULT_PLANE_VIEWPORT);
+  >({
+    2: initial2DState.linearCombinationVisible ? 'combination' : 'vectors',
+    3: initial3DState.linearCombinationVisible ? 'combination' : 'vectors',
+  });
+  const [planeViewport, setPlaneViewport] = useState<PlaneViewport>(() => (
+    initialization.source === 'shared' && initialization.activeDimension === 2
+      ? createBasisAutoFitViewport(
+          initial2DState.scene,
+          initial2DState.linearCombinationVisible,
+        )
+      : DEFAULT_PLANE_VIEWPORT
+  ));
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
   const [targetSnapKind, setTargetSnapKind] = useState<TargetSnapKind>(null);
-  const [camera, setCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
+  const [camera, setCamera] = useState<SharedCameraState>(initial3DState.camera);
   const [spaceResetKey, setSpaceResetKey] = useState(0);
+  const [loadErrorMessage, setLoadErrorMessage] = useState(initialization.errorMessage);
+  const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareQrCodeDataUrl, setShareQrCodeDataUrl] = useState('');
+  const [shareQrCodeErrorMessage, setShareQrCodeErrorMessage] = useState<string | null>(null);
+  const [isShareQrCodeLoading, setIsShareQrCodeLoading] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState<ShareFeedback>(null);
+  const shareQrCodeRequestIdRef = useRef(0);
+  const shareDialogRef = useRef<HTMLDialogElement>(null);
+  const shareUrlFieldRef = useRef<HTMLTextAreaElement>(null);
   const scene = scenes[activeDimension];
   const representation = representations[activeDimension];
   const polynomialMode = representation === 'polynomial';
@@ -138,6 +186,18 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     const ids = comparisonBasisIds[activeDimension];
     return ids && scene.target ? analyzeBasisCoordinates(scene, ids, scene.target) : null;
   }, [activeDimension, comparisonBasisIds, scene]);
+  const invalidDraftCount = useMemo(() => {
+    const vectorIssueCount = Object.values(coordinateDrafts[activeDimension])
+      .flat()
+      .filter((draft) => !parseCoordinateInput(draft).ok).length;
+    const activeTargetDrafts = targetDrafts[activeDimension];
+    const targetIssueCount = linearCombinationVisible
+      && activeTargetDrafts.some((draft) => draft.trim().length > 0)
+      ? activeTargetDrafts.filter((draft) => !parseCoordinateInput(draft).ok).length
+      : 0;
+    return vectorIssueCount + targetIssueCount;
+  }, [activeDimension, coordinateDrafts, linearCombinationVisible, targetDrafts]);
+  const hasInvalidCoordinateDraft = invalidDraftCount > 0;
 
   function updateScene(
     dimension: VectorDimension,
@@ -360,7 +420,8 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   }
 
   function handleReset(): void {
-    const resetScene = createDefaultBasisScene(activeDimension);
+    const initialState = initialization.initialStates[activeDimension];
+    const resetScene = initialState.scene;
     setScenes((current) => ({ ...current, [activeDimension]: resetScene }));
     setCoordinateDrafts((current) => ({
       ...current,
@@ -368,22 +429,144 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     }));
     setTargetDrafts((current) => ({
       ...current,
-      [activeDimension]: Array.from({ length: activeDimension }, () => ''),
+      [activeDimension]: createBasisTargetDrafts(resetScene),
     }));
-    setComparisonBasisIds((current) => ({ ...current, [activeDimension]: null }));
-    setActiveInspectorTabs((current) => ({ ...current, [activeDimension]: 'vectors' }));
-    setRepresentations((current) => ({ ...current, [activeDimension]: 'coordinate' }));
+    setComparisonBasisIds((current) => ({
+      ...current,
+      [activeDimension]: initialState.comparisonBasisIds,
+    }));
+    setActiveInspectorTabs((current) => ({
+      ...current,
+      [activeDimension]: initialState.linearCombinationVisible ? 'combination' : 'vectors',
+    }));
+    setRepresentations((current) => ({
+      ...current,
+      [activeDimension]: initialState.representation,
+    }));
     setLinearCombinationVisibility((current) => ({
       ...current,
-      [activeDimension]: false,
+      [activeDimension]: initialState.linearCombinationVisible,
     }));
     if (activeDimension === 2) {
-      setPlaneViewport(createBasisAutoFitViewport(resetScene, false));
+      setPlaneViewport(createBasisAutoFitViewport(
+        resetScene,
+        initialState.linearCombinationVisible,
+      ));
       setParallelSnapTargetId(null);
       setTargetSnapKind(null);
     } else {
-      setCamera(DEFAULT_3D_CAMERA_STATE);
+      setCamera(initialState.camera);
       setSpaceResetKey((current) => current + 1);
+    }
+    setExportErrorMessage(null);
+    setShareUrl('');
+    shareQrCodeRequestIdRef.current += 1;
+    setShareQrCodeDataUrl('');
+    setShareQrCodeErrorMessage(null);
+    setIsShareQrCodeLoading(false);
+    setShareFeedback(null);
+    shareDialogRef.current?.close();
+  }
+
+  function handleOpenShareDialog(): void {
+    if (hasInvalidCoordinateDraft) {
+      return;
+    }
+
+    try {
+      const nextShareUrl = buildShareUrl(window.location.href, createBasisDimensionShareState({
+        scene,
+        representation,
+        linearCombinationVisible,
+        comparisonBasisIds: comparisonBasisIds[activeDimension],
+        camera,
+      }));
+      const requestId = shareQrCodeRequestIdRef.current + 1;
+      shareQrCodeRequestIdRef.current = requestId;
+      setShareUrl(nextShareUrl);
+      setShareQrCodeDataUrl('');
+      setShareQrCodeErrorMessage(null);
+      setIsShareQrCodeLoading(true);
+      setShareFeedback(null);
+      setExportErrorMessage(null);
+      shareDialogRef.current?.showModal();
+      void createShareQrCodeDataUrl(nextShareUrl)
+        .then((dataUrl) => {
+          if (shareQrCodeRequestIdRef.current === requestId) {
+            setShareQrCodeDataUrl(dataUrl);
+            setIsShareQrCodeLoading(false);
+          }
+        })
+        .catch((error: unknown) => {
+          if (shareQrCodeRequestIdRef.current !== requestId) {
+            return;
+          }
+          setShareQrCodeErrorMessage(error instanceof Error
+            ? error.message
+            : '共有URLからQRコードを生成できませんでした。');
+          setIsShareQrCodeLoading(false);
+        });
+      window.requestAnimationFrame(() => {
+        shareUrlFieldRef.current?.focus();
+        shareUrlFieldRef.current?.select();
+      });
+    } catch (error) {
+      setExportErrorMessage(error instanceof ShareUrlBuildError
+        ? error.message
+        : '共有URLを生成できませんでした。入力内容を確認してください。');
+    }
+  }
+
+  async function handleCopyShareUrl(): Promise<void> {
+    try {
+      if (!navigator.clipboard) {
+        throw new Error('Clipboard API is unavailable.');
+      }
+      await navigator.clipboard.writeText(shareUrl);
+      setShareFeedback({ kind: 'success', message: 'クリップボードにコピーしました。' });
+    } catch {
+      shareUrlFieldRef.current?.focus();
+      shareUrlFieldRef.current?.select();
+      setShareFeedback({
+        kind: 'error',
+        message: '自動でコピーできませんでした。選択されたURLを手動でコピーしてください。',
+      });
+    }
+  }
+
+  function handleDownloadShareUrl(): void {
+    const blob = new Blob([createShareTextFileContents(shareUrl)], {
+      type: 'text/plain;charset=utf-8',
+    });
+    downloadBlobUrl(URL.createObjectURL(blob), createShareTextFileName(), true);
+    setShareFeedback({
+      kind: 'success',
+      message: 'URLを記載したテキストファイルのダウンロードを開始しました。',
+    });
+  }
+
+  function handleDownloadShareQrCode(): void {
+    if (!shareQrCodeDataUrl) {
+      setShareFeedback({
+        kind: 'error',
+        message: 'QRコードを保存できませんでした。URLのコピーまたはテキスト保存をご利用ください。',
+      });
+      return;
+    }
+    downloadBlobUrl(shareQrCodeDataUrl, createShareQrCodeFileName(), false);
+    setShareFeedback({
+      kind: 'success',
+      message: 'QRコードのPNG画像のダウンロードを開始しました。',
+    });
+  }
+
+  function handleCloseShareDialog(): void {
+    shareDialogRef.current?.close();
+  }
+
+  function handleShareDialogClick(event: ReactMouseEvent<HTMLDialogElement>): void {
+    if (event.target === event.currentTarget) {
+      handleCloseShareDialog();
     }
   }
 
@@ -462,16 +645,40 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               )}
             </p>
             <LabActionControls
-              exportDisabled
-              exportDescriptionId="basis-share-unavailable"
-              onExport={() => undefined}
+              exportDisabled={hasInvalidCoordinateDraft}
+              exportDescriptionId={hasInvalidCoordinateDraft
+                ? 'basis-share-disabled-help'
+                : undefined}
+              onExport={handleOpenShareDialog}
               onReset={handleReset}
             />
-            <p className="lab-action-help" id="basis-share-unavailable">
-              このLabの共有URLは8.7で追加します。現在はResetのみ利用できます。
-            </p>
+            {hasInvalidCoordinateDraft ? (
+              <p className="lab-action-help" id="basis-share-disabled-help" role="status">
+                未確定の成分が{invalidDraftCount}か所あります。訂正すると共有URLを作成できます。
+              </p>
+            ) : null}
           </div>
         </section>
+
+        {loadErrorMessage ? (
+          <div className="page-alert" role="alert" aria-labelledby="basis-load-error-title">
+            <div>
+              <strong id="basis-load-error-title">共有URLを開けませんでした</strong>
+              <p>{loadErrorMessage}</p>
+            </div>
+            <button type="button" onClick={() => setLoadErrorMessage(null)}>閉じる</button>
+          </div>
+        ) : null}
+
+        {exportErrorMessage ? (
+          <div className="page-alert" role="alert" aria-labelledby="basis-export-error-title">
+            <div>
+              <strong id="basis-export-error-title">共有URLを作成できませんでした</strong>
+              <p>{exportErrorMessage}</p>
+            </div>
+            <button type="button" onClick={() => setExportErrorMessage(null)}>閉じる</button>
+          </div>
+        ) : null}
 
         <div
           className="basis-dimension-workspace"
@@ -650,6 +857,86 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
           </aside>
         </div>
       </main>
+
+      <dialog
+        className="share-dialog"
+        ref={shareDialogRef}
+        aria-labelledby="basis-share-dialog-title"
+        aria-describedby="basis-share-dialog-description"
+        onClick={handleShareDialogClick}
+        onClose={() => setShareFeedback(null)}
+      >
+        <div className="share-dialog-content">
+          <p className="panel-kicker">Export current state</p>
+          <h2 id="basis-share-dialog-title">共有URLをエクスポート</h2>
+          <p className="share-dialog-description" id="basis-share-dialog-description">
+            このURLを開くと、次元、全ベクトル、順序付き基底候補、対象の見方、一次結合のターゲット、比較用基底が復元されます。
+            {activeDimension === 2
+              ? '表示範囲は教材状態全体が見えるように自動調整されます。'
+              : '3Dではカメラの向き、注視点、拡大率も復元されます。'}
+          </p>
+          <section
+            className={`share-qr-code ${shareQrCodeErrorMessage ? 'has-error' : ''}`}
+            aria-labelledby="basis-share-qr-code-title"
+            aria-busy={isShareQrCodeLoading}
+          >
+            <h3 id="basis-share-qr-code-title">共有URLのQRコード</h3>
+            <div className="share-qr-code-frame">
+              {shareQrCodeDataUrl ? (
+                <img
+                  src={shareQrCodeDataUrl}
+                  alt="現在の基底・次元Lab共有URLを表すQRコード"
+                  width="768"
+                  height="768"
+                />
+              ) : (
+                <p role={shareQrCodeErrorMessage ? 'alert' : 'status'}>
+                  {shareQrCodeErrorMessage ?? 'QRコードを生成しています。'}
+                </p>
+              )}
+            </div>
+            <p className="share-qr-code-help">
+              スマートフォンのカメラで読み取ると、同じ教材状態を開けます。
+            </p>
+          </section>
+          <label className="share-url-field">
+            <span>共有URL</span>
+            <textarea
+              ref={shareUrlFieldRef}
+              rows={5}
+              readOnly
+              value={shareUrl}
+              spellCheck={false}
+              aria-describedby="basis-share-dialog-description basis-share-dialog-feedback"
+              onFocus={(event) => event.currentTarget.select()}
+            />
+          </label>
+          <p
+            className={`share-feedback ${shareFeedback?.kind === 'error' ? 'has-error' : ''}`}
+            id="basis-share-dialog-feedback"
+            role={shareFeedback?.kind === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            {shareFeedback?.message ?? 'URLはドラッグして選択し、手動でもコピーできます。'}
+          </p>
+          <div className="share-dialog-actions">
+            <button className="copy-share-button" type="button" onClick={handleCopyShareUrl}>
+              クリップボードにコピー
+            </button>
+            <button
+              type="button"
+              disabled={!shareQrCodeDataUrl}
+              onClick={handleDownloadShareQrCode}
+            >
+              QRコードを保存
+            </button>
+            <button type="button" onClick={handleDownloadShareUrl}>
+              テキストで保存
+            </button>
+            <button type="button" onClick={handleCloseShareDialog}>閉じる</button>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 }
@@ -1445,6 +1732,24 @@ function createBasisAutoFitViewport(
       ? [{ id: '__basis_coordinate_target__', name: 'v', coordinates: scene.target }]
       : []),
   ]);
+}
+
+function createBasisTargetDrafts(scene: BasisDimensionScene): readonly string[] {
+  return scene.target
+    ? scene.target.map(formatCoordinate)
+    : Array.from({ length: scene.dimension }, () => '');
+}
+
+function downloadBlobUrl(url: string, fileName: string, revoke: boolean): void {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  if (revoke) {
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
 }
 
 function formatCoordinate(value: number): string {

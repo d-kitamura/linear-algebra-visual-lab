@@ -6,6 +6,7 @@ import {
   buildShareUrl,
   createShareQrCodeDataUrl,
   type ShareState,
+  type BasisDimensionShareState,
 } from '../../src/sharing';
 import {
   LINEAR_COMBINATION_TEACHING_SCENARIOS,
@@ -48,6 +49,18 @@ const reachableBoundaryState: ShareState = {
   },
 };
 
+const reachableBasisBoundaryState: BasisDimensionShareState = {
+  v: 1,
+  lab: 'basis-dimension',
+  dim: 3,
+  vectors: reachableBoundaryState.vectors,
+  candidateVectorIds: reachableBoundaryState.spanSelection,
+  representation: 'polynomial',
+  linearCombination: reachableBoundaryState.linearCombination,
+  comparisonBasisIds: [...reachableBoundaryState.spanSelection].reverse(),
+  camera: reachableBoundaryState.visualization.camera,
+};
+
 describe('共有URL・QRコードの運用上限', () => {
   it('代表例16件が本番URLで運用上限に収まる', () => {
     const scenarios = [
@@ -78,5 +91,11 @@ describe('共有URL・QRコードの運用上限', () => {
     const dataUrl = await createShareQrCodeDataUrl(shareUrl);
 
     expect(dataUrl).toMatch(/^data:image\/png;base64,/u);
+  });
+
+  it('基底・次元Labの8本・3D境界状態も完全URLとQRの上限に収まる', async () => {
+    const shareUrl = buildShareUrl(PRODUCTION_BASE_URL, reachableBasisBoundaryState);
+    expect(shareUrl.length).toBeLessThanOrEqual(MAX_OPERATIONAL_SHARE_URL_LENGTH);
+    expect(await createShareQrCodeDataUrl(shareUrl)).toMatch(/^data:image\/png;base64,/u);
   });
 });

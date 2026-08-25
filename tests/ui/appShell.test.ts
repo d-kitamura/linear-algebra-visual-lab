@@ -44,8 +44,9 @@ describe('共通アプリシェルとLab境界', () => {
   it('共有とResetを現在Labの操作として共通部品へ接続する', () => {
     expect(vectorLabSource).toContain('<LabActionControls');
     expect(basisLabSource).toContain('<LabActionControls');
-    expect(basisLabSource).toContain('exportDisabled');
-    expect(basisLabSource).toContain('このLabの共有URLは8.7で追加します');
+    expect(basisLabSource).toContain('exportDisabled={hasInvalidCoordinateDraft}');
+    expect(basisLabSource).toContain('onExport={handleOpenShareDialog}');
+    expect(appSource).toContain("result.state.lab === 'basis-dimension'");
     expect(actionSource).toContain('現在のLabの教材状態を操作');
     expect(actionSource).toContain('onClick={onExport}');
     expect(actionSource).toContain('onClick={onReset}');

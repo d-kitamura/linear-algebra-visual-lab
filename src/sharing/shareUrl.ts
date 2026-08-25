@@ -1,4 +1,4 @@
-import { decodeShareState, encodeShareState, type ShareState } from './shareState';
+import { decodeShareState, encodeShareState, type SharedState } from './shareState';
 
 export const SHARE_STATE_QUERY_PARAMETER = 'state';
 export const MAX_OPERATIONAL_SHARE_URL_LENGTH = 2_048;
@@ -29,10 +29,10 @@ export interface ShareUrlError {
 
 export type ShareUrlReadResult =
   | { readonly status: 'absent' }
-  | { readonly status: 'success'; readonly state: ShareState }
+  | { readonly status: 'success'; readonly state: SharedState }
   | { readonly status: 'error'; readonly error: ShareUrlError };
 
-export function buildShareUrl(baseHref: string, state: ShareState): string {
+export function buildShareUrl(baseHref: string, state: SharedState): string {
   let url: URL;
 
   try {

@@ -4,7 +4,7 @@
 
 ## 目的
 
-フェーズ3〜6の統合確認と授業準備に共通して使える2D・3Dの代表例を定義する。初版候補の全リンクは、最初の正式保証対象となる共有状態v3で生成する。2Dはベクトル、span選択、幾何表示、一次結合エクスプローラとターゲット、3Dはこれらに加えてカメラも復元する。リンクを開いた時点の状態がInitialStateとなるため、操作後にResetすると同じ例へ戻る。
+フェーズ3〜8の統合確認と授業準備に共通して使える両Labの2D・3D代表例20件を定義する。ベクトル空間Labの16件は`vector-space` v3、基底・次元Labの4件は`basis-dimension` v1で生成する。リンクを開いた時点の状態が各Lab・各次元のInitialStateとなるため、操作後にResetすると同じ例へ戻る。
 
 状態の正本は `src/teaching/twoDimensionalScenarios.ts` と `src/teaching/threeDimensionalScenarios.ts` とし、期待する数学結果と本番共有URLの往復を自動テストする。
 
@@ -112,6 +112,34 @@
 - 期待結果: `rank(A) = rank([A | v]) = 2 < 3`、不定（解が無数）。
 - 観察点: ターゲットと3本が同じ平面にあり、係数例と一般解が同じターゲットを表すことを確認する。ターゲットの矢先を平面外へ動かすと不能へ変わり、再び灰色の平面へ近づけると吸着して不定へ戻る。
 
+## 基底・次元Labの代表例
+
+### 17. 2つの基底と順序で座標を比較
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoxLCJsYWIiOiJiYXNpcy1kaW1lbnNpb24iLCJkaW0iOjIsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzEsMF19LHsiaWQiOiJhMiIsIm5hbWUiOiJhMiIsImNvb3JkaW5hdGVzIjpbMCwxXX0seyJpZCI6ImEzIiwibmFtZSI6ImEzIiwiY29vcmRpbmF0ZXMiOlsxLDFdfV0sImNhbmRpZGF0ZVZlY3RvcklkcyI6WyJhMyIsImEyIl0sInJlcHJlc2VudGF0aW9uIjoiY29vcmRpbmF0ZSIsImxpbmVhckNvbWJpbmF0aW9uIjp7InZpc2libGUiOnRydWUsInRhcmdldCI6WzMsMl19LCJjb21wYXJpc29uQmFzaXNJZHMiOlsiYTEiLCJhMiJdLCJjYW1lcmEiOm51bGx9)
+- 期待結果: `\mathcal{B}=(\bm{a}_3,\bm{a}_2)`も比較用`\mathcal{B}_0=(\bm{a}_1,\bm{a}_2)`も基底であり、同じ`\bm{v}`の座標ベクトルがそれぞれ一意に定まる。
+- 観察点: ベクトルを変えず、基底の選び方と順序だけで係数ベクトルが変わることを比較する。
+
+### 18. 一次独立でも対象空間を生成しない候補
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoxLCJsYWIiOiJiYXNpcy1kaW1lbnNpb24iLCJkaW0iOjIsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzEsMF19LHsiaWQiOiJhMiIsIm5hbWUiOiJhMiIsImNvb3JkaW5hdGVzIjpbMCwxXX1dLCJjYW5kaWRhdGVWZWN0b3JJZHMiOlsiYTEiXSwicmVwcmVzZW50YXRpb24iOiJjb29yZGluYXRlIiwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6dHJ1ZSwidGFyZ2V0IjpbMCwxXX0sImNvbXBhcmlzb25CYXNpc0lkcyI6bnVsbCwiY2FtZXJhIjpudWxsfQ)
+- 期待結果: 候補は一次独立だが`\mathbb{R}^2`を生成せず基底ではない。ターゲットは現在候補の一次結合では表現できない。
+- 観察点: 「一次独立」と「対象空間を生成する」の2条件が別であることを確認する。
+
+### 19. 対象空間を生成しても一次従属な候補
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoxLCJsYWIiOiJiYXNpcy1kaW1lbnNpb24iLCJkaW0iOjIsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzEsMF19LHsiaWQiOiJhMiIsIm5hbWUiOiJhMiIsImNvb3JkaW5hdGVzIjpbMCwxXX0seyJpZCI6ImEzIiwibmFtZSI6ImEzIiwiY29vcmRpbmF0ZXMiOlsxLDFdfV0sImNhbmRpZGF0ZVZlY3RvcklkcyI6WyJhMSIsImEyIiwiYTMiXSwicmVwcmVzZW50YXRpb24iOiJjb29yZGluYXRlIiwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6dHJ1ZSwidGFyZ2V0IjpbMywyXX0sImNvbXBhcmlzb25CYXNpc0lkcyI6bnVsbCwiY2FtZXJhIjpudWxsfQ)
+- 期待結果: 候補は`\mathbb{R}^2`を生成するが一次従属であり、一次結合係数は無数にあるため基底に関する座標とは呼ばない。
+- 観察点: 「対象空間を生成する」だけでは基底にならず、座標の一意性に一次独立性が必要であることを確認する。
+
+### 20. 2次多項式の基底と一意な係数
+
+- [本番環境で開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoxLCJsYWIiOiJiYXNpcy1kaW1lbnNpb24iLCJkaW0iOjMsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzEsMCwwXX0seyJpZCI6ImEyIiwibmFtZSI6ImEyIiwiY29vcmRpbmF0ZXMiOlswLDEsMF19LHsiaWQiOiJhMyIsIm5hbWUiOiJhMyIsImNvb3JkaW5hdGVzIjpbMCwwLDFdfSx7ImlkIjoiYTQiLCJuYW1lIjoiYTQiLCJjb29yZGluYXRlcyI6WzEsMSwxXX1dLCJjYW5kaWRhdGVWZWN0b3JJZHMiOlsiYTQiLCJhMiIsImEzIl0sInJlcHJlc2VudGF0aW9uIjoicG9seW5vbWlhbCIsImxpbmVhckNvbWJpbmF0aW9uIjp7InZpc2libGUiOnRydWUsInRhcmdldCI6WzMsMiw0XX0sImNvbXBhcmlzb25CYXNpc0lkcyI6WyJhMSIsImEyIiwiYTMiXSwiY2FtZXJhIjp7ImRpcmVjdGlvbiI6WzAuNTAzMDU1NDYsLTAuNjgwNjA0NDUsMC41MzI2NDY5Nl0sInRhcmdldCI6WzAsMCwwXSwidXAiOlswLDAsMV0sInpvb20iOjF9fQ)
+- 期待結果: `\mathbb{R}[x]_2`で現在候補と比較用基底の両方が基底であり、ターゲット`\bm{v}=g(x)`の係数が一意に定まる。
+- 観察点: 数ベクトルと同じrank・基底・座標計算が多項式の係数空間にも働き、3Dカメラも共有されることを確認する。
+
+上の4例は、基底の2条件、異なる基底と順序、座標係数の一意・非一意・表現不能、2D／3D、多項式表示を最小限の組で覆う。各URLは基底・次元Labを直接開き、Resetでこの配布時状態へ戻る。
+
 ## 多項式を係数ベクトルとして読む授業手順
 
 基底・次元Labの「数ベクトル／多項式」切替は、矢印で学んだrank・基底・座標が多項式でも同じ係数計算として働くことを比較するために使う。図は多項式の関数グラフではなく、標準基底に関する係数空間を表している。
@@ -122,7 +150,7 @@
 4. 係数入力または矢先ドラッグで多項式を変更し、span、rank、基底判定が数ベクトル表示と同じ結果へ更新されることを確認する。
 5. 「一次結合を調べる」を押し、グラフをクリックまたはタップして初めてターゲットを配置する。多項式表示では`\bm{v}=g(x)`と係数が現れ、「一次結合」タブで表現と座標を確認する。モード終了後はターゲットとタブが隠れる。
 6. 3Dへ切り替え、`\mathbb{R}[x]_2`の標準基底`(1,x,x^2)`と`b_0,b_1,b_2`軸を確認する。視点回転は3係数の関係を見る操作であり、横軸を`x`、縦軸を`f(x)`とする関数グラフではないことを再確認する。
-7. 現在次元でResetし、数ベクトル表示、初期係数、ターゲット未配置、一次結合モード終了へ戻ることを確認する。共有は8.7で追加する。
+7. 共有URLまたはQRコードを作成し、別端末で次元、係数、候補順、表示方式、ターゲット、比較用基底、3Dカメラが一致することを確認する。Resetは配布された共有時状態へ戻る。
 
 ## 共有URLを使う授業内の確認手順
 
@@ -161,7 +189,7 @@
 - `VectorValue` と次元を持つベクトル集合。
 - `analyzeVectorSet` によるrank、生成する空間の次元、一次独立・一次従属の判定。
 - `analyzeLinearCombination` による不能・唯一解・不定の分類、特解、異なる係数例、自由係数、零空間基底による一般解。
-- 共有状態v3の検証、v1・v2からの移行、Base64URL変換、URLの生成・読込。
+- Labと版で判別する共有状態、ベクトル空間Lab v1・v2からv3への移行、基底・次元Lab v1、Base64URL変換、URLの生成・読込。
 - 0〜8本の追加・削除、次元に応じた既定座標、自動命名、span選択。
 - `TeachingScenario` の状態・学習目的・期待結果という構造。
 - ターゲットを含む `LinearCombinationTeachingScenario` の状態・期待する2つのrank・解分類という構造。

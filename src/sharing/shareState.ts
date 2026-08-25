@@ -3,6 +3,7 @@ import type { VectorDimension, VectorValue } from '../domain';
 export const LEGACY_SHARE_STATE_VERSION = 1 as const;
 export const PREVIOUS_SHARE_STATE_VERSION = 2 as const;
 export const SHARE_STATE_VERSION = 3 as const;
+export const BASIS_DIMENSION_SHARE_STATE_VERSION = 1 as const;
 export const MAX_SHARE_VECTORS = 8;
 export const MAX_SHARE_VECTOR_ID_LENGTH = 32;
 export const MAX_SHARE_VECTOR_NAME_LENGTH = 40;
@@ -13,6 +14,7 @@ export const MAX_CAMERA_ZOOM = 100;
 export const MAX_ENCODED_SHARE_STATE_LENGTH = 8_192;
 
 const SHARE_LAB = 'vector-space' as const;
+const BASIS_DIMENSION_SHARE_LAB = 'basis-dimension' as const;
 const VECTOR_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 export interface SharedCameraState {
@@ -73,6 +75,23 @@ export interface ShareStateV3 {
 
 export type ShareState = ShareStateV3;
 
+export type BasisRepresentation = 'coordinate' | 'polynomial';
+
+export interface BasisDimensionShareStateV1 {
+  readonly v: typeof BASIS_DIMENSION_SHARE_STATE_VERSION;
+  readonly lab: typeof BASIS_DIMENSION_SHARE_LAB;
+  readonly dim: VectorDimension;
+  readonly vectors: readonly VectorValue[];
+  readonly candidateVectorIds: readonly string[];
+  readonly representation: BasisRepresentation;
+  readonly linearCombination: SharedLinearCombinationState;
+  readonly comparisonBasisIds: readonly string[] | null;
+  readonly camera: SharedCameraState | null;
+}
+
+export type BasisDimensionShareState = BasisDimensionShareStateV1;
+export type SharedState = ShareState | BasisDimensionShareState;
+
 export type ShareStateErrorCode =
   | 'EMPTY_ENCODED_STATE'
   | 'ENCODED_STATE_TOO_LARGE'
@@ -98,7 +117,7 @@ export class InvalidShareStateError extends Error {
 }
 
 export type ShareStateDecodeResult =
-  | { readonly ok: true; readonly state: ShareState }
+  | { readonly ok: true; readonly state: SharedState }
   | { readonly ok: false; readonly error: InvalidShareStateError };
 
 interface ValidatedCommonFields {
@@ -174,6 +193,73 @@ export function validateShareState(input: unknown): ShareState {
     `共有状態のバージョン ${String(state.v)} には対応していません。`,
     '$.v',
   );
+}
+
+export function validateSharedState(input: unknown): SharedState {
+  const state = requireRecord(input, '$');
+  return state.lab === BASIS_DIMENSION_SHARE_LAB
+    ? validateBasisDimensionShareState(state)
+    : validateShareState(state);
+}
+
+export function validateBasisDimensionShareState(input: unknown): BasisDimensionShareState {
+  const state = requireRecord(input, '$');
+  requireExactKeys(state, [
+    'v',
+    'lab',
+    'dim',
+    'vectors',
+    'candidateVectorIds',
+    'representation',
+    'linearCombination',
+    'comparisonBasisIds',
+    'camera',
+  ], '$');
+
+  if (state.v !== BASIS_DIMENSION_SHARE_STATE_VERSION) {
+    throw new InvalidShareStateError(
+      'UNSUPPORTED_VERSION',
+      `基底・次元Labの共有状態バージョン ${String(state.v)} には対応していません。`,
+      '$.v',
+    );
+  }
+  if (state.lab !== BASIS_DIMENSION_SHARE_LAB) {
+    throw invalidState('共有状態の Lab が正しくありません。', '$.lab');
+  }
+  if (state.representation !== 'coordinate' && state.representation !== 'polynomial') {
+    throw invalidState('representation は coordinate または polynomial である必要があります。', '$.representation');
+  }
+
+  const proxy = validateShareState({
+    v: SHARE_STATE_VERSION,
+    lab: SHARE_LAB,
+    dim: state.dim,
+    vectors: state.vectors,
+    spanSelection: state.candidateVectorIds,
+    visualization: { showSpan: true, camera: state.camera },
+    linearCombination: state.linearCombination,
+  });
+
+  let comparisonBasisIds: readonly string[] | null = null;
+  if (state.comparisonBasisIds !== null) {
+    const comparisonProxy = validateShareState({
+      ...proxy,
+      spanSelection: state.comparisonBasisIds,
+    });
+    comparisonBasisIds = comparisonProxy.spanSelection;
+  }
+
+  return {
+    v: BASIS_DIMENSION_SHARE_STATE_VERSION,
+    lab: BASIS_DIMENSION_SHARE_LAB,
+    dim: proxy.dim,
+    vectors: proxy.vectors,
+    candidateVectorIds: proxy.spanSelection,
+    representation: state.representation,
+    linearCombination: proxy.linearCombination,
+    comparisonBasisIds,
+    camera: proxy.visualization.camera,
+  };
 }
 
 function validateCommonFields(
@@ -374,8 +460,8 @@ function normalizeNegativeZero(value: number): number {
   return Object.is(value, -0) ? 0 : value;
 }
 
-export function encodeShareState(state: ShareState): string {
-  const validatedState = validateShareState(state);
+export function encodeShareState(state: SharedState): string {
+  const validatedState = validateSharedState(state);
   const json = JSON.stringify(validatedState);
   const encoded = bytesToBase64Url(new TextEncoder().encode(json));
 
@@ -409,7 +495,7 @@ export function decodeShareState(encoded: string): ShareStateDecodeResult {
     const json = decodeUtf8(bytes);
     const parsed = parseJson(json);
 
-    return { ok: true, state: validateShareState(parsed) };
+    return { ok: true, state: validateSharedState(parsed) };
   } catch (error) {
     if (error instanceof InvalidShareStateError) {
       return { ok: false, error };

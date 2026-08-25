@@ -6,7 +6,9 @@ export {
   THREE_DIMENSIONAL_LINEAR_COMBINATION_SCENARIOS,
   THREE_DIMENSIONAL_TEACHING_SCENARIOS,
 } from './threeDimensionalScenarios';
+export { BASIS_DIMENSION_TEACHING_SCENARIOS } from './basisDimensionScenarios';
 export type {
+  BasisDimensionTeachingScenario,
   LinearCombinationTeachingScenario,
   TeachingScenario,
 } from './scenarioTypes';

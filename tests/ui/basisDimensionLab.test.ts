@@ -60,8 +60,10 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain('onVectorCoordinatesCommit={commitVectorCoordinates}');
   });
 
-  it('共有未対応を明示し、狭い画面では1列にする', () => {
-    expect(source).toContain('このLabの共有URLは8.7で追加します');
+  it('共有URL・QR・Resetを提供し、狭い画面では1列にする', () => {
+    expect(source).toContain('createBasisDimensionShareState');
+    expect(source).toContain('createShareQrCodeDataUrl');
+    expect(source).toContain('共有URLをエクスポート');
     expect(css).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.basis-dimension-workspace\s*\{[^}]*grid-template-columns:\s*1fr;/su);
     expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*?\.basis-vector-input-grid\s*\{[^}]*grid-template-columns:\s*1fr;/su);
   });
@@ -74,7 +76,7 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain("{ id: 'combination', label: '一次結合'");
     expect(source).toContain('role="tabpanel"');
     expect(source).toContain('hidden={!active}');
-    expect(source).toContain("[activeDimension]: 'vectors'");
+    expect(source).toContain("initialState.linearCombinationVisible ? 'combination' : 'vectors'");
   });
 
   it('8.5で同じターゲットを2D・3Dの基底座標解析へ接続する', () => {
@@ -122,19 +124,19 @@ describe('8.4 基底・次元エクスプローラ', () => {
   });
 
   it('数ベクトルと多項式を同じ係数・基底解析で切り替える', () => {
-    expect(source).toContain("type BasisRepresentation = 'coordinate' | 'polynomial'");
+    expect(source).toContain('type BasisRepresentation,');
     expect(source).toContain('aria-label="対象の見方"');
     expect(source).toContain('>数ベクトル</button>');
     expect(source).toContain('>多項式</button>');
     expect(source).toContain('<PolynomialCorrespondenceCard');
     expect(source).toContain('標準基底：');
     expect(source).toContain('係数は定数項から昇べき順です。');
-    expect(source).toContain("setRepresentations((current) => ({ ...current, [activeDimension]: 'coordinate' }))");
+    expect(source).toContain('[activeDimension]: initialState.representation');
   });
 
   it('ターゲットを一次結合モードだけで配置・表示する', () => {
     expect(source).toContain('Record<VectorDimension, boolean>');
-    expect(source).toContain('>({ 2: false, 3: false });');
+    expect(source).toContain('initial2DState.linearCombinationVisible');
     expect(source).toContain("tab.id !== 'combination' || linearCombinationVisible");
     expect(source).toMatch(/nextVisible\s*\? 'combination'/u);
     expect(source).toContain("current[activeDimension] === 'combination'");

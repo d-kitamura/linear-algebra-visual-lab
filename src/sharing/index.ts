@@ -1,6 +1,7 @@
 export {
   LEGACY_SHARE_STATE_VERSION,
   PREVIOUS_SHARE_STATE_VERSION,
+  BASIS_DIMENSION_SHARE_STATE_VERSION,
   DEFAULT_3D_CAMERA_STATE,
   MAX_ABSOLUTE_COORDINATE,
   MAX_ABSOLUTE_CAMERA_TARGET,
@@ -15,6 +16,8 @@ export {
   decodeShareState,
   encodeShareState,
   validateShareState,
+  validateSharedState,
+  validateBasisDimensionShareState,
 } from './shareState';
 
 export type {
@@ -24,6 +27,10 @@ export type {
   ShareStateV1,
   ShareStateV2,
   ShareStateV3,
+  SharedState,
+  BasisDimensionShareState,
+  BasisDimensionShareStateV1,
+  BasisRepresentation,
   SharedCameraState,
   LegacySharedVisualizationState,
   SharedLinearCombinationState,

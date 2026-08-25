@@ -36,6 +36,15 @@ export function createAppInitialization(href: string): AppInitialization {
     };
   }
 
+  if (result.state.lab !== 'vector-space') {
+    return {
+      initialStates: createInitialStates(),
+      activeDimension: 2,
+      source: 'default',
+      errorMessage: null,
+    };
+  }
+
   const initialStates = createInitialStates(result.state);
 
   return {

@@ -4,6 +4,7 @@ import { analyzeLinearCombination, analyzeVectorSet } from '../../src/domain';
 import { buildShareUrl, readShareStateFromUrl } from '../../src/sharing';
 import {
   LINEAR_COMBINATION_TEACHING_SCENARIOS,
+  BASIS_DIMENSION_TEACHING_SCENARIOS,
   THREE_DIMENSIONAL_LINEAR_COMBINATION_SCENARIOS,
   THREE_DIMENSIONAL_TEACHING_SCENARIOS,
   TWO_DIMENSIONAL_TEACHING_SCENARIOS,
@@ -18,6 +19,7 @@ describe('teaching scenarios', () => {
       ...LINEAR_COMBINATION_TEACHING_SCENARIOS,
       ...THREE_DIMENSIONAL_TEACHING_SCENARIOS,
       ...THREE_DIMENSIONAL_LINEAR_COMBINATION_SCENARIOS,
+      ...BASIS_DIMENSION_TEACHING_SCENARIOS,
     ].map((scenario) => scenario.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
@@ -33,6 +35,7 @@ describe('teaching scenarios', () => {
       ...LINEAR_COMBINATION_TEACHING_SCENARIOS,
       ...THREE_DIMENSIONAL_TEACHING_SCENARIOS,
       ...THREE_DIMENSIONAL_LINEAR_COMBINATION_SCENARIOS,
+      ...BASIS_DIMENSION_TEACHING_SCENARIOS,
     ];
     const documentedUrls = [...guide.matchAll(/\[本番環境で開く\]\((https:\/\/[^)]+)\)/gu)]
       .map((match) => match[1]);
