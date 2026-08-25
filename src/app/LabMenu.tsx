@@ -11,7 +11,7 @@ const labs = [
   {
     id: 'basis-dimension',
     name: '基底・次元Lab',
-    description: '基底の2条件と次元を2D／3Dで調べる',
+    description: '基底の2条件・次元・座標を2D／3Dで調べる',
   },
 ] as const;
 

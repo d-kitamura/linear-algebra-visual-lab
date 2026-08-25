@@ -64,4 +64,36 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(css).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.basis-dimension-workspace\s*\{[^}]*grid-template-columns:\s*1fr;/su);
     expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*?\.basis-vector-input-grid\s*\{[^}]*grid-template-columns:\s*1fr;/su);
   });
+
+  it('8.5で同じターゲットを2D・3Dの基底座標解析へ接続する', () => {
+    expect(source).toContain('analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target)');
+    expect(source).toContain('linearCombinationVisible');
+    expect(source).toContain('target={scene.target as readonly [number, number]}');
+    expect(source).toContain('linearCombinationTarget={scene.target as readonly [number, number, number]}');
+    expect(source).toContain('onLinearCombinationTargetPlacement={commitTarget}');
+    expect(source).toContain('ターゲットvの第${index + 1}成分');
+  });
+
+  it('基底・無数・表現不能・基底でない一意表現を別々に説明する', () => {
+    expect(source).toContain("case 'coordinate-vector'");
+    expect(source).toContain("case 'not-representable'");
+    expect(source).toContain("case 'non-unique'");
+    expect(source).toContain("case 'not-a-basis'");
+    expect(source).toContain('座標ベクトルが唯一に定まります');
+    expect(source).toContain('これを基底に関する座標とは呼びません');
+  });
+
+  it('現在の基底を記録して同じvの座標を別の基底と比較する', () => {
+    expect(source).toContain('現在の基底を比較用に記録');
+    expect(source).toContain('setComparisonBasisIds');
+    expect(source).toContain('<MathCoordinateName comparison />');
+    expect(source).toContain('基底の選び方と順序によって座標ベクトルは変わります');
+    expect(css).toMatch(/\.basis-coordinate-comparison\s*\{/su);
+  });
+
+  it('列ベクトル表示と狭い画面のターゲット入力を枠内に保つ', () => {
+    expect(source).toContain('<MathColumnVector values={coordinateValues} />');
+    expect(css).toMatch(/\.basis-column-vector\s*\{[^}]*display:\s*inline-grid;/su);
+    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*?\.basis-target-editor,[\s\S]*?grid-template-columns:\s*1fr;/su);
+  });
 });

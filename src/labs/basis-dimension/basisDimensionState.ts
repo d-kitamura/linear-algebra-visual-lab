@@ -9,6 +9,7 @@ export interface BasisDimensionScene {
   readonly dimension: VectorDimension;
   readonly vectors: readonly VectorValue[];
   readonly candidateVectorIds: readonly string[];
+  readonly target: readonly number[];
 }
 
 export interface BasisPlaneVectorDragResult {
@@ -26,6 +27,7 @@ export const DEFAULT_BASIS_SCENES: Readonly<Record<VectorDimension, BasisDimensi
       { id: 'a3', name: 'a3', coordinates: [3, 3] },
     ],
     candidateVectorIds: ['a1', 'a2'],
+    target: [3, 0],
   },
   3: {
     dimension: 3,
@@ -36,6 +38,7 @@ export const DEFAULT_BASIS_SCENES: Readonly<Record<VectorDimension, BasisDimensi
       { id: 'a4', name: 'a4', coordinates: [1, 1, 1] },
     ],
     candidateVectorIds: ['a1', 'a2', 'a3'],
+    target: [1, 2, 3],
   },
 };
 
@@ -48,6 +51,7 @@ export function createDefaultBasisScene(dimension: VectorDimension): BasisDimens
       coordinates: [...vector.coordinates],
     })),
     candidateVectorIds: [...source.candidateVectorIds],
+    target: [...source.target],
   };
 }
 
@@ -87,6 +91,16 @@ export function updateBasisVectorCoordinates(
       ? { ...vector, coordinates: [...coordinates] }
       : vector),
   };
+}
+
+export function updateBasisTarget(
+  scene: BasisDimensionScene,
+  target: readonly number[],
+): BasisDimensionScene {
+  if (target.length !== scene.dimension || target.some((coordinate) => !Number.isFinite(coordinate))) {
+    throw new RangeError('座標ターゲットは教材状態と同じ次元の有限値である必要があります。');
+  }
+  return { ...scene, target: target.map(clampDraggedCoordinate) };
 }
 
 export function updateBasisPlaneVectorDrag(

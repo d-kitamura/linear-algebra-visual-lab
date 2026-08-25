@@ -35,3 +35,10 @@ export type {
   BasisCandidateValidationCode,
   BasisFailureReason,
 } from './basisDimension';
+
+export { analyzeBasisCoordinates } from './basisCoordinates';
+
+export type {
+  BasisCoordinateAnalysis,
+  BasisCoordinateStatus,
+} from './basisCoordinates';

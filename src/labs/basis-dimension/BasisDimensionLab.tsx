@@ -7,8 +7,10 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  analyzeBasisCoordinates,
   analyzeBasisCandidate,
   type BasisCandidateAnalysis,
+  type BasisCoordinateAnalysis,
   type VectorDimension,
   type VectorValue,
 } from '../../domain';
@@ -26,6 +28,7 @@ import {
   createDefaultBasisScene,
   moveBasisCandidate,
   toggleBasisCandidate,
+  updateBasisTarget,
   updateBasisVectorCoordinates,
   updateBasisPlaneVectorDrag,
   type BasisDimensionScene,
@@ -68,6 +71,13 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     2: createCoordinateDrafts(createDefaultBasisScene(2).vectors),
     3: createCoordinateDrafts(createDefaultBasisScene(3).vectors),
   });
+  const [targetDrafts, setTargetDrafts] = useState<Record<VectorDimension, readonly string[]>>({
+    2: createDefaultBasisScene(2).target.map(String),
+    3: createDefaultBasisScene(3).target.map(String),
+  });
+  const [comparisonBasisIds, setComparisonBasisIds] = useState<
+    Record<VectorDimension, readonly string[] | null>
+  >({ 2: null, 3: null });
   const [planeViewport, setPlaneViewport] = useState<PlaneViewport>(DEFAULT_PLANE_VIEWPORT);
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
   const [camera, setCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
@@ -81,6 +91,14 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     () => resolveVectors(scene.vectors, scene.candidateVectorIds),
     [scene],
   );
+  const coordinateAnalysis = useMemo(
+    () => analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target),
+    [scene],
+  );
+  const comparisonAnalysis = useMemo(() => {
+    const ids = comparisonBasisIds[activeDimension];
+    return ids ? analyzeBasisCoordinates(scene, ids, scene.target) : null;
+  }, [activeDimension, comparisonBasisIds, scene]);
 
   function updateScene(
     dimension: VectorDimension,
@@ -182,6 +200,44 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     }));
   }
 
+  function commitTarget(target: readonly number[]): void {
+    updateScene(activeDimension, (current) => updateBasisTarget(current, target));
+    setTargetDrafts((current) => ({
+      ...current,
+      [activeDimension]: target.map(formatCoordinate),
+    }));
+  }
+
+  function handleTargetCoordinateChange(coordinateIndex: number, value: string): void {
+    const nextDrafts = [...targetDrafts[activeDimension]];
+    nextDrafts[coordinateIndex] = value;
+    setTargetDrafts((current) => ({ ...current, [activeDimension]: nextDrafts }));
+    const parsed = nextDrafts.map(parseCoordinateInput);
+    if (parsed.every((result) => result.ok)) {
+      updateScene(activeDimension, (current) => updateBasisTarget(
+        current,
+        parsed.map((result) => result.ok ? result.value : 0),
+      ));
+    }
+  }
+
+  function handleTargetCoordinateBlur(coordinateIndex: number): void {
+    const draft = targetDrafts[activeDimension][coordinateIndex] ?? '';
+    if (parseCoordinateInput(draft).ok) {
+      return;
+    }
+    const nextDrafts = [...targetDrafts[activeDimension]];
+    nextDrafts[coordinateIndex] = formatCoordinate(scene.target[coordinateIndex]);
+    setTargetDrafts((current) => ({ ...current, [activeDimension]: nextDrafts }));
+  }
+
+  function saveComparisonBasis(): void {
+    setComparisonBasisIds((current) => ({
+      ...current,
+      [activeDimension]: [...scene.candidateVectorIds],
+    }));
+  }
+
   function handleReset(): void {
     const resetScene = createDefaultBasisScene(activeDimension);
     setScenes((current) => ({ ...current, [activeDimension]: resetScene }));
@@ -189,8 +245,13 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
       ...current,
       [activeDimension]: createCoordinateDrafts(resetScene.vectors),
     }));
+    setTargetDrafts((current) => ({
+      ...current,
+      [activeDimension]: resetScene.target.map(String),
+    }));
+    setComparisonBasisIds((current) => ({ ...current, [activeDimension]: null }));
     if (activeDimension === 2) {
-      setPlaneViewport(createAutoFitViewport(resetScene.vectors));
+      setPlaneViewport(createBasisAutoFitViewport(resetScene));
       setParallelSnapTargetId(null);
     } else {
       setCamera(DEFAULT_3D_CAMERA_STATE);
@@ -223,18 +284,18 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               </button>
             ))}
           </div>
-          <p aria-live="polite">{activeDimension}次元の基底候補を調べています。</p>
+          <p aria-live="polite">{activeDimension}次元の基底候補と座標を調べています。</p>
         </nav>
 
         <section className="lab-intro" aria-labelledby="basis-dimension-title">
           <div>
             <p className="eyebrow">基底・次元 / {activeDimension}D</p>
-            <h1 id="basis-dimension-title">基底を選んで、2つの条件を確かめる。</h1>
+            <h1 id="basis-dimension-title">基底を選んで、座標を読み解く。</h1>
           </div>
           <div className="lab-intro-side">
             <p className="lab-intro-copy">
               集合 <MathSetName /> のベクトルから順序付きの基底候補 <MathBasisName /> を選びます。
-              「一次独立」と「対象空間を生成する」を分けて確かめ、次元と<span className="basis-math">rank</span>を結び付けます。
+              2つの基底条件を確かめ、ターゲット <MathVectorName name="v" /> の座標が一意に定まる理由と、基底を変えたときの違いを比べます。
             </p>
             <LabActionControls
               exportDisabled
@@ -266,7 +327,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   <button
                     className="basis-fit-button"
                     type="button"
-                    onClick={() => setPlaneViewport(createAutoFitViewport(scene.vectors))}
+                    onClick={() => setPlaneViewport(createBasisAutoFitViewport(scene))}
                   >
                     全体を表示
                   </button>
@@ -284,9 +345,19 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   spanVectors={candidateVectors}
                   spanDimension={analysis.candidateRank}
                   showSpan
+                  linearCombinationVisible
+                  target={scene.target as readonly [number, number]}
+                  linearCombinationCoefficients={
+                    coordinateAnalysis.status === 'coordinate-vector'
+                    && coordinateAnalysis.coordinateVector?.length === 2
+                      ? coordinateAnalysis.coordinateVector as readonly [number, number]
+                      : null
+                  }
+                  onTargetPlacement={commitTarget}
+                  onTargetChange={commitTarget}
                 />
                 <p className="viewport-help">
-                  灰色は基底候補 <MathBasisName /> が生成する空間です。矢先のドラッグまたは成分入力で判定が更新されます。
+                  灰色は基底候補 <MathBasisName /> が生成する空間です。通常ベクトルとターゲット <MathVectorName name="v" /> の矢先をドラッグできます。
                 </p>
               </section>
             ) : (
@@ -299,18 +370,22 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                   spanVectors={candidateVectors}
                   spanRank={analysis.candidateRank}
                   showSpan
-                  linearCombinationVisible={false}
-                  linearCombinationTarget={null}
-                  linearCombinationCoefficients={null}
+                  linearCombinationVisible
+                  linearCombinationTarget={scene.target as readonly [number, number, number]}
+                  linearCombinationCoefficients={
+                    coordinateAnalysis.status === 'coordinate-vector'
+                      ? coordinateAnalysis.coordinateVector
+                      : null
+                  }
                   active={active && activeDimension === 3}
                   resetKey={spaceResetKey}
                   camera={camera}
                   onCameraChange={setCamera}
                   onVectorCoordinatesCommit={commitVectorCoordinates}
-                  onLinearCombinationTargetPlacement={() => undefined}
+                  onLinearCombinationTargetPlacement={commitTarget}
                   onLinearCombinationVisibility={() => undefined}
-                  assistiveDescription="ベクトルの座標、候補の一次独立性、生成条件、次元とrankは、この後の数値入力と判定カードでも確認できます。3D表示を利用できない場合も、候補選択、数値入力、判定、Resetは利用できます。"
-                  unavailableFallbackDescription="候補選択、数値入力、判定カード、Resetはそのまま利用できます。"
+                  assistiveDescription="ベクトルの座標、候補の一次独立性、生成条件、ターゲットの座標ベクトルは、この後の数値入力と判定カードでも確認できます。3D表示を利用できない場合も、候補選択、数値入力、座標判定、Resetは利用できます。"
+                  unavailableFallbackDescription="候補選択、数値入力、基底と座標の判定カード、Resetはそのまま利用できます。"
                 />
               </Suspense>
             )}
@@ -323,7 +398,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
             />
           </div>
 
-          <aside className="basis-analysis-column" aria-label="基底候補の選択と判定">
+          <aside className="basis-analysis-column" aria-label="基底候補の選択、判定、座標の比較">
             <CandidateSelector
               vectors={scene.vectors}
               candidateVectorIds={scene.candidateVectorIds}
@@ -331,6 +406,16 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               onMove={handleCandidateMove}
             />
             <BasisAnalysisCard scene={scene} analysis={analysis} />
+            <CoordinateExplorerCard
+              scene={scene}
+              analysis={coordinateAnalysis}
+              targetDrafts={targetDrafts[activeDimension]}
+              comparisonBasisIds={comparisonBasisIds[activeDimension]}
+              comparisonAnalysis={comparisonAnalysis}
+              onTargetCoordinateChange={handleTargetCoordinateChange}
+              onTargetCoordinateBlur={handleTargetCoordinateBlur}
+              onSaveComparisonBasis={saveComparisonBasis}
+            />
           </aside>
         </div>
       </main>
@@ -510,6 +595,182 @@ function BasisAnalysisCard({
   );
 }
 
+function CoordinateExplorerCard({
+  scene,
+  analysis,
+  targetDrafts,
+  comparisonBasisIds,
+  comparisonAnalysis,
+  onTargetCoordinateChange,
+  onTargetCoordinateBlur,
+  onSaveComparisonBasis,
+}: {
+  readonly scene: BasisDimensionScene;
+  readonly analysis: BasisCoordinateAnalysis;
+  readonly targetDrafts: readonly string[];
+  readonly comparisonBasisIds: readonly string[] | null;
+  readonly comparisonAnalysis: BasisCoordinateAnalysis | null;
+  readonly onTargetCoordinateChange: (index: number, value: string) => void;
+  readonly onTargetCoordinateBlur: (index: number) => void;
+  readonly onSaveComparisonBasis: () => void;
+}) {
+  const coordinateValues = analysis.coordinateVector?.map(formatCoordinate) ?? [];
+  const particularValues = analysis.combinationAnalysis.particularSolution
+    ?.map(formatCoordinate) ?? [];
+  const canSaveComparison = analysis.status === 'coordinate-vector';
+
+  return (
+    <section
+      className={`basis-coordinate-card is-${analysis.status}`}
+      aria-labelledby="basis-coordinate-title"
+    >
+      <p className="panel-kicker">Coordinates</p>
+      <h2 id="basis-coordinate-title">基底に関する座標</h2>
+      <p className="basis-coordinate-intro">
+        同じターゲット <MathVectorName name="v" /> でも、基底の選び方と順序によって座標ベクトルは変わります。
+      </p>
+
+      <div className="basis-target-editor">
+        <div>
+          <strong>ターゲット</strong>
+          <small>グラフ上の矢先ドラッグまたは成分入力で変更できます。</small>
+        </div>
+        <span className="basis-target-equation">
+          <MathVectorName name="v" /><span aria-hidden="true"> = </span>
+          <span className="basis-coordinate-inputs" aria-label="ターゲットvの成分">
+            {scene.target.map((coordinate, index) => {
+              const draft = targetDrafts[index] ?? formatCoordinate(coordinate);
+              const valid = parseCoordinateInput(draft).ok;
+              return (
+                <input
+                  key={index}
+                  value={draft}
+                  inputMode="decimal"
+                  aria-label={`ターゲットvの第${index + 1}成分`}
+                  aria-invalid={!valid}
+                  onChange={(event) => onTargetCoordinateChange(index, event.target.value)}
+                  onBlur={() => onTargetCoordinateBlur(index)}
+                />
+              );
+            })}
+          </span>
+        </span>
+      </div>
+
+      <div className="basis-coordinate-current" aria-live="polite">
+        <p className="basis-coordinate-basis-line">
+          <strong>現在の候補：</strong>
+          <MathBasisName /> = <VectorTuple ids={scene.candidateVectorIds} vectors={scene.vectors} />
+        </p>
+        <CoordinateResult
+          scene={scene}
+          analysis={analysis}
+          coordinateValues={coordinateValues}
+          particularValues={particularValues}
+        />
+      </div>
+
+      <div className="basis-coordinate-comparison">
+        <div className="basis-comparison-heading">
+          <div>
+            <strong>別の基底と比較</strong>
+            <small>現在の基底を記録してから、候補の選択または順序を変えてください。</small>
+          </div>
+          <button
+            type="button"
+            disabled={!canSaveComparison}
+            onClick={onSaveComparisonBasis}
+          >
+            現在の基底を比較用に記録
+          </button>
+        </div>
+        {comparisonBasisIds && comparisonAnalysis ? (
+          <div className="basis-coordinate-saved">
+            <p>
+              <MathBasisName comparison /> = <VectorTuple ids={comparisonBasisIds} vectors={scene.vectors} />
+            </p>
+            {comparisonAnalysis.status === 'coordinate-vector' ? (
+              <p className="basis-coordinate-formula">
+                <MathCoordinateName comparison /> ={' '}
+                <MathColumnVector values={comparisonAnalysis.coordinateVector?.map(formatCoordinate) ?? []} />
+              </p>
+            ) : (
+              <p className="basis-coordinate-warning">
+                記録した組は現在のベクトル成分では基底でないため、比較用の座標を定義できません。
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="basis-coordinate-empty">比較用の基底はまだ記録されていません。</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function CoordinateResult({
+  scene,
+  analysis,
+  coordinateValues,
+  particularValues,
+}: {
+  readonly scene: BasisDimensionScene;
+  readonly analysis: BasisCoordinateAnalysis;
+  readonly coordinateValues: readonly string[];
+  readonly particularValues: readonly string[];
+}) {
+  switch (analysis.status) {
+    case 'coordinate-vector':
+      return (
+        <div className="basis-coordinate-success">
+          <strong>座標ベクトルが唯一に定まります</strong>
+          <p className="basis-coordinate-formula">
+            <MathCoordinateName /> = <MathColumnVector values={coordinateValues} />
+          </p>
+          <p className="basis-coordinate-formula is-expansion">
+            <MathVectorName name="v" /> ={' '}
+            <VectorTuple ids={scene.candidateVectorIds} vectors={scene.vectors} />
+            <MathCoordinateName />
+          </p>
+          <small>候補が基底なので、一次結合係数をこの基底に関する座標と呼べます。</small>
+        </div>
+      );
+    case 'not-representable':
+      return (
+        <div className="basis-coordinate-warning">
+          <strong>この組の一次結合ではターゲットを表現できません</strong>
+          <p><MathVectorName name="v" /> は現在の候補が生成する空間に含まれません。</p>
+          <small>表現係数が存在しないため、座標ベクトルも定義できません。</small>
+        </div>
+      );
+    case 'non-unique':
+      return (
+        <div className="basis-coordinate-warning">
+          <strong>一次結合係数が無数にあります</strong>
+          <p>係数の例：</p>
+          <div className="basis-coordinate-examples">
+            {analysis.combinationAnalysis.exampleSolutions.map((values, index) => (
+              <span key={index}>
+                例{index + 1}：<MathColumnVector values={values.map(formatCoordinate)} />
+              </span>
+            ))}
+          </div>
+          <small>候補が一次従属なので係数が一意でなく、これを基底に関する座標とは呼びません。</small>
+        </div>
+      );
+    case 'not-a-basis':
+      return (
+        <div className="basis-coordinate-warning">
+          <strong>このターゲットには一意な係数がありますが、座標とは呼べません</strong>
+          <p className="basis-coordinate-formula">
+            係数 = <MathColumnVector values={particularValues} />
+          </p>
+          <small>現在の候補は対象空間の基底ではないため、他のベクトルには同じ表現規則を使えません。</small>
+        </div>
+      );
+  }
+}
+
 function ConditionResult({ success, title, detail }: {
   readonly success: boolean;
   readonly title: ReactNode;
@@ -546,8 +807,12 @@ function MathVectorName({ name }: { readonly name: string }) {
   );
 }
 
-function MathBasisName() {
-  return <span className="basis-math basis-script-symbol">ℬ</span>;
+function MathBasisName({ comparison = false }: { readonly comparison?: boolean }) {
+  return (
+    <span className="basis-math basis-script-symbol">
+      ℬ{comparison ? <sub className="basis-comparison-subscript">0</sub> : null}
+    </span>
+  );
 }
 
 function MathSetName() {
@@ -623,6 +888,28 @@ function MathTransposedRowVector({ values }: { readonly values: readonly string[
   );
 }
 
+function MathCoordinateName({ comparison = false }: { readonly comparison?: boolean }) {
+  return (
+    <span className="basis-coordinate-name" aria-label={`vの基底${comparison ? 'B0' : 'B'}に関する座標`}>
+      [<MathVectorName name="v" />]<sub><MathBasisName comparison={comparison} /></sub>
+    </span>
+  );
+}
+
+function MathColumnVector({ values }: { readonly values: readonly string[] }) {
+  return (
+    <span className="basis-column-vector" aria-label={`列ベクトル ${values.join('、')}`}>
+      <span aria-hidden="true" className="basis-column-vector-left" />
+      <span className="basis-column-vector-values" aria-hidden="true">
+        {values.length === 0 ? <span> </span> : values.map((value, index) => (
+          <span key={index}>{value}</span>
+        ))}
+      </span>
+      <span aria-hidden="true" className="basis-column-vector-right" />
+    </span>
+  );
+}
+
 function resolveVectors(
   vectors: readonly VectorValue[],
   ids: readonly string[],
@@ -632,6 +919,13 @@ function resolveVectors(
     const vector = byId.get(id);
     return vector ? [vector] : [];
   });
+}
+
+function createBasisAutoFitViewport(scene: BasisDimensionScene): PlaneViewport {
+  return createAutoFitViewport([
+    ...scene.vectors,
+    { id: '__basis_coordinate_target__', name: 'v', coordinates: scene.target },
+  ]);
 }
 
 function formatCoordinate(value: number): string {

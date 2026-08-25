@@ -6,6 +6,7 @@ import {
   moveBasisCandidate,
   toggleBasisCandidate,
   updateBasisPlaneVectorDrag,
+  updateBasisTarget,
   updateBasisVectorCoordinates,
 } from '../../src/labs/basis-dimension/basisDimensionState';
 
@@ -17,8 +18,17 @@ describe('基底・次元Labの画面状態', () => {
 
     expect(first.candidateVectorIds).toEqual(['a1', 'a2']);
     expect(space.candidateVectorIds).toEqual(['a1', 'a2', 'a3']);
+    expect(first.target).toEqual([3, 0]);
+    expect(space.target).toEqual([1, 2, 3]);
     expect(first).not.toBe(second);
     expect(first.vectors).not.toBe(second.vectors);
+  });
+
+  it('座標ターゲットを次元と安全上限を保って更新する', () => {
+    const scene = createDefaultBasisScene(2);
+    expect(updateBasisTarget(scene, [4, -2]).target).toEqual([4, -2]);
+    expect(updateBasisTarget(scene, [2_000_000, 0]).target).toEqual([1_000_000, 0]);
+    expect(() => updateBasisTarget(scene, [1, 2, 3])).toThrow(RangeError);
   });
 
   it('チェックした順序で候補へ追加し、再選択で除外する', () => {

@@ -2921,7 +2921,8 @@
 
 .basis-source-card,
 .basis-candidate-card,
-.basis-result-card {
+.basis-result-card,
+.basis-coordinate-card {
   min-width: 0;
   padding: clamp(20px, 3vw, 28px);
   border: 1px solid var(--line);
@@ -2932,7 +2933,8 @@
 
 .basis-source-card h2,
 .basis-candidate-card h2,
-.basis-result-card h2 {
+.basis-result-card h2,
+.basis-coordinate-card h2 {
   margin: 0;
   font-family: var(--display-font);
   font-size: clamp(1.25rem, 2.4vw, 1.75rem);
@@ -3240,6 +3242,236 @@
   border-top: 1px solid var(--line);
 }
 
+.basis-coordinate-card {
+  border-color: color-mix(in srgb, #2f6690 34%, var(--line));
+  background: color-mix(in srgb, #eef5f8 52%, var(--paper));
+}
+
+.basis-coordinate-intro {
+  margin: 10px 0 16px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.65;
+}
+
+.basis-target-editor {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(118px, 0.7fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fffdf8;
+}
+
+.basis-target-editor strong,
+.basis-target-editor small {
+  display: block;
+}
+
+.basis-target-editor strong {
+  font-size: 0.78rem;
+}
+
+.basis-target-editor small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.45;
+}
+
+.basis-target-equation {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(68px, 1fr);
+  align-items: center;
+  gap: 7px;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+
+.basis-coordinate-current,
+.basis-coordinate-comparison {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, #2f6690 20%, var(--line));
+  border-radius: 13px;
+  background: color-mix(in srgb, #fffdf8 92%, transparent);
+}
+
+.basis-coordinate-basis-line,
+.basis-coordinate-saved p,
+.basis-coordinate-formula {
+  margin: 0;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  line-height: 1.75;
+}
+
+.basis-coordinate-basis-line strong {
+  margin-right: 0.3em;
+  font-family: var(--body-font);
+  font-size: 0.74rem;
+}
+
+.basis-coordinate-success,
+.basis-coordinate-warning {
+  margin-top: 11px;
+  padding: 12px;
+  border-radius: 11px;
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.basis-coordinate-success {
+  color: #1d5d55;
+  background: color-mix(in srgb, #dff1e9 72%, #fffdf8);
+}
+
+.basis-coordinate-warning {
+  color: #7e382f;
+  background: color-mix(in srgb, #fff0ec 76%, #fffdf8);
+}
+
+.basis-coordinate-success > strong,
+.basis-coordinate-warning > strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.8rem;
+}
+
+.basis-coordinate-success small,
+.basis-coordinate-warning small {
+  display: block;
+  margin-top: 7px;
+  color: color-mix(in srgb, currentColor 72%, var(--muted));
+  font-size: 0.68rem;
+}
+
+.basis-coordinate-formula {
+  overflow-wrap: anywhere;
+  color: #244e70;
+  font-size: 1rem;
+}
+
+.basis-coordinate-formula.is-expansion {
+  margin-top: 5px;
+  font-size: 0.88rem;
+}
+
+.basis-coordinate-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+
+.basis-coordinate-examples > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.basis-comparison-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.basis-comparison-heading strong,
+.basis-comparison-heading small {
+  display: block;
+}
+
+.basis-comparison-heading strong {
+  font-size: 0.78rem;
+}
+
+.basis-comparison-heading small,
+.basis-coordinate-empty {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.5;
+}
+
+.basis-comparison-heading button {
+  min-height: 44px;
+  padding: 8px 11px;
+  border: 1px solid #2f6690;
+  border-radius: 9px;
+  color: #244e70;
+  background: white;
+  font: inherit;
+  font-size: 0.67rem;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.basis-comparison-heading button:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+.basis-comparison-heading button:focus-visible {
+  outline: 3px solid color-mix(in srgb, #2f6690 28%, transparent);
+  outline-offset: 2px;
+}
+
+.basis-coordinate-saved {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.basis-coordinate-name {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  white-space: nowrap;
+}
+
+.basis-coordinate-name > sub {
+  margin-left: 0.05em;
+  font-size: 0.62em;
+}
+
+.basis-comparison-subscript {
+  font-size: 0.62em;
+  font-style: normal;
+}
+
+.basis-column-vector {
+  display: inline-grid;
+  grid-template-columns: 4px auto 4px;
+  align-items: stretch;
+  gap: 5px;
+  min-height: 30px;
+  vertical-align: middle;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+
+.basis-column-vector-left {
+  border-top: 1.4px solid currentColor;
+  border-bottom: 1.4px solid currentColor;
+  border-left: 1.4px solid currentColor;
+}
+
+.basis-column-vector-right {
+  border-top: 1.4px solid currentColor;
+  border-right: 1.4px solid currentColor;
+  border-bottom: 1.4px solid currentColor;
+}
+
+.basis-column-vector-values {
+  min-width: 1.4em;
+  padding: 2px 1px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  line-height: 1.25;
+}
+
 .basis-math {
   font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
 }
@@ -3526,6 +3758,15 @@
 
   .basis-vector-input-grid {
     grid-template-columns: 1fr;
+  }
+
+  .basis-target-editor,
+  .basis-comparison-heading {
+    grid-template-columns: 1fr;
+  }
+
+  .basis-target-equation {
+    max-width: 210px;
   }
 
   .basis-candidate-option {
