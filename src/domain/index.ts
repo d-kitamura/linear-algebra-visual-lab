@@ -50,3 +50,16 @@ export {
 } from './polynomial';
 
 export type { PolynomialTerm } from './polynomial';
+
+export {
+  MAX_ABSOLUTE_LINEAR_MAP_INPUT,
+  InvalidLinearMapError,
+  analyzeLinearMap,
+  applyLinearMap,
+} from './linearMap';
+
+export type {
+  LinearMapAnalysis,
+  LinearMapDefinition,
+  LinearMapValidationCode,
+} from './linearMap';

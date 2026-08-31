@@ -15,7 +15,7 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(decisions).toContain('状態: **利用者確認済み**（2026-08-31、作業単位9.1）');
     expect(roadmap).toContain('進行中（9.1利用者確認済み）');
     expect(roadmap).toContain('次は9.2で描画非依存の数学ロジックを実装する');
-    expect(projectStatus).toContain('次の確認ゲート: 9.2で行列積、rank、零空間基底、列空間基底、rank-nullity');
+    expect(projectStatus).toContain('フェーズ9「線形写像Lab」の9.1まで利用者確認済み');
   });
 
   it('対象次元、画面配置、像の導出境界を固定する', () => {
@@ -37,6 +37,20 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(specification).toContain('任意の定義域基底・終域基底に関する表現行列と基底変換はフェーズ10候補へ分離する');
     expect(specification).toContain('### AC-53: 線形写像Labの設計境界');
     expect(specification).toContain('9.1では文書・設計の整合だけを検証し、画面、数学API、`linear-map` v1 validatorは未実装');
-    expect(specification).toContain('| 文書バージョン | 0.80 |');
+    expect(specification).toContain('| 文書バージョン | 0.81 |');
+  });
+
+  it('D-075と9.2の数学APIを実装・自動検証済みとして記録する', () => {
+    expect(decisions).toContain('### D-075 線形写像の行列積、核・像、rank-nullity解析API');
+    expect(decisions).toContain('状態: **実装・自動検証済み、利用者確認待ち**（2026-08-31、作業単位9.2）');
+    expect(roadmap).toContain('`applyLinearMap`と`analyzeLinearMap`として描画非依存に実装する');
+    expect(projectStatus).toContain('実装・自動検証済み、利用者確認待ちの作業単位: 9.2');
+  });
+
+  it('9.2の結果と9.3への非UI境界を仕様へ固定する', () => {
+    expect(specification).toContain('#### FR-LMAP-04: 描画非依存の数学解析（D-075、利用者確認待ち）');
+    expect(specification).toContain('### AC-54: 線形写像の数学解析');
+    expect(specification).toContain('単射はnullity 0、全射はrankが`m`、全単射は両方が成立する場合');
+    expect(specification).toContain('9.2では状態、UI、描画、共有validatorを追加しない');
   });
 });
