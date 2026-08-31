@@ -43,7 +43,12 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
     expect(labSource).toContain('updateLinearMapMatrixEntry');
     expect(labSource).toContain("name: 'T(e1)'");
     expect(labSource).toContain("name: 'T(e2)'");
-    expect(labSource).toContain('<MathMatrixName /> = (');
+    expect(labSource).toContain('<MathStandardBasisVector subscript="1" />');
+    expect(labSource).toContain('<MathTransposedRowVector values={[1, 0]} />');
+    expect(labSource).toContain('<MathStandardBasisVector subscript="2" />');
+    expect(labSource).toContain('<MathTransposedRowVector values={[0, 1]} />');
+    expect(labSource).toContain('<MathMatrixName /> = [');
+    expect(labSource).toContain('<MathMapValue argument="e" subscript="2" />]');
     expect(labSource).toContain('<MathMapValue argument="e" subscript="1" />');
     expect(labSource).toContain('<MathMapValue argument="e" subscript="2" />');
   });

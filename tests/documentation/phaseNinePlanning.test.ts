@@ -37,7 +37,7 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(specification).toContain('任意の定義域基底・終域基底に関する表現行列と基底変換はフェーズ10候補へ分離する');
     expect(specification).toContain('### AC-53: 線形写像Labの設計境界');
     expect(specification).toContain('9.1では文書・設計の整合だけを検証し、画面、数学API、`linear-map` v1 validatorは未実装');
-    expect(specification).toContain('| 文書バージョン | 0.82 |');
+    expect(specification).toContain('| 文書バージョン | 0.83 |');
   });
 
   it('D-075と9.2の数学APIを利用者確認済みとして記録する', () => {

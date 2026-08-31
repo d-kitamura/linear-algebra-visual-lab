@@ -302,10 +302,16 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
             <section className="linear-map-reading-card" aria-labelledby="linear-map-reading-title" aria-live="polite">
               <p className="panel-kicker">Read the matrix</p>
               <h2 id="linear-map-reading-title">行列の列と標準基底の像</h2>
+              <div className="linear-map-standard-basis">
+                <MathStandardBasisVector subscript="1" /> ={' '}
+                <MathTransposedRowVector values={[1, 0]} />,
+                {' '}<MathStandardBasisVector subscript="2" /> ={' '}
+                <MathTransposedRowVector values={[0, 1]} />
+              </div>
               <div className="linear-map-equation">
-                <MathMatrixName /> = (
+                <MathMatrixName /> = [
                 <MathMapValue argument="e" subscript="1" />,
-                {' '}<MathMapValue argument="e" subscript="2" />)
+                {' '}<MathMapValue argument="e" subscript="2" />]
                 {' '}= <MathMatrix values={scene.matrix} />
               </div>
               <div className="linear-map-column-list">
@@ -410,6 +416,28 @@ function MathMatrixName() {
 
 function MathVectorName({ name }: { readonly name: string }) {
   return <span className="math-vector"><span className="math-vector-base">{name}</span></span>;
+}
+
+function MathStandardBasisVector({ subscript }: { readonly subscript: '1' | '2' }) {
+  return (
+    <span className="math-vector">
+      <span className="math-vector-base">e</span>
+      <sub className="math-vector-subscript">{subscript}</sub>
+    </span>
+  );
+}
+
+function MathTransposedRowVector({ values }: { readonly values: readonly number[] }) {
+  return (
+    <span className="transposed-row-vector" aria-label={`転置した行表示 ${values.join('、')}`}>
+      <sup aria-hidden="true">t</sup>
+      <span aria-hidden="true">[</span>
+      {values.map((value, index) => (
+        <span key={index} aria-hidden="true">{index > 0 ? ', ' : ''}{value}</span>
+      ))}
+      <span aria-hidden="true">]</span>
+    </span>
+  );
 }
 
 function MathMapValue({
