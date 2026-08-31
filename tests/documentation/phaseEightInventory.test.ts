@@ -28,9 +28,9 @@ describe('フェーズ8開始後の棚卸し記録', () => {
     expect(projectStatus).not.toContain('D-060の表示幅3%について');
   });
 
-  it('仕様書版、フェーズ8完了、フェーズ9設計案を現在地へ揃える', () => {
-    expect(specification).toContain('| 文書バージョン | 0.79 |');
-    expect(specification).toContain('フェーズ8まで利用者確認・統合棚卸し済み');
+  it('フェーズ8完了を後続フェーズ開始後も現在地へ残す', () => {
+    expect(specification).toContain('| 文書バージョン | 0.80 |');
+    expect(specification).toContain('フェーズ8まで完了');
     expect(decisions).toContain('### D-061 フェーズ8開始後の棚卸しと8.3への引渡し');
     expect(decisions).toContain('### D-062 基底・次元の対象空間、判定API、数式表記');
     expect(decisions).toContain('### D-063 2D/3D基底エクスプローラの画面と段階的共有境界');
@@ -45,7 +45,7 @@ describe('フェーズ8開始後の棚卸し記録', () => {
     expect(decisions).toContain('### D-072 多項式係数と一次結合係数の記号分担、基底Labの表示補修');
     expect(decisions).toContain('### D-073 基底・次元Lab v1共有状態、代表例、フェーズ8統合棚卸し');
     expect(decisions).toContain('D-063〜D-073は利用者確認済みであり、フェーズ8を完了した');
-    expect(projectStatus).toContain('次の確認ゲート: フェーズ9の教育目的');
+    expect(projectStatus).toContain('フェーズ8を完了');
     expect(projectStatus).toContain('8.7「フェーズ8統合棚卸し」');
     expect(roadmap).toContain('## 10. フェーズ9「線形写像Lab」の作業単位案');
     expect(roadmap).toContain('### 9.7 統合確認と棚卸し');
