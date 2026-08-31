@@ -1,5 +1,6 @@
 import { useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { BasisDimensionLab } from '../labs/basis-dimension/BasisDimensionLab';
+import { LinearMapLab } from '../labs/linear-map/LinearMapLab';
 import { VectorSpaceLab } from '../labs/vector-space/VectorSpaceLab';
 import { LabMenu, type LabId } from './LabMenu';
 import { projectInfo } from './projectInfo';
@@ -49,6 +50,9 @@ export function App() {
       </div>
       <div className="lab-host" hidden={activeLabId !== 'basis-dimension'}>
         <BasisDimensionLab active={activeLabId === 'basis-dimension'} />
+      </div>
+      <div className="lab-host" hidden={activeLabId !== 'linear-map'}>
+        <LinearMapLab active={activeLabId === 'linear-map'} />
       </div>
 
       <footer className="site-footer">

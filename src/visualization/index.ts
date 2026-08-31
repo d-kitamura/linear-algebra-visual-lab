@@ -52,3 +52,5 @@ export {
   vectorTipHitRadius,
 } from './spaceVectorEditing';
 export type { WorldPoint3D } from './spaceVectorEditing';
+export { createLinearMapGridSegments } from './linearMapGrid';
+export type { LinearMapGridSegment } from './linearMapGrid';

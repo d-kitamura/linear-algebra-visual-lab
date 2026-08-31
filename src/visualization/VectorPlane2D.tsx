@@ -6,6 +6,7 @@ import {
 } from 'react';
 import type { VectorValue } from '../domain';
 import { splitVectorName } from '../ui';
+import type { LinearMapGridSegment } from './linearMapGrid';
 import {
   DEFAULT_PLANE_VIEWPORT,
   createAdaptiveTicks,
@@ -48,6 +49,7 @@ interface VectorPlane2DProps {
   readonly onTargetDragEnd?: () => void;
   readonly idPrefix?: string;
   readonly axisLabels?: readonly [string, string];
+  readonly transformedGridSegments?: readonly LinearMapGridSegment[];
 }
 
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
@@ -76,6 +78,7 @@ export function VectorPlane2D({
   onTargetDragEnd,
   idPrefix = 'vector-plane',
   axisLabels = ['x', 'y'],
+  transformedGridSegments = [],
 }: VectorPlane2DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportRef = useRef(viewport);
@@ -133,6 +136,9 @@ export function VectorPlane2D({
       ? `ターゲット v は第1成分 ${target[0]}、第2成分 ${target[1]} です。${linearCombinationCoefficients && spanVectors.length === 2 ? '2項の一次結合を原点からの2辺とする平行四辺形も表示しています。' : ''}`
       : '一次結合を調べるモードです。ターゲット v はまだ配置されていません。'
     : '一次結合を調べるモードはオフです。';
+  const transformedGridDescription = transformedGridSegments.length > 0
+    ? '定義域の格子を線形写像で移した格子の像も表示しています。'
+    : '';
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -439,7 +445,7 @@ export function VectorPlane2D({
     >
       <title id={`${idPrefix}-title`}>2次元数ベクトルの座標表示</title>
       <desc id={`${idPrefix}-description`}>
-        {`${vectorDescription}${spanDescription}${targetDescription}`}
+        {`${vectorDescription}${spanDescription}${targetDescription}${transformedGridDescription}`}
       </desc>
       <defs>
         <clipPath id={plotClipId}>
@@ -529,6 +535,29 @@ export function VectorPlane2D({
           return <line key={`grid-y-${tick}`} x1={plotLeft} y1={y} x2={plotRight} y2={y} />;
         })}
       </g>
+
+      {transformedGridSegments.length > 0 ? (
+        <g
+          className="linear-map-grid-image"
+          clipPath={`url(#${plotClipId})`}
+          aria-hidden="true"
+        >
+          {transformedGridSegments.map((segment, index) => {
+            const start = toSvgPoint(segment.start, viewport);
+            const end = toSvgPoint(segment.end, viewport);
+            return (
+              <line
+                key={`${segment.family}-${segment.sourceValue}-${index}`}
+                className={`is-${segment.family}`}
+                x1={start[0]}
+                y1={start[1]}
+                x2={end[0]}
+                y2={end[1]}
+              />
+            );
+          })}
+        </g>
+      ) : null}
 
       <g className="coordinate-axes" aria-hidden="true">
         {showsXAxis ? (
@@ -652,16 +681,7 @@ export function VectorPlane2D({
                 fill={color}
                 textAnchor={coordinates[0] >= 0 ? 'start' : 'end'}
               >
-                <tspan className="svg-vector-base">{nameParts.base}</tspan>
-                {nameParts.subscript ? (
-                  <tspan
-                    className="svg-vector-subscript"
-                    baselineShift="sub"
-                    fontSize="65%"
-                  >
-                    {nameParts.subscript}
-                  </tspan>
-                ) : null}
+                <SvgVectorLabel name={vector.name} fallbackParts={nameParts} />
               </text>
             </g>
           );
@@ -690,6 +710,42 @@ export function VectorPlane2D({
         aria-hidden="true"
       />
     </svg>
+  );
+}
+
+function SvgVectorLabel({
+  name,
+  fallbackParts,
+}: {
+  readonly name: string;
+  readonly fallbackParts: ReturnType<typeof splitVectorName>;
+}) {
+  const mappedVector = /^T\(([A-Za-z]+)([0-9]*)\)$/u.exec(name);
+  if (mappedVector) {
+    return (
+      <>
+        <tspan className="svg-map-symbol">T</tspan>
+        <tspan>(</tspan>
+        <tspan className="svg-vector-base">{mappedVector[1]}</tspan>
+        {mappedVector[2] ? (
+          <tspan className="svg-vector-subscript" baselineShift="sub" fontSize="65%">
+            {mappedVector[2]}
+          </tspan>
+        ) : null}
+        <tspan>)</tspan>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <tspan className="svg-vector-base">{fallbackParts.base}</tspan>
+      {fallbackParts.subscript ? (
+        <tspan className="svg-vector-subscript" baselineShift="sub" fontSize="65%">
+          {fallbackParts.subscript}
+        </tspan>
+      ) : null}
+    </>
   );
 }
 

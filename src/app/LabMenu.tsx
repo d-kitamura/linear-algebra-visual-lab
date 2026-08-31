@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-export type LabId = 'vector-space' | 'basis-dimension';
+export type LabId = 'vector-space' | 'basis-dimension' | 'linear-map';
 
 const labs = [
   {
@@ -12,6 +12,11 @@ const labs = [
     id: 'basis-dimension',
     name: '基底・次元Lab',
     description: '基底の2条件・次元・座標を2D／3Dで調べる',
+  },
+  {
+    id: 'linear-map',
+    name: '線形写像Lab',
+    description: '入力と像・行列の列・格子の変形を調べる',
   },
 ] as const;
 

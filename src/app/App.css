@@ -1029,6 +1029,7 @@
 }
 
 .grid-lines,
+.linear-map-grid-image,
 .coordinate-axes,
 .tick-labels,
 .span-layer,
@@ -1055,6 +1056,19 @@
 .grid-lines line {
   stroke: #e7e2d7;
   stroke-width: 1;
+}
+
+.linear-map-grid-image line {
+  stroke-width: 2.2;
+  opacity: 0.62;
+}
+
+.linear-map-grid-image .is-first-coordinate {
+  stroke: #d55535;
+}
+
+.linear-map-grid-image .is-second-coordinate {
+  stroke: #13877e;
 }
 
 .coordinate-axes line,
@@ -1803,6 +1817,12 @@
   font-family: Cambria, "Times New Roman", serif;
   font-style: italic;
   font-weight: 700;
+}
+
+.svg-map-symbol {
+  font-family: Cambria, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 400;
 }
 
 .math-vector-subscript,
@@ -3676,6 +3696,340 @@
   font-size: 0.64em;
 }
 
+.linear-map-scope {
+  margin: 0 0 32px;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+}
+
+.linear-map-scope > span,
+.linear-map-scope small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.linear-map-scope > span {
+  font-weight: 800;
+}
+
+.linear-map-math,
+.linear-map-equation,
+.linear-map-column-list,
+.linear-map-current-value,
+.linear-map-editor-block > strong {
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.linear-map-math sup {
+  margin-left: 0.02em;
+  font-size: 0.64em;
+  font-style: normal;
+}
+
+.math-map-value {
+  white-space: nowrap;
+}
+
+.linear-map-workspace {
+  display: grid;
+  gap: 22px;
+}
+
+.linear-map-diagram-grid,
+.linear-map-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+
+.linear-map-diagram-grid > *,
+.linear-map-detail-grid > * {
+  min-width: 0;
+}
+
+.linear-map-plot-card {
+  padding: clamp(17px, 2.5vw, 25px);
+}
+
+.linear-map-plot-card .card-heading h2 {
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+}
+
+.linear-map-control-card,
+.linear-map-reading-card {
+  min-width: 0;
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  box-shadow: 0 18px 52px rgba(28, 36, 44, 0.075);
+}
+
+.linear-map-control-card h2,
+.linear-map-reading-card h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+  letter-spacing: -0.03em;
+}
+
+.linear-map-preset-field {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.linear-map-preset-field > span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.linear-map-preset-field select {
+  min-width: 0;
+  min-height: 42px;
+  padding: 7px 34px 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: #fffdf8;
+}
+
+.linear-map-preset-field select:focus-visible,
+.linear-map-matrix-input input:focus-visible,
+.linear-map-vector-input input:focus-visible,
+.linear-map-grid-toggle input:focus-visible {
+  outline: 3px solid color-mix(in srgb, #2f6690 28%, transparent);
+  outline-offset: 2px;
+}
+
+.linear-map-preset-description {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.linear-map-editor-row {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 14px;
+}
+
+.linear-map-editor-block {
+  min-width: 0;
+  padding: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fffdf8;
+}
+
+.linear-map-editor-block > strong {
+  flex: 0 0 auto;
+  color: #244e70;
+  font-size: 1.08rem;
+}
+
+.linear-map-matrix-input,
+.linear-map-vector-input,
+.linear-map-display-matrix {
+  position: relative;
+  min-width: 0;
+  padding: 6px 12px;
+  display: grid;
+  gap: 5px 7px;
+}
+
+.linear-map-matrix-input,
+.linear-map-display-matrix {
+  grid-template-columns: repeat(2, minmax(42px, 1fr));
+}
+
+.linear-map-vector-input {
+  grid-template-columns: minmax(48px, 1fr);
+}
+
+.linear-map-matrix-input::before,
+.linear-map-matrix-input::after,
+.linear-map-vector-input::before,
+.linear-map-vector-input::after,
+.linear-map-display-matrix::before,
+.linear-map-display-matrix::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-top: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  pointer-events: none;
+}
+
+.linear-map-matrix-input::before,
+.linear-map-vector-input::before,
+.linear-map-display-matrix::before {
+  left: 0;
+  border-left: 1.5px solid currentColor;
+}
+
+.linear-map-matrix-input::after,
+.linear-map-vector-input::after,
+.linear-map-display-matrix::after {
+  right: 0;
+  border-right: 1.5px solid currentColor;
+}
+
+.linear-map-matrix-input input,
+.linear-map-vector-input input {
+  min-width: 0;
+  width: 100%;
+  height: 34px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  background: white;
+  font: 0.8rem var(--mono-font);
+  text-align: center;
+}
+
+.linear-map-matrix-input input[aria-invalid='true'],
+.linear-map-vector-input input[aria-invalid='true'] {
+  border-color: #a33a35;
+  background: #fff2ef;
+}
+
+.linear-map-grid-toggle {
+  margin-top: 15px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #244e70;
+  font-size: 0.76rem;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.linear-map-grid-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: #2f6690;
+}
+
+.linear-map-input-warning {
+  margin: 8px 0 0;
+  color: #8d352f;
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.linear-map-equation {
+  margin-top: 18px;
+  padding: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, #2f6690 24%, var(--line));
+  border-radius: 12px;
+  color: #244e70;
+  background: color-mix(in srgb, #2f6690 6%, #fffdf8);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.linear-map-display-matrix {
+  color: var(--ink);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.linear-map-column-list {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.linear-map-column-list p {
+  min-width: 0;
+  margin: 0;
+  padding: 11px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fffdf8;
+  overflow-wrap: anywhere;
+}
+
+.linear-map-column-list .is-first-column {
+  color: #a9412b;
+}
+
+.linear-map-column-list .is-second-column {
+  color: #0d6e68;
+}
+
+.linear-map-column-vector {
+  min-height: 42px;
+  vertical-align: middle;
+}
+
+.linear-map-current-value {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  color: #244e70;
+  background: color-mix(in srgb, #2f6690 8%, #fffdf8);
+}
+
+.linear-map-current-value p {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  font-size: 1rem;
+}
+
+.linear-map-current-value > strong,
+.linear-map-current-value > small {
+  display: block;
+}
+
+.linear-map-current-value > strong {
+  margin-top: 10px;
+  font-family: var(--body-font);
+  font-size: 0.78rem;
+}
+
+.linear-map-current-value > small {
+  margin-top: 4px;
+  font-size: 0.72rem;
+}
+
+.math-roman {
+  font-style: normal;
+}
+
 @media (max-width: 980px) {
   .lab-intro {
     grid-template-columns: 1fr;
@@ -3710,6 +4064,11 @@
   .basis-dimension-lab .dimension-switcher > p {
     grid-column: 1 / -1;
   }
+
+  .linear-map-diagram-grid,
+  .linear-map-detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 981px) and (min-height: 820px) {
@@ -3717,6 +4076,10 @@
   .three-dimensional-plot-card {
     position: sticky;
     top: 18px;
+  }
+
+  .linear-map-plot-card {
+    position: static;
   }
 }
 
@@ -3981,6 +4344,25 @@
 
   .basis-order-controls {
     justify-content: flex-end;
+  }
+
+  .linear-map-scope {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr;
+  }
+
+  .linear-map-scope small {
+    grid-column: 1 / -1;
+  }
+
+  .linear-map-editor-row,
+  .linear-map-column-list {
+    grid-template-columns: 1fr;
+  }
+
+  .linear-map-preset-field {
+    grid-template-columns: 1fr;
   }
 
 }

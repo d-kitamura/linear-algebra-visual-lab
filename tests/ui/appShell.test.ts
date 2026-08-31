@@ -18,6 +18,10 @@ const basisLabSource = readFileSync(
   new URL('../../src/labs/basis-dimension/BasisDimensionLab.tsx', import.meta.url),
   'utf8',
 );
+const linearMapLabSource = readFileSync(
+  new URL('../../src/labs/linear-map/LinearMapLab.tsx', import.meta.url),
+  'utf8',
+);
 const cssSource = readFileSync(new URL('../../src/app/App.css', import.meta.url), 'utf8');
 
 describe('共通アプリシェルとLab境界', () => {
@@ -25,17 +29,19 @@ describe('共通アプリシェルとLab境界', () => {
     expect(appSource).toContain('<LabMenu activeLabId={activeLabId} onLabChange={setActiveLabId} />');
     expect(appSource).toContain("<VectorSpaceLab active={activeLabId === 'vector-space'} />");
     expect(appSource).toContain('<BasisDimensionLab active={activeLabId === \'basis-dimension\'} />');
+    expect(appSource).toContain('<LinearMapLab active={activeLabId === \'linear-map\'} />');
     expect(appSource).toContain('className="site-header"');
     expect(appSource).toContain('className="site-footer"');
     expect(vectorLabSource).toContain('data-lab-id="vector-space"');
     expect(vectorLabSource).not.toContain('className="site-header"');
   });
 
-  it('現在Labを読み上げ可能に示し、2つのLabを選択できる', () => {
+  it('現在Labを読み上げ可能に示し、3つのLabを選択できる', () => {
     expect(labMenuSource).toContain('aria-label={`教材Labを選択。現在は${activeLab.name}`}');
     expect(labMenuSource).toContain("aria-current={isCurrent ? 'page' : undefined}");
     expect(labMenuSource).toContain("id: 'vector-space'");
     expect(labMenuSource).toContain("id: 'basis-dimension'");
+    expect(labMenuSource).toContain("id: 'linear-map'");
     expect(labMenuSource).toContain("onClick={() => handleLabChange(lab.id)}");
     expect(labMenuSource).not.toContain('aria-disabled="true"');
     expect(labMenuSource).not.toContain('フェーズ8で準備中');
@@ -44,6 +50,7 @@ describe('共通アプリシェルとLab境界', () => {
   it('共有とResetを現在Labの操作として共通部品へ接続する', () => {
     expect(vectorLabSource).toContain('<LabActionControls');
     expect(basisLabSource).toContain('<LabActionControls');
+    expect(linearMapLabSource).toContain('aria-label="線形写像Labの教材状態を操作"');
     expect(basisLabSource).toContain('exportDisabled={hasInvalidCoordinateDraft}');
     expect(basisLabSource).toContain('onExport={handleOpenShareDialog}');
     expect(appSource).toContain("result.state.lab === 'basis-dimension'");
