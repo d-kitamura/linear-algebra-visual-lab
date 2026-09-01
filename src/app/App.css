@@ -3790,17 +3790,28 @@
   gap: 22px;
 }
 
-.linear-map-diagram-grid,
-.linear-map-detail-grid {
+.linear-map-diagram-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 22px;
   align-items: start;
 }
 
-.linear-map-diagram-grid > *,
-.linear-map-detail-grid > * {
+.linear-map-diagram-grid > * {
   min-width: 0;
+}
+
+.linear-map-inspector {
+  display: grid;
+  gap: 12px;
+}
+
+.linear-map-inspector > .inspector-panel {
+  min-width: 0;
+}
+
+.linear-map-inspector-tablist {
+  width: 100%;
 }
 
 .linear-map-plot-card {
@@ -4130,13 +4141,6 @@
   font-size: 0.72rem;
 }
 
-.linear-map-concept-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
-  align-items: start;
-}
-
 .linear-map-concept-card {
   min-width: 0;
   padding: clamp(20px, 3vw, 28px);
@@ -4163,11 +4167,12 @@
 .linear-map-linearity-inputs {
   margin-top: 16px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(116px, 0.42fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.linear-map-linearity-inputs > label {
+.linear-map-linearity-inputs > label,
+.linear-map-linearity-input {
   min-width: 0;
   padding: 11px 12px;
   display: flex;
@@ -4176,6 +4181,16 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fffdf8;
+}
+
+.linear-map-linearity-inputs strong {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.linear-map-linearity-input.is-derived .linear-map-column-vector {
+  min-width: 62px;
+  color: var(--ink);
 }
 
 .linear-map-linearity-inputs strong,
@@ -4244,7 +4259,7 @@
 .linear-map-law-flow {
   margin-top: 10px;
   display: grid;
-  grid-template-columns: minmax(0, 0.86fr) auto minmax(0, 1.14fr);
+  grid-template-columns: minmax(190px, 0.72fr) auto minmax(0, 1.28fr);
   align-items: stretch;
   gap: 9px;
 }
@@ -4257,7 +4272,8 @@
   gap: 4px;
   border-radius: 10px;
   background: color-mix(in srgb, #2f6690 6%, #fffdf8);
-  overflow-wrap: anywhere;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .linear-map-law-flow small {
@@ -4270,11 +4286,12 @@
 .linear-map-law-flow p {
   margin: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 4px;
   font-size: 0.82rem;
   line-height: 1.65;
+  white-space: nowrap;
 }
 
 .linear-map-law-equality {
@@ -4462,9 +4479,7 @@
     grid-column: 1 / -1;
   }
 
-  .linear-map-diagram-grid,
-  .linear-map-detail-grid,
-  .linear-map-concept-grid {
+  .linear-map-diagram-grid {
     grid-template-columns: 1fr;
   }
 }

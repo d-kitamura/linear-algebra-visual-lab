@@ -29,7 +29,7 @@ describe('フェーズ8開始後の棚卸し記録', () => {
   });
 
   it('フェーズ8完了を後続フェーズ開始後も現在地へ残す', () => {
-    expect(specification).toContain('| 文書バージョン | 0.87 |');
+    expect(specification).toContain('| 文書バージョン | 0.88 |');
     expect(specification).toContain('フェーズ8まで完了');
     expect(decisions).toContain('### D-061 フェーズ8開始後の棚卸しと8.3への引渡し');
     expect(decisions).toContain('### D-062 基底・次元の対象空間、判定API、数式表記');

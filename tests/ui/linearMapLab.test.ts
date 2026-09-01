@@ -30,8 +30,8 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
     expect(labSource).toContain('name={name} dimension={dimension}');
     expect(labSource).toContain('idPrefix="linear-map-domain-plane"');
     expect(labSource).toContain('idPrefix="linear-map-codomain-plane"');
-    expect(cssSource).toMatch(/\.linear-map-diagram-grid,[\s\S]*?grid-template-columns:\s*repeat\(2,/su);
-    expect(cssSource).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.linear-map-diagram-grid,[\s\S]*?grid-template-columns:\s*1fr;/su);
+    expect(cssSource).toMatch(/\.linear-map-diagram-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,/su);
+    expect(cssSource).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.linear-map-diagram-grid\s*\{[\s\S]*?grid-template-columns:\s*1fr;/su);
   });
 
   it('edits u only in the domain and derives T(u) in the codomain', () => {
@@ -132,6 +132,8 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
 
   it('shows an editable w and scalar c with both linearity laws', () => {
     expect(labSource).toContain('analyzeLinearMapLinearity(');
+    expect(labSource).toContain('写像の線形性の確認');
+    expect(labSource).toContain('<MathColumnVector values={analysis.firstInput} />');
     expect(labSource).toContain('name="w" drafts={secondaryInputDrafts}');
     expect(labSource).toContain('aria-label="線形性確認用スカラーc"');
     expect(labSource).toContain('title="和について"');
@@ -139,10 +141,12 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
     expect(labSource).toContain("expression=\"u+w\"");
     expect(labSource).toContain('expression="cu"');
     expect(labSource).toContain('両辺が一致します');
+    expect(cssSource).toMatch(/\.linear-map-linearity-inputs\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,/su);
+    expect(cssSource).toMatch(/\.linear-map-law-flow p\s*\{[^}]*flex-wrap:\s*nowrap;/su);
   });
 
   it('connects the dimension theorem to rank, nullity, Ker, and Im', () => {
-    expect(labSource).toContain('<DimensionTheoremCard analysis={analysis} />');
+    expect(labSource).toContain('<DimensionTheoremCard analysis={analysis} active={activeInspectorTab === \'dimension\'} />');
     expect(labSource).toContain('analysis.sourceDimension');
     expect(labSource).toContain('analysis.rank');
     expect(labSource).toContain('analysis.nullity');
@@ -152,5 +156,18 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
     expect(labSource).toContain('標準基底の像と行列');
     expect(cssSource).toContain('.linear-map-dimension-bar > span.is-rank');
     expect(cssSource).toContain('.linear-map-dimension-bar > span.is-nullity');
+  });
+
+  it('shows one full-width detail card at a time through accessible tabs', () => {
+    expect(labSource).toContain('LINEAR_MAP_INSPECTOR_TABS.map');
+    expect(labSource).toContain('aria-label="線形写像の編集・解析の詳細"');
+    expect(labSource).toContain("hidden={activeInspectorTab !== 'control'}");
+    expect(labSource).toContain("hidden={activeInspectorTab !== 'reading'}");
+    expect(labSource).toContain("active={activeInspectorTab === 'linearity'}");
+    expect(labSource).toContain("active={activeInspectorTab === 'dimension'}");
+    expect(labSource).toContain('handleInspectorTabKeyDown');
+    expect(cssSource).toContain('.linear-map-inspector-tablist');
+    expect(cssSource).not.toContain('.linear-map-detail-grid');
+    expect(cssSource).not.toContain('.linear-map-concept-grid');
   });
 });

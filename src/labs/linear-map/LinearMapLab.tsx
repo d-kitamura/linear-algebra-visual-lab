@@ -3,6 +3,7 @@ import {
   Suspense,
   useMemo,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
 import {
@@ -72,6 +73,18 @@ interface LinearMapLabProps {
 
 type MatrixDrafts = string[][];
 type VectorDrafts = string[];
+type LinearMapInspectorTabId = 'control' | 'reading' | 'linearity' | 'dimension';
+
+const LINEAR_MAP_INSPECTOR_TABS: readonly {
+  readonly id: LinearMapInspectorTabId;
+  readonly label: string;
+  readonly shortLabel: string;
+}[] = [
+  { id: 'control', label: '行列と入力', shortLabel: '入力' },
+  { id: 'reading', label: '行列の列・核・像', shortLabel: '核・像' },
+  { id: 'linearity', label: '写像の線形性', shortLabel: '線形性' },
+  { id: 'dimension', label: '次元定理', shortLabel: '次元定理' },
+];
 
 export function LinearMapLab({ active }: LinearMapLabProps) {
   const [scenes, setScenes] = useState(createDefaultLinearMapScenes);
@@ -84,6 +97,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   const [secondaryInputDrafts, setSecondaryInputDrafts] = useState<VectorDrafts>(() =>
     createVectorDrafts(createDefaultLinearMapScene().secondaryInputVector));
   const [scalarDraft, setScalarDraft] = useState(() => formatDraft(createDefaultLinearMapScene().scalar));
+  const [activeInspectorTab, setActiveInspectorTab] = useState<LinearMapInspectorTabId>('control');
   const [domainManualViewport, setDomainManualViewport] = useState<PlaneViewport | null>(null);
   const [codomainManualViewport, setCodomainManualViewport] = useState<PlaneViewport | null>(null);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
@@ -308,6 +322,24 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     setDragViewport(null);
   }
 
+  function handleInspectorTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+      return;
+    }
+    event.preventDefault();
+    const currentIndex = LINEAR_MAP_INSPECTOR_TABS.findIndex((tab) => tab.id === activeInspectorTab);
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? LINEAR_MAP_INSPECTOR_TABS.length - 1
+        : event.key === 'ArrowRight'
+          ? (currentIndex + 1) % LINEAR_MAP_INSPECTOR_TABS.length
+          : (currentIndex - 1 + LINEAR_MAP_INSPECTOR_TABS.length) % LINEAR_MAP_INSPECTOR_TABS.length;
+    const nextTab = LINEAR_MAP_INSPECTOR_TABS[nextIndex];
+    setActiveInspectorTab(nextTab.id);
+    document.getElementById(`linear-map-inspector-tab-${nextTab.id}`)?.focus();
+  }
+
   return (
     <div className="linear-map-lab" data-lab-id="linear-map" aria-hidden={!active}>
       <a className="skip-link" href="#linear-map-workspace">線形写像の操作領域へ移動</a>
@@ -456,8 +488,33 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
             )}
           </div>
 
-          <div className="linear-map-detail-grid">
-            <section className="linear-map-control-card" aria-labelledby="linear-map-control-title">
+          <div className="linear-map-inspector">
+            <div className="inspector-tablist linear-map-inspector-tablist" role="tablist" aria-label="線形写像の編集・解析の詳細">
+              {LINEAR_MAP_INSPECTOR_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  id={`linear-map-inspector-tab-${tab.id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeInspectorTab === tab.id}
+                  aria-controls={`linear-map-inspector-panel-${tab.id}`}
+                  tabIndex={activeInspectorTab === tab.id ? 0 : -1}
+                  onClick={() => setActiveInspectorTab(tab.id)}
+                  onKeyDown={handleInspectorTabKeyDown}
+                >
+                  <span className="tab-label-wide">{tab.label}</span>
+                  <span className="tab-label-short">{tab.shortLabel}</span>
+                </button>
+              ))}
+            </div>
+
+            <section
+              className="linear-map-control-card inspector-panel"
+              id="linear-map-inspector-panel-control"
+              role="tabpanel"
+              aria-labelledby="linear-map-inspector-tab-control linear-map-control-title"
+              hidden={activeInspectorTab !== 'control'}
+            >
               <p className="panel-kicker">Edit transformation</p>
               <h2 id="linear-map-control-title">行列と入力</h2>
               <label className="linear-map-preset-field">
@@ -508,7 +565,14 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
               ) : null}
             </section>
 
-            <section className="linear-map-reading-card" aria-labelledby="linear-map-reading-title" aria-live="polite">
+            <section
+              className="linear-map-reading-card inspector-panel"
+              id="linear-map-inspector-panel-reading"
+              role="tabpanel"
+              aria-labelledby="linear-map-inspector-tab-reading linear-map-reading-title"
+              aria-live="polite"
+              hidden={activeInspectorTab !== 'reading'}
+            >
               <p className="panel-kicker">Read kernel and image</p>
               <h2 id="linear-map-reading-title">行列の列・核・像</h2>
               <div className="linear-map-equation">
@@ -543,17 +607,15 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                 <small><span className="math-roman">rank</span>(<span className="math-scalar-base">T</span>) = {analysis.rank}</small>
               </div>
             </section>
-          </div>
-
-          <div className="linear-map-concept-grid">
             <LinearityCard
               analysis={linearityAnalysis}
               secondaryInputDrafts={secondaryInputDrafts}
               scalarDraft={scalarDraft}
               onSecondaryInputChange={handleSecondaryInputDraftChange}
               onScalarChange={handleScalarDraftChange}
+              active={activeInspectorTab === 'linearity'}
             />
-            <DimensionTheoremCard analysis={analysis} />
+            <DimensionTheoremCard analysis={analysis} active={activeInspectorTab === 'dimension'} />
           </div>
         </div>
       </main>
@@ -642,22 +704,34 @@ function LinearityCard({
   scalarDraft,
   onSecondaryInputChange,
   onScalarChange,
+  active,
 }: {
   readonly analysis: LinearMapLinearityAnalysis;
   readonly secondaryInputDrafts: VectorDrafts;
   readonly scalarDraft: string;
   readonly onSecondaryInputChange: (index: number, text: string) => void;
   readonly onScalarChange: (text: string) => void;
+  readonly active: boolean;
 }) {
   return (
-    <section className="linear-map-concept-card linear-map-linearity-card" aria-labelledby="linear-map-linearity-title">
+    <section
+      className="linear-map-concept-card linear-map-linearity-card inspector-panel"
+      id="linear-map-inspector-panel-linearity"
+      role="tabpanel"
+      aria-labelledby="linear-map-inspector-tab-linearity linear-map-linearity-title"
+      hidden={!active}
+    >
       <p className="panel-kicker">Check linearity</p>
-      <h2 id="linear-map-linearity-title">線形性を確かめる</h2>
+      <h2 id="linear-map-linearity-title">写像の線形性の確認</h2>
       <p className="linear-map-concept-intro">
         もう1本の入力 <MathVectorName name="w" /> とスカラー <MathScalar name="c" /> を変えて、
         写像の前後で和とスカラー倍が保たれることを比べます。
       </p>
       <div className="linear-map-linearity-inputs">
+        <div className="linear-map-linearity-input is-derived">
+          <strong><MathVectorName name="u" /> =</strong>
+          <MathColumnVector values={analysis.firstInput} />
+        </div>
         <label>
           <strong><MathVectorName name="w" /> =</strong>
           <VectorInput name="w" drafts={secondaryInputDrafts} onChange={onSecondaryInputChange} />
@@ -715,17 +789,25 @@ function LinearityLaw({ title, source, firstResult, secondResult, matches }: {
         <span className="linear-map-law-arrow" aria-hidden="true"><span className="math-scalar-base">T</span> →</span>
         <div>
           <small>終域 <span className="math-scalar-base">V</span></small>
-          <p>{firstResult}</p>
-          <p className="linear-map-law-equality">= {secondResult}</p>
+          <p className="linear-map-law-equality">{firstResult} = {secondResult}</p>
         </div>
       </div>
     </div>
   );
 }
 
-function DimensionTheoremCard({ analysis }: { readonly analysis: LinearMapAnalysis }) {
+function DimensionTheoremCard({ analysis, active }: {
+  readonly analysis: LinearMapAnalysis;
+  readonly active: boolean;
+}) {
   return (
-    <section className="linear-map-concept-card linear-map-dimension-card" aria-labelledby="linear-map-dimension-title">
+    <section
+      className="linear-map-concept-card linear-map-dimension-card inspector-panel"
+      id="linear-map-inspector-panel-dimension"
+      role="tabpanel"
+      aria-labelledby="linear-map-inspector-tab-dimension linear-map-dimension-title"
+      hidden={!active}
+    >
       <p className="panel-kicker">Dimension theorem</p>
       <h2 id="linear-map-dimension-title">次元定理</h2>
       <p className="linear-map-concept-intro">
