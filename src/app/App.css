@@ -3939,7 +3939,7 @@
 }
 
 .linear-map-equation {
-  margin-top: 9px;
+  margin-top: 18px;
   padding: 14px;
   display: flex;
   flex-wrap: wrap;
@@ -3951,19 +3951,6 @@
   background: color-mix(in srgb, #2f6690 6%, #fffdf8);
   font-size: 1rem;
   line-height: 1.7;
-}
-
-.linear-map-standard-basis {
-  margin-top: 18px;
-  color: var(--ink);
-  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
-  font-size: 0.92rem;
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-}
-
-.linear-map-standard-basis .transposed-row-vector {
-  white-space: nowrap;
 }
 
 .linear-map-display-matrix {
@@ -4376,6 +4363,22 @@
 
   .linear-map-preset-field {
     grid-template-columns: 1fr;
+  }
+
+  .linear-map-plot-card .card-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .linear-map-plot-card .card-heading > div {
+    min-width: 0;
+  }
+
+  .linear-map-plot-card .basis-fit-button {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
 }
