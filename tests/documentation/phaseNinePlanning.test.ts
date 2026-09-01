@@ -13,9 +13,9 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
   it('D-074と9.1を利用者確認済みとして記録する', () => {
     expect(decisions).toContain('### D-074 線形写像Labの教育範囲、連動画面、状態境界');
     expect(decisions).toContain('状態: **利用者確認済み**（2026-08-31、作業単位9.1）');
-    expect(roadmap).toContain('進行中（9.2利用者確認済み、9.3実装済み）');
-    expect(roadmap).toContain('次は9.2で描画非依存の数学ロジックを実装する');
-    expect(projectStatus).toContain('フェーズ9「線形写像Lab」の9.2まで利用者確認済み');
+    expect(roadmap).toContain('進行中（9.3利用者確認済み、9.4実装済み）');
+    expect(roadmap).toContain('### 9.2 線形写像の数学ロジック');
+    expect(projectStatus).toContain('フェーズ9「線形写像Lab」の9.3まで利用者確認済み');
   });
 
   it('対象次元、画面配置、像の導出境界を固定する', () => {
@@ -37,7 +37,7 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(specification).toContain('任意の定義域基底・終域基底に関する表現行列と基底変換はフェーズ10候補へ分離する');
     expect(specification).toContain('### AC-53: 線形写像Labの設計境界');
     expect(specification).toContain('9.1では文書・設計の整合だけを検証し、画面、数学API、`linear-map` v1 validatorは未実装');
-    expect(specification).toContain('| 文書バージョン | 0.84 |');
+    expect(specification).toContain('| 文書バージョン | 0.85 |');
   });
 
   it('D-075と9.2の数学APIを利用者確認済みとして記録する', () => {
@@ -54,12 +54,22 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(specification).toContain('9.2では状態、UI、描画、共有validatorを追加しない');
   });
 
-  it('D-076と9.3の2D最小縦断版を実装・自動検証済みとして記録する', () => {
+  it('D-076と9.3の2D最小縦断版を利用者確認済みとして記録する', () => {
     expect(decisions).toContain('### D-076 線形写像Labの`2→2`最小縦断画面');
-    expect(decisions).toContain('状態: **実装・自動検証済み、利用者確認待ち**（2026-08-31、作業単位9.3）');
+    expect(decisions).toContain('状態: **利用者確認済み**（2026-09-01、作業単位9.3）');
     expect(roadmap).toContain('50テストファイル・398テスト');
-    expect(projectStatus).toContain('実装・自動検証済み、利用者確認待ちの作業単位: 9.3');
-    expect(specification).toContain('#### FR-LMAP-05: `2→2`最小縦断画面（D-076、利用者確認待ち）');
+    expect(projectStatus).toContain('完了・利用者確認済みの作業単位: 0.1');
+    expect(specification).toContain('#### FR-LMAP-05: `2→2`最小縦断画面（D-076、利用者確認済み）');
     expect(specification).toContain('### AC-55: `2→2`線形写像の最小縦断画面');
+  });
+
+  it('D-077と9.4の核・像2D/3D画面を実装・自動検証済みとして記録する', () => {
+    expect(decisions).toContain('### D-077 線形写像Labの核・像と4つの2D/3D入出力次元');
+    expect(decisions).toContain('状態: **実装・自動検証済み、利用者確認待ち**（2026-09-01、作業単位9.4）');
+    expect(roadmap).toContain('### 9.4 核・像の2D/3D可視化');
+    expect(roadmap).toContain('50テストファイル・405テスト');
+    expect(projectStatus).toContain('実装・自動検証済み、利用者確認待ちの作業単位: 9.4');
+    expect(specification).toContain('#### FR-LMAP-06: 核・像の2D/3D可視化（D-077、利用者確認待ち）');
+    expect(specification).toContain('### AC-56: 核・像の2D/3D可視化');
   });
 });

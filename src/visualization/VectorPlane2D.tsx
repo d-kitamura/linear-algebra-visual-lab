@@ -39,6 +39,7 @@ interface VectorPlane2DProps {
   readonly spanVectors?: readonly VectorValue[];
   readonly spanDimension?: number;
   readonly showSpan?: boolean;
+  readonly spanLabel?: string;
   readonly linearCombinationVisible?: boolean;
   readonly target?: readonly [number, number] | null;
   readonly linearCombinationCoefficients?: readonly [number, number] | null;
@@ -68,6 +69,7 @@ export function VectorPlane2D({
   spanVectors = [],
   spanDimension = 0,
   showSpan = false,
+  spanLabel,
   linearCombinationVisible = false,
   target = null,
   linearCombinationCoefficients = null,
@@ -121,7 +123,7 @@ export function VectorPlane2D({
     : spanDimension === 1
       ? '原点を通る直線'
       : '2次元座標平面全体';
-  const spanGeometryLabel = `生成する空間：${spanShapeLabel}`;
+  const spanGeometryLabel = `${spanLabel ?? '生成する空間'}：${spanShapeLabel}`;
   const plotClipId = `${idPrefix}-plot-clip`;
   const spanPatternId = `${idPrefix}-span-pattern`;
   const spanGeometryLabelWidth = Math.min(
@@ -129,7 +131,9 @@ export function VectorPlane2D({
     Math.max(160, Array.from(spanGeometryLabel).length * 14 + 28),
   );
   const spanDescription = showSpan
-    ? `選択した${spanVectors.length === 0 ? '空集合' : spanVectors.map((vector) => vector.name).join('、')}が生成する空間を、${spanShapeLabel}として表示しています。`
+    ? spanLabel
+      ? `${spanLabel}を、${spanShapeLabel}として表示しています。`
+      : `選択した${spanVectors.length === 0 ? '空集合' : spanVectors.map((vector) => vector.name).join('、')}が生成する空間を、${spanShapeLabel}として表示しています。`
     : '選択したベクトルが生成する空間の幾何表示はオフです。';
   const targetDescription = linearCombinationVisible
     ? target

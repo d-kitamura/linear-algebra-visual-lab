@@ -1,9 +1,23 @@
-import { useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useMemo,
+  useState,
+} from 'react';
 import {
   MAX_ABSOLUTE_LINEAR_MAP_INPUT,
   analyzeLinearMap,
+  type LinearMapAnalysis,
   type VectorValue,
 } from '../../domain';
+import {
+  DEFAULT_3D_CAMERA_STATE,
+  type SharedCameraState,
+} from '../../sharing';
+import {
+  parallelSnapDistanceForViewWidth,
+  snapTargetToSelectedSpan,
+} from '../../state';
 import { formatMathNumber } from '../../ui';
 import {
   VectorPlane2D,
@@ -13,31 +27,45 @@ import {
 } from '../../visualization';
 import {
   LINEAR_MAP_PRESETS,
+  LINEAR_MAP_SHAPES,
   createDefaultLinearMapScene,
+  createDefaultLinearMapScenes,
   createLinearMapDefinition,
   createLinearMapSceneFromPreset,
   findMatchingLinearMapPreset,
+  presetsForLinearMapScene,
   setTransformedGridVisibility,
   updateLinearMapInputFromDrag,
   updateLinearMapInputVector,
   updateLinearMapMatrixEntry,
   type LinearMapPresetId,
-  type Matrix2,
-  type Vector2,
+  type LinearMapScene,
+  type LinearMapShapeId,
 } from './linearMapState';
 
+const VectorSpace3D = lazy(async () => {
+  const module = await import('../../visualization/VectorSpace3D');
+  return { default: module.VectorSpace3D };
+});
+
 const DOMAIN_VECTOR_COLOR = '#245b8d';
-const IMAGE_VECTOR_COLORS = ['#d55535', '#13877e', '#245b8d'] as const;
+const DOMAIN_VECTOR_COLORS = [DOMAIN_VECTOR_COLOR] as const;
+const COLUMN_VECTOR_COLORS = ['#d55535', '#13877e', '#7661b5'] as const;
+const INPUT_VECTOR_ID = 'linear-map-input-u';
+const DOMAIN_EDITABLE_VECTOR_IDS = [INPUT_VECTOR_ID] as const;
+const NO_EDITABLE_VECTOR_IDS: readonly string[] = [];
 
 interface LinearMapLabProps {
   readonly active: boolean;
 }
 
-type MatrixDrafts = [[string, string], [string, string]];
-type VectorDrafts = [string, string];
+type MatrixDrafts = string[][];
+type VectorDrafts = string[];
 
 export function LinearMapLab({ active }: LinearMapLabProps) {
-  const [scene, setScene] = useState(createDefaultLinearMapScene);
+  const [scenes, setScenes] = useState(createDefaultLinearMapScenes);
+  const [activeShapeId, setActiveShapeId] = useState<LinearMapShapeId>('2-to-2');
+  const scene = scenes[activeShapeId];
   const [matrixDrafts, setMatrixDrafts] = useState<MatrixDrafts>(() =>
     createMatrixDrafts(createDefaultLinearMapScene().matrix));
   const [inputDrafts, setInputDrafts] = useState<VectorDrafts>(() =>
@@ -45,38 +73,56 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   const [domainManualViewport, setDomainManualViewport] = useState<PlaneViewport | null>(null);
   const [codomainManualViewport, setCodomainManualViewport] = useState<PlaneViewport | null>(null);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
+  const [domainCamera, setDomainCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
+  const [codomainCamera, setCodomainCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
+  const [domainSpaceResetKey, setDomainSpaceResetKey] = useState(0);
+  const [codomainSpaceResetKey, setCodomainSpaceResetKey] = useState(0);
 
   const definition = useMemo(() => createLinearMapDefinition(scene), [scene]);
   const analysis = useMemo(
     () => analyzeLinearMap(definition, scene.inputVector),
     [definition, scene.inputVector],
   );
-  const imageVector: Vector2 = [analysis.imageVector[0], analysis.imageVector[1]];
   const domainVectors = useMemo<readonly VectorValue[]>(() => [{
-    id: 'linear-map-input-u',
+    id: INPUT_VECTOR_ID,
     name: 'u',
     coordinates: scene.inputVector,
   }], [scene.inputVector]);
+  const kernelBasisVectors = useMemo(
+    () => analysis.kernelBasis.map((coordinates, index): VectorValue => ({
+      id: `linear-map-kernel-basis-${index + 1}`,
+      name: `k${index + 1}`,
+      coordinates,
+    })),
+    [analysis.kernelBasis],
+  );
   const codomainVectors = useMemo<readonly VectorValue[]>(() => [
-    {
-      id: 'linear-map-column-1',
-      name: 'T(e1)',
-      coordinates: [scene.matrix[0][0], scene.matrix[1][0]],
-    },
-    {
-      id: 'linear-map-column-2',
-      name: 'T(e2)',
-      coordinates: [scene.matrix[0][1], scene.matrix[1][1]],
-    },
+    ...Array.from({ length: scene.sourceDimension }, (_, columnIndex): VectorValue => ({
+      id: `linear-map-column-${columnIndex + 1}`,
+      name: `T(e${columnIndex + 1})`,
+      coordinates: scene.matrix.map((row) => row[columnIndex]),
+    })),
     {
       id: 'linear-map-image-u',
       name: 'T(u)',
-      coordinates: imageVector,
+      coordinates: analysis.imageVector,
     },
-  ], [imageVector, scene.matrix]);
+  ], [analysis.imageVector, scene.matrix, scene.sourceDimension]);
+  const codomainColors = useMemo(
+    () => [...COLUMN_VECTOR_COLORS.slice(0, scene.sourceDimension), DOMAIN_VECTOR_COLOR],
+    [scene.sourceDimension],
+  );
+  const imageBasisVectors = useMemo(
+    () => analysis.imageBasis.map((coordinates, index): VectorValue => ({
+      id: `linear-map-image-basis-${index + 1}`,
+      name: `w${index + 1}`,
+      coordinates,
+    })),
+    [analysis.imageBasis],
+  );
   const domainAutoViewport = useMemo(
-    () => createAutoFitViewport(domainVectors),
-    [domainVectors],
+    () => createAutoFitViewport([...domainVectors, ...kernelBasisVectors]),
+    [domainVectors, kernelBasisVectors],
   );
   const codomainAutoViewport = useMemo(
     () => createAutoFitViewport(codomainVectors),
@@ -85,74 +131,26 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   const domainViewport = dragViewport ?? domainManualViewport ?? domainAutoViewport;
   const codomainViewport = codomainManualViewport ?? codomainAutoViewport;
   const transformedGridSegments = useMemo(
-    () => scene.showTransformedGrid
+    () => scene.sourceDimension === 2
+      && scene.targetDimension === 2
+      && scene.showTransformedGrid
       ? createLinearMapGridSegments(definition, domainViewport)
       : [],
-    [definition, domainViewport, scene.showTransformedGrid],
+    [definition, domainViewport, scene.showTransformedGrid, scene.sourceDimension, scene.targetDimension],
   );
-  const matchingPresetId = findMatchingLinearMapPreset(scene.matrix);
+  const matchingPresetId = findMatchingLinearMapPreset(scene);
+  const availablePresets = presetsForLinearMapScene(scene);
   const selectedPreset = LINEAR_MAP_PRESETS.find((preset) => preset.id === matchingPresetId);
   const invalidDraftCount = countInvalidDrafts(matrixDrafts.flat(), inputDrafts);
+  const imageIsZero = analysis.imageVector.every((coordinate) => Math.abs(coordinate) <= 1e-10);
 
-  function handlePresetChange(presetId: LinearMapPresetId): void {
-    const nextScene = createLinearMapSceneFromPreset(
-      presetId,
-      scene.inputVector,
-      scene.showTransformedGrid,
-    );
-    setScene(nextScene);
-    setMatrixDrafts(createMatrixDrafts(nextScene.matrix));
-    setDomainManualViewport(null);
-    setCodomainManualViewport(null);
+  function replaceActiveScene(nextScene: LinearMapScene): void {
+    setScenes((current) => ({ ...current, [activeShapeId]: nextScene }));
   }
 
-  function handleMatrixDraftChange(
-    rowIndex: 0 | 1,
-    columnIndex: 0 | 1,
-    text: string,
-  ): void {
-    setMatrixDrafts((current) => {
-      const next = current.map((row) => [...row]) as MatrixDrafts;
-      next[rowIndex][columnIndex] = text;
-      return next;
-    });
-    const parsed = parseEditableNumber(text);
-    if (parsed !== null) {
-      setScene((current) => updateLinearMapMatrixEntry(
-        current,
-        rowIndex,
-        columnIndex,
-        parsed,
-      ));
-    }
-  }
-
-  function handleInputDraftChange(index: 0 | 1, text: string): void {
-    setInputDrafts((current) => {
-      const next: VectorDrafts = [...current];
-      next[index] = text;
-      return next;
-    });
-    const parsed = parseEditableNumber(text);
-    if (parsed !== null) {
-      setScene((current) => updateLinearMapInputVector(
-        current,
-        index === 0
-          ? [parsed, current.inputVector[1]]
-          : [current.inputVector[0], parsed],
-      ));
-    }
-  }
-
-  function handleInputDrag(coordinates: Vector2): void {
-    const next = updateLinearMapInputFromDrag(scene, coordinates);
-    setScene(next);
-    setInputDrafts(createVectorDrafts(next.inputVector));
-  }
-
-  function handleReset(): void {
-    const nextScene = createDefaultLinearMapScene();
-    setScene(nextScene);
+  function handleShapeChange(nextShapeId: LinearMapShapeId): void {
+    const nextScene = scenes[nextShapeId];
+    setActiveShapeId(nextShapeId);
     setMatrixDrafts(createMatrixDrafts(nextScene.matrix));
     setInputDrafts(createVectorDrafts(nextScene.inputVector));
     setDomainManualViewport(null);
@@ -160,28 +158,107 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     setDragViewport(null);
   }
 
+  function handlePresetChange(presetId: LinearMapPresetId): void {
+    const nextScene = createLinearMapSceneFromPreset(
+      presetId,
+      scene.inputVector,
+      scene.showTransformedGrid,
+    );
+    replaceActiveScene(nextScene);
+    setMatrixDrafts(createMatrixDrafts(nextScene.matrix));
+    resetViewports();
+  }
+
+  function handleMatrixDraftChange(rowIndex: number, columnIndex: number, text: string): void {
+    setMatrixDrafts((current) => current.map((row, currentRowIndex) =>
+      row.map((draft, currentColumnIndex) =>
+        currentRowIndex === rowIndex && currentColumnIndex === columnIndex ? text : draft)));
+    const parsed = parseEditableNumber(text);
+    if (parsed !== null) {
+      replaceActiveScene(updateLinearMapMatrixEntry(scene, rowIndex, columnIndex, parsed));
+    }
+  }
+
+  function handleInputDraftChange(index: number, text: string): void {
+    setInputDrafts((current) => current.map((draft, currentIndex) =>
+      currentIndex === index ? text : draft));
+    const parsed = parseEditableNumber(text);
+    if (parsed !== null) {
+      const nextCoordinates = scene.inputVector.map((coordinate, coordinateIndex) =>
+        coordinateIndex === index ? parsed : coordinate);
+      replaceActiveScene(updateLinearMapInputVector(scene, nextCoordinates));
+    }
+  }
+
+  function commitInputCoordinates(coordinates: readonly number[]): void {
+    const next = updateLinearMapInputFromDrag(scene, coordinates);
+    replaceActiveScene(next);
+    setInputDrafts(createVectorDrafts(next.inputVector));
+  }
+
+  function handlePlaneInputDrag(coordinates: readonly [number, number]): void {
+    const snapResult = snapTargetToSelectedSpan(
+      coordinates,
+      kernelBasisVectors,
+      analysis.kernelDimension,
+      parallelSnapDistanceForViewWidth(domainViewport.maxX - domainViewport.minX),
+    );
+    commitInputCoordinates(snapResult.coordinates);
+  }
+
+  function handleReset(): void {
+    const nextScene = createDefaultLinearMapScene(scene.sourceDimension, scene.targetDimension);
+    replaceActiveScene(nextScene);
+    setMatrixDrafts(createMatrixDrafts(nextScene.matrix));
+    setInputDrafts(createVectorDrafts(nextScene.inputVector));
+    setDomainCamera(DEFAULT_3D_CAMERA_STATE);
+    setCodomainCamera(DEFAULT_3D_CAMERA_STATE);
+    setDomainSpaceResetKey((current) => current + 1);
+    setCodomainSpaceResetKey((current) => current + 1);
+    resetViewports();
+  }
+
+  function resetViewports(): void {
+    setDomainManualViewport(null);
+    setCodomainManualViewport(null);
+    setDragViewport(null);
+  }
+
   return (
     <div className="linear-map-lab" data-lab-id="linear-map" aria-hidden={!active}>
-      <a className="skip-link" href="#linear-map-workspace">
-        線形写像の操作領域へ移動
-      </a>
+      <a className="skip-link" href="#linear-map-workspace">線形写像の操作領域へ移動</a>
       <main className="lab-page">
+        <nav className="linear-map-shape-switcher" aria-label="線形写像の定義域と終域の次元">
+          <div className="linear-map-shape-tablist" role="tablist" aria-label="入出力次元の切替">
+            {LINEAR_MAP_SHAPES.map((shape) => (
+              <button
+                key={shape.id}
+                type="button"
+                role="tab"
+                aria-selected={activeShapeId === shape.id}
+                onClick={() => handleShapeChange(shape.id)}
+              >{shape.label}</button>
+            ))}
+          </div>
+          <p>定義域と終域の次元ごとに教材状態を保持します。</p>
+        </nav>
+
         <div className="linear-map-scope" aria-label="現在の対象">
           <span>現在の対象</span>
-          <strong><MathMapSignature /></strong>
-          <small>2次元から2次元への線形写像</small>
+          <strong><MathMapSignature sourceDimension={scene.sourceDimension} targetDimension={scene.targetDimension} /></strong>
+          <small>{scene.sourceDimension}次元から{scene.targetDimension}次元への線形写像</small>
         </div>
 
         <section className="lab-intro" aria-labelledby="linear-map-title">
           <div>
-            <p className="eyebrow">線形写像 / 2D → 2D</p>
+            <p className="eyebrow">線形写像 / {scene.sourceDimension}D → {scene.targetDimension}D</p>
             <h1 id="linear-map-title">入力を動かして、像の動きを見る。</h1>
           </div>
           <div className="lab-intro-side">
             <p className="lab-intro-copy">
               定義域の入力 <MathVectorName name="u" /> と行列 <MathMatrixName /> を変えると、
               終域の像 <MathMapValue argument="u" /> がリアルタイムに決まります。
-              標準基底の像と格子の変形から、行列の2列が表す動きを読み取ります。
+              灰色の部分空間で核 <MathNamedSubspace name="Ker" /> と像 <MathNamedSubspace name="Im" /> を比較できます。
             </p>
             <div className="lab-actions" aria-label="線形写像Labの教材状態を操作">
               <button className="reset-button" type="button" onClick={handleReset}>Reset</button>
@@ -191,61 +268,102 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
 
         <div className="linear-map-workspace" id="linear-map-workspace">
           <div className="linear-map-diagram-grid">
-            <section className="plot-card linear-map-plot-card" aria-labelledby="linear-map-domain-title">
-              <div className="card-heading">
-                <div>
-                  <p className="panel-kicker">Domain</p>
-                  <h2 id="linear-map-domain-title">定義域 <MathRealSpace name="U" /></h2>
-                </div>
-                <button
-                  className="basis-fit-button"
-                  type="button"
-                  onClick={() => setDomainManualViewport(null)}
-                >全体を表示</button>
-              </div>
-              <VectorPlane2D
-                idPrefix="linear-map-domain-plane"
-                vectors={domainVectors}
-                colors={[DOMAIN_VECTOR_COLOR]}
-                viewport={domainViewport}
-                onViewportChange={setDomainManualViewport}
-                onVectorDragStart={() => setDragViewport(domainViewport)}
-                onVectorChange={(_, coordinates) => handleInputDrag(coordinates)}
-                onVectorDragEnd={() => setDragViewport(null)}
-              />
-            </section>
+            {scene.sourceDimension === 2 ? (
+              <section className="plot-card linear-map-plot-card" aria-labelledby="linear-map-domain-title">
+                <PlotHeading id="linear-map-domain-title" kind="Domain" name="U" dimension={2} onFit={() => setDomainManualViewport(null)} />
+                <VectorPlane2D
+                  idPrefix="linear-map-domain-plane"
+                  vectors={domainVectors}
+                  colors={DOMAIN_VECTOR_COLORS}
+                  viewport={domainViewport}
+                  onViewportChange={setDomainManualViewport}
+                  onVectorDragStart={() => setDragViewport(domainViewport)}
+                  onVectorChange={(_, coordinates) => handlePlaneInputDrag(coordinates)}
+                  onVectorDragEnd={() => setDragViewport(null)}
+                  spanVectors={kernelBasisVectors}
+                  spanDimension={analysis.kernelDimension}
+                  showSpan
+                  spanLabel="Ker(T)"
+                />
+              </section>
+            ) : (
+              <Suspense fallback={<SpaceLoading label="定義域" />}>
+                <VectorSpace3D
+                  idPrefix="linear-map-domain-space"
+                  spaceTitle="定義域 U = ℝ³"
+                  vectors={domainVectors}
+                  colors={DOMAIN_VECTOR_COLORS}
+                  spanVectors={kernelBasisVectors}
+                  spanRank={analysis.kernelDimension}
+                  showSpan
+                  spanLabel="Ker(T)"
+                  editableVectorIds={DOMAIN_EDITABLE_VECTOR_IDS}
+                  snapEditableVectorsToSpan
+                  linearCombinationVisible={false}
+                  linearCombinationTarget={null}
+                  linearCombinationCoefficients={null}
+                  active={active && scene.sourceDimension === 3}
+                  resetKey={domainSpaceResetKey}
+                  camera={domainCamera}
+                  onCameraChange={setDomainCamera}
+                  onVectorCoordinatesCommit={(_, coordinates) => commitInputCoordinates(coordinates)}
+                  onLinearCombinationTargetPlacement={() => undefined}
+                  onLinearCombinationVisibility={() => undefined}
+                  showLinearCombinationControl={false}
+                  assistiveDescription="入力uの成分、像、核の次元は後続の数値入力と解析表示でも確認できます。"
+                />
+              </Suspense>
+            )}
 
-            <section className="plot-card linear-map-plot-card" aria-labelledby="linear-map-codomain-title">
-              <div className="card-heading">
-                <div>
-                  <p className="panel-kicker">Codomain</p>
-                  <h2 id="linear-map-codomain-title">終域 <MathRealSpace name="V" /></h2>
-                </div>
-                <button
-                  className="basis-fit-button"
-                  type="button"
-                  onClick={() => setCodomainManualViewport(null)}
-                >全体を表示</button>
-              </div>
-              <VectorPlane2D
-                idPrefix="linear-map-codomain-plane"
-                vectors={codomainVectors}
-                colors={IMAGE_VECTOR_COLORS}
-                viewport={codomainViewport}
-                onViewportChange={setCodomainManualViewport}
-                transformedGridSegments={transformedGridSegments}
-              />
-              <p className="viewport-help">
-                <MathMapValue argument="u" /> は導出値なので直接編集しません。赤と緑は標準基底の像、青は入力の像です。
-              </p>
-            </section>
+            {scene.targetDimension === 2 ? (
+              <section className="plot-card linear-map-plot-card" aria-labelledby="linear-map-codomain-title">
+                <PlotHeading id="linear-map-codomain-title" kind="Codomain" name="V" dimension={2} onFit={() => setCodomainManualViewport(null)} />
+                <VectorPlane2D
+                  idPrefix="linear-map-codomain-plane"
+                  vectors={codomainVectors}
+                  colors={codomainColors}
+                  viewport={codomainViewport}
+                  onViewportChange={setCodomainManualViewport}
+                  spanVectors={imageBasisVectors}
+                  spanDimension={analysis.imageDimension}
+                  showSpan
+                  spanLabel="Im(T)"
+                  transformedGridSegments={transformedGridSegments}
+                />
+              </section>
+            ) : (
+              <Suspense fallback={<SpaceLoading label="終域" />}>
+                <VectorSpace3D
+                  idPrefix="linear-map-codomain-space"
+                  spaceTitle="終域 V = ℝ³"
+                  vectors={codomainVectors}
+                  colors={codomainColors}
+                  spanVectors={imageBasisVectors}
+                  spanRank={analysis.imageDimension}
+                  showSpan
+                  spanLabel="Im(T)"
+                  editableVectorIds={NO_EDITABLE_VECTOR_IDS}
+                  linearCombinationVisible={false}
+                  linearCombinationTarget={null}
+                  linearCombinationCoefficients={null}
+                  active={active && scene.targetDimension === 3}
+                  resetKey={codomainSpaceResetKey}
+                  camera={codomainCamera}
+                  onCameraChange={setCodomainCamera}
+                  onVectorCoordinatesCommit={() => undefined}
+                  onLinearCombinationTargetPlacement={() => undefined}
+                  onLinearCombinationVisibility={() => undefined}
+                  showLinearCombinationControl={false}
+                  assistiveDescription="標準基底の像、入力の像、像空間の次元は後続の数値表示でも確認できます。"
+                />
+              </Suspense>
+            )}
           </div>
 
           <div className="linear-map-detail-grid">
             <section className="linear-map-control-card" aria-labelledby="linear-map-control-title">
               <p className="panel-kicker">Edit transformation</p>
               <h2 id="linear-map-control-title">行列と入力</h2>
-
               <label className="linear-map-preset-field">
                 <span>代表例</span>
                 <select
@@ -257,7 +375,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                   }}
                 >
                   <option value="custom" disabled>成分を編集中</option>
-                  {LINEAR_MAP_PRESETS.map((preset) => (
+                  {availablePresets.map((preset) => (
                     <option key={preset.id} value={preset.id}>{preset.label}</option>
                   ))}
                 </select>
@@ -265,30 +383,28 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
               <p className="linear-map-preset-description">
                 {selectedPreset?.description ?? '行列の成分を直接編集した写像です。'}
               </p>
-
               <div className="linear-map-editor-row">
                 <div className="linear-map-editor-block">
                   <strong><MathMatrixName /> =</strong>
-                  <MatrixInput
-                    drafts={matrixDrafts}
-                    onChange={handleMatrixDraftChange}
-                  />
+                  <MatrixInput drafts={matrixDrafts} onChange={handleMatrixDraftChange} />
                 </div>
                 <div className="linear-map-editor-block">
                   <strong><MathVectorName name="u" /> =</strong>
                   <VectorInput drafts={inputDrafts} onChange={handleInputDraftChange} />
                 </div>
               </div>
-
-              <label className="linear-map-grid-toggle">
-                <input
-                  type="checkbox"
-                  checked={scene.showTransformedGrid}
-                  onChange={(event) => setScene((current) =>
-                    setTransformedGridVisibility(current, event.target.checked))}
-                />
-                <span>終域に格子の像を表示</span>
-              </label>
+              {scene.sourceDimension === 2 && scene.targetDimension === 2 ? (
+                <label className="linear-map-grid-toggle">
+                  <input
+                    type="checkbox"
+                    checked={scene.showTransformedGrid}
+                    onChange={(event) => replaceActiveScene(
+                      setTransformedGridVisibility(scene, event.target.checked),
+                    )}
+                  />
+                  <span>終域に格子の像を表示</span>
+                </label>
+              ) : null}
               {invalidDraftCount > 0 ? (
                 <p className="linear-map-input-warning" role="status">
                   未確定の成分が{invalidDraftCount}か所あります。図には直前の有効な値を使っています。
@@ -297,39 +413,38 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
             </section>
 
             <section className="linear-map-reading-card" aria-labelledby="linear-map-reading-title" aria-live="polite">
-              <p className="panel-kicker">Read the matrix</p>
-              <h2 id="linear-map-reading-title">行列の列と標準基底の像</h2>
+              <p className="panel-kicker">Read kernel and image</p>
+              <h2 id="linear-map-reading-title">行列の列・核・像</h2>
               <div className="linear-map-equation">
                 <MathMatrixName /> = [
-                <MathMapValue argument="e" subscript="1" />,
-                {' '}<MathMapValue argument="e" subscript="2" />]
-                {' '}= <MathMatrix values={scene.matrix} />
+                {Array.from({ length: scene.sourceDimension }, (_, index) => (
+                  <span key={index} className="linear-map-equation-column">
+                    {index > 0 ? ', ' : ''}<MathMapValue argument="e" subscript={index + 1} />
+                  </span>
+                ))}]
+                {' '}= <MathMatrix values={scene.matrix} columns={scene.sourceDimension} />
               </div>
               <div className="linear-map-column-list">
-                <p className="is-first-column">
-                  <MathStandardBasisVector subscript="1" /> ={' '}
-                  <MathColumnVector values={[1, 0]} />,
-                  {' '}
-                  <MathMapValue argument="e" subscript="1" /> ={' '}
-                  <MathColumnVector values={[scene.matrix[0][0], scene.matrix[1][0]]} />
-                </p>
-                <p className="is-second-column">
-                  <MathStandardBasisVector subscript="2" /> ={' '}
-                  <MathColumnVector values={[0, 1]} />,
-                  {' '}
-                  <MathMapValue argument="e" subscript="2" /> ={' '}
-                  <MathColumnVector values={[scene.matrix[0][1], scene.matrix[1][1]]} />
-                </p>
+                {Array.from({ length: scene.sourceDimension }, (_, columnIndex) => (
+                  <p key={columnIndex} className={`is-column-${columnIndex + 1}`}>
+                    <MathStandardBasisVector subscript={columnIndex + 1} /> ={' '}
+                    <MathColumnVector values={standardBasis(scene.sourceDimension, columnIndex)} />,
+                    {' '}<MathMapValue argument="e" subscript={columnIndex + 1} /> ={' '}
+                    <MathColumnVector values={scene.matrix.map((row) => row[columnIndex])} />
+                  </p>
+                ))}
               </div>
+              <SubspaceSummary analysis={analysis} imageIsZero={imageIsZero} />
               <div className="linear-map-current-value">
                 <p>
                   <MathMapValue argument="u" /> = <MathMatrixName /><MathVectorName name="u" /> ={' '}
-                  <MathColumnVector values={imageVector} />
+                  <MathColumnVector values={analysis.imageVector} />
                 </p>
-                <strong>{describeRank(analysis.rank)}</strong>
-                <small>
-                  <span className="math-roman">rank</span>(<span className="math-scalar-base">T</span>) = {analysis.rank}
-                </small>
+                <strong>{imageIsZero
+                  ? <><MathVectorName name="u" /> は <MathNamedSubspace name="Ker" /> に属し、原点へ写ります。</>
+                  : <><MathVectorName name="u" /> は <MathNamedSubspace name="Ker" /> に属さず、青い像へ写ります。</>}
+                </strong>
+                <small><span className="math-roman">rank</span>(<span className="math-scalar-base">T</span>) = {analysis.rank}</small>
               </div>
             </section>
           </div>
@@ -339,16 +454,45 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   );
 }
 
+function PlotHeading({
+  id,
+  kind,
+  name,
+  dimension,
+  onFit,
+}: {
+  readonly id: string;
+  readonly kind: 'Domain' | 'Codomain';
+  readonly name: 'U' | 'V';
+  readonly dimension: 2 | 3;
+  readonly onFit: () => void;
+}) {
+  return (
+    <div className="card-heading">
+      <div>
+        <p className="panel-kicker">{kind}</p>
+        <h2 id={id}>{kind === 'Domain' ? '定義域' : '終域'} <MathRealSpace name={name} dimension={dimension} /></h2>
+      </div>
+      <button className="basis-fit-button" type="button" onClick={onFit}>全体を表示</button>
+    </div>
+  );
+}
+
 function MatrixInput({
   drafts,
   onChange,
 }: {
   readonly drafts: MatrixDrafts;
-  readonly onChange: (row: 0 | 1, column: 0 | 1, text: string) => void;
+  readonly onChange: (row: number, column: number, text: string) => void;
 }) {
+  const columns = drafts[0]?.length ?? 1;
   return (
-    <span className="linear-map-matrix-input" aria-label="行列Aの成分">
-      {drafts.map((row, rowIndex) => row.map((draft, columnIndex) => (
+    <span
+      className="linear-map-matrix-input"
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(42px, 1fr))` }}
+      aria-label="行列Aの成分"
+    >
+      {drafts.flatMap((row, rowIndex) => row.map((draft, columnIndex) => (
         <input
           key={`${rowIndex}-${columnIndex}`}
           type="text"
@@ -356,23 +500,16 @@ function MatrixInput({
           value={draft}
           aria-label={`行列Aの第${rowIndex + 1}行第${columnIndex + 1}列`}
           aria-invalid={parseEditableNumber(draft) === null}
-          onChange={(event) => onChange(
-            rowIndex as 0 | 1,
-            columnIndex as 0 | 1,
-            event.target.value,
-          )}
+          onChange={(event) => onChange(rowIndex, columnIndex, event.target.value)}
         />
       )))}
     </span>
   );
 }
 
-function VectorInput({
-  drafts,
-  onChange,
-}: {
+function VectorInput({ drafts, onChange }: {
   readonly drafts: VectorDrafts;
-  readonly onChange: (index: 0 | 1, text: string) => void;
+  readonly onChange: (index: number, text: string) => void;
 }) {
   return (
     <span className="linear-map-vector-input" aria-label="入力ベクトルuの成分">
@@ -384,27 +521,45 @@ function VectorInput({
           value={draft}
           aria-label={`入力ベクトルuの第${index + 1}成分`}
           aria-invalid={parseEditableNumber(draft) === null}
-          onChange={(event) => onChange(index as 0 | 1, event.target.value)}
+          onChange={(event) => onChange(index, event.target.value)}
         />
       ))}
     </span>
   );
 }
 
-function MathMapSignature() {
+function SubspaceSummary({ analysis, imageIsZero }: {
+  readonly analysis: LinearMapAnalysis;
+  readonly imageIsZero: boolean;
+}) {
   return (
-    <span className="linear-map-math">
-      <span className="math-scalar-base">T</span>: ℝ<sup>2</sup> → ℝ<sup>2</sup>
-    </span>
+    <div className="linear-map-subspace-summary">
+      <div>
+        <strong><MathNamedSubspace name="Ker" /></strong>
+        <span>{describeSubspace(analysis.kernelDimension, analysis.sourceDimension)}</span>
+        <small><span className="math-roman">dim</span>(<MathNamedSubspace name="Ker" />) = {analysis.kernelDimension}</small>
+      </div>
+      <div>
+        <strong><MathNamedSubspace name="Im" /></strong>
+        <span>{describeSubspace(analysis.imageDimension, analysis.targetDimension)}</span>
+        <small><span className="math-roman">dim</span>(<MathNamedSubspace name="Im" />) = {analysis.imageDimension}</small>
+      </div>
+      <p className={imageIsZero ? 'is-in-kernel' : undefined}>
+        灰色の <MathNamedSubspace name="Ker" /> 上の入力は、すべて終域の原点へ写ります。灰色の <MathNamedSubspace name="Im" /> は、実際に像として現れるベクトル全体です。
+      </p>
+    </div>
   );
 }
 
-function MathRealSpace({ name }: { readonly name: 'U' | 'V' }) {
-  return (
-    <span className="linear-map-math">
-      <span className="math-scalar-base">{name}</span> = ℝ<sup>2</sup>
-    </span>
-  );
+function MathMapSignature({ sourceDimension, targetDimension }: {
+  readonly sourceDimension: 2 | 3;
+  readonly targetDimension: 2 | 3;
+}) {
+  return <span className="linear-map-math"><span className="math-scalar-base">T</span>: ℝ<sup>{sourceDimension}</sup> → ℝ<sup>{targetDimension}</sup></span>;
+}
+
+function MathRealSpace({ name, dimension }: { readonly name: 'U' | 'V'; readonly dimension: 2 | 3 }) {
+  return <span className="linear-map-math"><span className="math-scalar-base">{name}</span> = ℝ<sup>{dimension}</sup></span>;
 }
 
 function MathMatrixName() {
@@ -415,38 +570,35 @@ function MathVectorName({ name }: { readonly name: string }) {
   return <span className="math-vector"><span className="math-vector-base">{name}</span></span>;
 }
 
-function MathStandardBasisVector({ subscript }: { readonly subscript: '1' | '2' }) {
-  return (
-    <span className="math-vector">
-      <span className="math-vector-base">e</span>
-      <sub className="math-vector-subscript">{subscript}</sub>
-    </span>
-  );
+function MathStandardBasisVector({ subscript }: { readonly subscript: number }) {
+  return <span className="math-vector"><span className="math-vector-base">e</span><sub className="math-vector-subscript">{subscript}</sub></span>;
 }
 
-function MathMapValue({
-  argument,
-  subscript,
-}: {
+function MathNamedSubspace({ name }: { readonly name: 'Ker' | 'Im' }) {
+  return <span className="linear-map-math"><span className="math-roman">{name}</span>(<span className="math-scalar-base">T</span>)</span>;
+}
+
+function MathMapValue({ argument, subscript }: {
   readonly argument: 'u' | 'e';
-  readonly subscript?: '1' | '2';
+  readonly subscript?: number;
 }) {
   return (
     <span className="linear-map-math math-map-value">
-      <span className="math-scalar-base">T</span>(
-      <span className="math-vector-base">{argument}</span>
+      <span className="math-scalar-base">T</span>(<span className="math-vector-base">{argument}</span>
       {subscript ? <sub className="math-vector-subscript">{subscript}</sub> : null})
     </span>
   );
 }
 
-function MathMatrix({ values }: { readonly values: Matrix2 }) {
+function MathMatrix({ values, columns }: { readonly values: readonly (readonly number[])[]; readonly columns: number }) {
   return (
-    <span className="linear-map-display-matrix" aria-label={`行列 ${values.flat().join('、')}`}>
+    <span
+      className="linear-map-display-matrix"
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(32px, 1fr))` }}
+      aria-label={`行列 ${values.flat().join('、')}`}
+    >
       {values.flatMap((row, rowIndex) => row.map((value, columnIndex) => (
-        <span key={`${rowIndex}-${columnIndex}`} aria-hidden="true">
-          {formatMathNumber(value).text}
-        </span>
+        <span key={`${rowIndex}-${columnIndex}`} aria-hidden="true">{formatMathNumber(value).text}</span>
       )))}
     </span>
   );
@@ -455,29 +607,32 @@ function MathMatrix({ values }: { readonly values: Matrix2 }) {
 function MathColumnVector({ values }: { readonly values: readonly number[] }) {
   return (
     <span className="display-column-vector linear-map-column-vector" aria-label={`列ベクトル ${values.join('、')}`}>
-      {values.map((value, index) => (
-        <span key={index} aria-hidden="true">{formatMathNumber(value).text}</span>
-      ))}
+      {values.map((value, index) => <span key={index} aria-hidden="true">{formatMathNumber(value).text}</span>)}
     </span>
   );
 }
 
-function describeRank(rank: number): string {
-  if (rank === 0) {
-    return 'すべての入力が原点へ移ります。';
-  }
-  if (rank === 1) {
-    return '2次元の格子が原点を通る1本の直線へ押しつぶされます。';
-  }
-  return '2次元の広がりを保ったまま格子が移ります。';
+function SpaceLoading({ label }: { readonly label: string }) {
+  return <section className="three-dimensional-plot-card"><p className="panel-kicker">3D coordinate space</p><h2>{label}の3D表示を準備しています</h2></section>;
 }
 
-function createMatrixDrafts(matrix: Matrix2): MatrixDrafts {
-  return matrix.map((row) => row.map(formatDraft)) as MatrixDrafts;
+function standardBasis(dimension: number, columnIndex: number): number[] {
+  return Array.from({ length: dimension }, (_, index) => index === columnIndex ? 1 : 0);
 }
 
-function createVectorDrafts(vector: Vector2): VectorDrafts {
-  return vector.map(formatDraft) as VectorDrafts;
+function describeSubspace(dimension: number, ambientDimension: number): string {
+  if (dimension === 0) return '原点だけ';
+  if (dimension === 1) return '原点を通る直線';
+  if (dimension === 2) return ambientDimension === 2 ? '2次元空間全体' : '原点を通る平面';
+  return '3次元空間全体';
+}
+
+function createMatrixDrafts(matrix: readonly (readonly number[])[]): MatrixDrafts {
+  return matrix.map((row) => row.map(formatDraft));
+}
+
+function createVectorDrafts(vector: readonly number[]): VectorDrafts {
+  return vector.map(formatDraft);
 }
 
 function formatDraft(value: number): string {
@@ -485,13 +640,9 @@ function formatDraft(value: number): string {
 }
 
 function parseEditableNumber(text: string): number | null {
-  if (text.trim() === '') {
-    return null;
-  }
+  if (text.trim() === '') return null;
   const value = Number(text);
-  return Number.isFinite(value) && Math.abs(value) <= MAX_ABSOLUTE_LINEAR_MAP_INPUT
-    ? value
-    : null;
+  return Number.isFinite(value) && Math.abs(value) <= MAX_ABSOLUTE_LINEAR_MAP_INPUT ? value : null;
 }
 
 function countInvalidDrafts(...groups: readonly (readonly string[])[]): number {

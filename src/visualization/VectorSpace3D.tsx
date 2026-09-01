@@ -49,6 +49,9 @@ interface VectorSpace3DProps {
   readonly spanVectors: readonly VectorValue[];
   readonly spanRank: number;
   readonly showSpan: boolean;
+  readonly spanLabel?: string;
+  readonly editableVectorIds?: readonly string[];
+  readonly snapEditableVectorsToSpan?: boolean;
   readonly linearCombinationVisible: boolean;
   readonly linearCombinationTarget: readonly [number, number, number] | null;
   readonly linearCombinationCoefficients: readonly number[] | null;
@@ -99,7 +102,7 @@ interface ActiveScreenPlaneDrag {
   readonly startPoint: THREE.Vector3;
   readonly interactionPlane: THREE.Plane;
   coordinates: [number, number, number];
-  snapKind: SpaceVectorSnapKind;
+  snapKind: SpaceVectorSnapKind | SpaceTargetSnapKind;
   snapTargetVectorIds: readonly string[];
   spanPreviewRank: number | null;
 }
@@ -151,6 +154,9 @@ export function VectorSpace3D({
   spanVectors,
   spanRank,
   showSpan,
+  spanLabel,
+  editableVectorIds,
+  snapEditableVectorsToSpan = false,
   linearCombinationVisible,
   linearCombinationTarget,
   linearCombinationCoefficients,
@@ -214,6 +220,9 @@ export function VectorSpace3D({
         linearCombinationCoefficients,
         axisLabels,
         spaceTitle,
+        spanLabel,
+        editableVectorIds ?? vectors.map((vector) => vector.id),
+        snapEditableVectorsToSpan,
         cameraRef.current,
         (nextCamera) => onCameraChangeRef.current(nextCamera),
         (vectorId, coordinates) => {
@@ -253,6 +262,9 @@ export function VectorSpace3D({
     linearCombinationTarget,
     linearCombinationVisible,
     showSpan,
+    spanLabel,
+    editableVectorIds,
+    snapEditableVectorsToSpan,
     spaceTitle,
     spanRank,
     spanVectors,
@@ -311,7 +323,9 @@ export function VectorSpace3D({
       </div>
 
       <div className="three-dimensional-gesture-guide" aria-label="3D表示の操作方法">
-        <span><i className="vector-tip-gesture-mark" aria-hidden="true" />通常ベクトルの矢先をドラッグ：画面内で移動・吸着</span>
+        {(editableVectorIds?.length ?? vectors.length) > 0 ? (
+          <span><i className="vector-tip-gesture-mark" aria-hidden="true" />通常ベクトルの矢先をドラッグ：画面内で移動・吸着</span>
+        ) : null}
         {linearCombinationVisible && linearCombinationTarget ? (
           <span><i className="target-vector-gesture-mark" aria-hidden="true" />ターゲット v の矢先をドラッグ：画面内で移動・生成する空間へ吸着</span>
         ) : null}
@@ -329,7 +343,7 @@ export function VectorSpace3D({
         className={`three-dimensional-render-frame ${errorMessage ? 'has-error' : ''}`}
         role="group"
         aria-describedby={`${idPrefix}-canvas-alternative`}
-        aria-label={`右手座標系の${spaceTitle}。${axisLabels.join('軸、')}軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `選択したベクトルが生成する${describeSpaceSpan(spanRank)}を灰色の幾何形状で表示しています。` : '生成する空間の幾何表示はオフです。'}${linearCombinationVisible ? linearCombinationTarget ? 'ターゲットvと一次結合の幾何表示があります。' : '一次結合モードでターゲットは未配置です。' : ''}`}
+        aria-label={`右手座標系の${spaceTitle}。${axisLabels.join('軸、')}軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `${spanLabel ?? '選択したベクトルが生成する空間'}を${describeSpaceSpan(spanRank)}として灰色の幾何形状で表示しています。` : '部分空間の幾何表示はオフです。'}${linearCombinationVisible ? linearCombinationTarget ? 'ターゲットvと一次結合の幾何表示があります。' : '一次結合モードでターゲットは未配置です。' : ''}`}
       >
         <div className="three-dimensional-render-host" ref={hostRef} />
         {interactionMessage ? (
@@ -347,10 +361,11 @@ export function VectorSpace3D({
       </div>
 
       <p className="three-dimensional-help">
-        通常ベクトルの矢先をドラッグすると、ドラッグ開始時の画面に平行な面内でベクトルを変更できます。
-        他のベクトルが張る直線または平面へ近づけると、平行または同一平面上へ吸着します。
+        {(editableVectorIds?.length ?? vectors.length) > 0
+          ? <>通常ベクトルの矢先をドラッグすると、ドラッグ開始時の画面に平行な面内でベクトルを変更できます。{snapEditableVectorsToSpan ? ` ${spanLabel ?? '表示中の部分空間'}へ近づけると吸着します。` : ' 他のベクトルが張る直線または平面へ近づけると、平行または同一平面上へ吸着します。'}</>
+          : null}
         それ以外の場所では、ドラッグで視点を回転、ホイールまたは2本指で拡大・縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。
-        {showSpan ? ' 灰色の形状は、選択したベクトルが生成する空間です。' : ''}
+        {showSpan ? ` 灰色の形状は、${spanLabel ?? '選択したベクトルが生成する空間'}です。` : ''}
         {linearCombinationVisible
           ? ` 背景を短くクリックまたはタップすると、原点を通る現在の画面平行面上へターゲットを配置できます。${linearCombinationTarget ? 'ターゲットの矢先をドラッグすると、一次結合の幾何表示とともに画面平行面内で移動できます。選択したベクトルが生成する原点・直線・平面へ近づけると吸着します。' : ''}数値入力でも変更できます。`
           : ''}
@@ -372,6 +387,9 @@ function createThreeSpaceRuntime(
   linearCombinationCoefficients: readonly number[] | null,
   axisLabels: readonly [string, string, string],
   spaceTitle: string,
+  spanLabel: string | undefined,
+  editableVectorIds: readonly string[],
+  snapEditableVectorsToSpan: boolean,
   initialCamera: SharedCameraState | null,
   onCameraChange: (camera: SharedCameraState) => void,
   onVectorCoordinatesCommit: (
@@ -428,7 +446,7 @@ function createThreeSpaceRuntime(
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute(
     'aria-label',
-    `${spaceTitle}。通常ベクトルの矢先をドラッグすると画面に平行な面内で移動し、平行または同一平面上へ吸着できます。${linearCombinationVisible ? `背景を短くクリックまたはタップするとターゲットvを配置できます。${linearCombinationTarget ? 'ターゲットvの矢先をドラッグすると一次結合の幾何表示とともに画面平行面内で移動し、選択したベクトルが生成する原点・直線・平面へ吸着できます。' : ''}` : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
+    `${spaceTitle}。${editableVectorIds.length > 0 ? `通常ベクトルの矢先をドラッグすると画面に平行な面内で移動し、${snapEditableVectorsToSpan ? `${spanLabel ?? '表示中の部分空間'}へ` : '平行または同一平面上へ'}吸着できます。` : '表示されるベクトルは導出値なので、矢先からは編集できません。'}${linearCombinationVisible ? `背景を短くクリックまたはタップするとターゲットvを配置できます。${linearCombinationTarget ? 'ターゲットvの矢先をドラッグすると一次結合の幾何表示とともに画面平行面内で移動し、選択したベクトルが生成する原点・直線・平面へ吸着できます。' : ''}` : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
   );
   host.append(renderer.domElement);
 
@@ -440,7 +458,7 @@ function createThreeSpaceRuntime(
   addGrid(scene, extent);
   const spanGeometryGroup = new THREE.Group();
   if (showSpan) {
-    addSpanGeometry(spanGeometryGroup, spanVectors, spanRank, extent);
+    addSpanGeometry(spanGeometryGroup, spanVectors, spanRank, extent, spanLabel);
   }
   scene.add(spanGeometryGroup);
   const spanDragPreview = new THREE.Group();
@@ -467,6 +485,8 @@ function createThreeSpaceRuntime(
     new Set(spanVectors.map((vector) => vector.id)),
     showSpan,
   );
+  const editableVectorIdSet = new Set(editableVectorIds);
+  const editableVectors = vectors.filter((vector) => editableVectorIdSet.has(vector.id));
   const targetVectorGroup = new THREE.Group();
   const renderedTarget = linearCombinationVisible && linearCombinationTarget
     ? addTargetVector(targetVectorGroup, linearCombinationTarget, extent)
@@ -676,7 +696,7 @@ function createThreeSpaceRuntime(
       return;
     }
     const vector = findVectorTipAtPointer(
-      vectors,
+      editableVectors,
       event,
       camera,
       rect,
@@ -781,7 +801,7 @@ function createThreeSpaceRuntime(
         : false;
       const hoverVector = hoverTarget
         ? null
-        : findVectorTipAtPointer(vectors, event, camera, rect);
+        : findVectorTipAtPointer(editableVectors, event, camera, rect);
       renderer.domElement.classList.toggle('is-target-tip-hover', hoverTarget);
       renderer.domElement.classList.toggle('is-vector-tip-hover', Boolean(hoverVector));
       return;
@@ -862,15 +882,25 @@ function createThreeSpaceRuntime(
       activeVectorDrag.startPoint,
       currentPoint,
     );
-    const snapResult = snapDraggedSpaceVectorToDependentPosition(
-      activeVectorDrag.vector.id,
-      directCoordinates,
-      vectors,
-      spaceSnapDistanceForViewWidth(orthographicVisibleWidth(camera)),
-    );
+    const snapDistance = spaceSnapDistanceForViewWidth(orthographicVisibleWidth(camera));
+    const snapResult = snapEditableVectorsToSpan
+      ? snapSpaceTargetToSelectedSpan(
+          directCoordinates,
+          spanVectors,
+          spanRank,
+          snapDistance,
+        )
+      : snapDraggedSpaceVectorToDependentPosition(
+          activeVectorDrag.vector.id,
+          directCoordinates,
+          vectors,
+          snapDistance,
+        );
     activeVectorDrag.coordinates = [...snapResult.coordinates];
     activeVectorDrag.snapKind = snapResult.snapKind;
-    activeVectorDrag.snapTargetVectorIds = snapResult.targetVectorIds;
+    activeVectorDrag.snapTargetVectorIds = 'targetVectorIds' in snapResult
+      ? snapResult.targetVectorIds
+      : snapResult.basisVectorIds;
     const spanPreview = showSpan
       ? createSpaceSpanDragPreview(
           activeVectorDrag.vector.id,
@@ -899,11 +929,13 @@ function createThreeSpaceRuntime(
       camera,
       snapResult.snapKind,
     );
-    const snapDescription = describeSpaceVectorSnap(
-      snapResult.snapKind,
-      snapResult.targetVectorIds,
-      vectors,
-    );
+    const snapDescription = snapEditableVectorsToSpan
+      ? describeEditableVectorSpanSnap(snapResult.snapKind as SpaceTargetSnapKind, spanLabel)
+      : describeSpaceVectorSnap(
+          snapResult.snapKind as SpaceVectorSnapKind,
+          'targetVectorIds' in snapResult ? snapResult.targetVectorIds : [],
+          vectors,
+        );
     const spanDescription = activeVectorDrag.spanPreviewRank === null
       ? ''
       : `　生成する空間：${describeSpaceSpan(activeVectorDrag.spanPreviewRank)}`;
@@ -931,11 +963,16 @@ function createThreeSpaceRuntime(
       renderer.domElement.releasePointerCapture(event.pointerId);
     }
     if (commit) {
-      const snapDescription = describeSpaceVectorSnap(
-        completedDrag.snapKind,
-        completedDrag.snapTargetVectorIds,
-        vectors,
-      );
+      const snapDescription = snapEditableVectorsToSpan
+        ? describeEditableVectorSpanSnap(
+            completedDrag.snapKind as SpaceTargetSnapKind,
+            spanLabel,
+          )
+        : describeSpaceVectorSnap(
+            completedDrag.snapKind as SpaceVectorSnapKind,
+            completedDrag.snapTargetVectorIds,
+            vectors,
+          );
       onInteractionMessage(
         `${completedDrag.vector.name} を変更しました。${formatCoordinateStatus(completedDrag.coordinates)}${snapDescription ? `。${snapDescription}` : ''}`,
       );
@@ -1141,6 +1178,7 @@ function addSpanGeometry(
   spanVectors: readonly VectorValue[],
   spanRank: number,
   extent: SpaceExtent,
+  spanLabel?: string,
 ): void {
   const geometry = createSpaceSpanGeometry(
     spanVectors,
@@ -1151,16 +1189,16 @@ function addSpanGeometry(
 
   switch (geometry.kind) {
     case 'origin':
-      addSpanOrigin(scene, extent);
+      addSpanOrigin(scene, extent, spanLabel);
       return;
     case 'line':
-      addSpanLine(scene, geometry, extent);
+      addSpanLine(scene, geometry, extent, spanLabel);
       return;
     case 'plane':
-      addSpanPlane(scene, geometry, extent);
+      addSpanPlane(scene, geometry, extent, spanLabel);
       return;
     case 'space':
-      addSpanSpace(scene, geometry);
+      addSpanSpace(scene, geometry, spanLabel);
   }
 }
 
@@ -1178,7 +1216,7 @@ function updateSpanDragPreview(
   return preview.rank;
 }
 
-function addSpanOrigin(scene: THREE.Object3D, extent: SpaceExtent): void {
+function addSpanOrigin(scene: THREE.Object3D, extent: SpaceExtent, spanLabel?: string): void {
   const radius = Math.max(0.14, extent.halfRange * 0.035);
   const fillGeometry = new THREE.SphereGeometry(radius, 20, 14);
   const fillMaterial = new THREE.MeshBasicMaterial({
@@ -1203,7 +1241,7 @@ function addSpanOrigin(scene: THREE.Object3D, extent: SpaceExtent): void {
   outline.renderOrder = -1;
   scene.add(outline);
   scene.add(createTextLabel(
-    '生成する空間：原点',
+    `${spanLabel ?? '生成する空間'}：原点`,
     'space-span-label',
     new THREE.Vector3(radius * 1.6, radius * 0.5, radius * 1.8),
   ));
@@ -1213,6 +1251,7 @@ function addSpanLine(
   scene: THREE.Object3D,
   geometry: Extract<SpaceSpanGeometry, { readonly kind: 'line' }>,
   extent: SpaceExtent,
+  spanLabel?: string,
 ): void {
   const start = pointToVector3(geometry.start);
   const end = pointToVector3(geometry.end);
@@ -1242,7 +1281,7 @@ function addSpanLine(
   const labelPosition = end.clone().multiplyScalar(0.78)
     .add(new THREE.Vector3(0, 0, extent.halfRange * 0.06));
   scene.add(createTextLabel(
-    '生成する空間：原点を通る直線',
+    `${spanLabel ?? '生成する空間'}：原点を通る直線`,
     'space-span-label',
     labelPosition,
   ));
@@ -1252,6 +1291,7 @@ function addSpanPlane(
   scene: THREE.Object3D,
   geometry: Extract<SpaceSpanGeometry, { readonly kind: 'plane' }>,
   extent: SpaceExtent,
+  spanLabel?: string,
 ): void {
   const normal = pointToVector3(geometry.normal);
   const planeGeometry = new THREE.PlaneGeometry(geometry.halfSize * 2, geometry.halfSize * 2);
@@ -1286,7 +1326,7 @@ function addSpanPlane(
     .multiplyScalar(extent.halfRange * 0.82)
     .addScaledVector(normal, extent.halfRange * 0.035);
   scene.add(createTextLabel(
-    '生成する空間：原点を通る平面',
+    `${spanLabel ?? '生成する空間'}：原点を通る平面`,
     'space-span-label',
     labelPosition,
   ));
@@ -1295,6 +1335,7 @@ function addSpanPlane(
 function addSpanSpace(
   scene: THREE.Object3D,
   geometry: Extract<SpaceSpanGeometry, { readonly kind: 'space' }>,
+  spanLabel?: string,
 ): void {
   const boxGeometry = new THREE.BoxGeometry(
     geometry.halfSize * 2,
@@ -1324,7 +1365,7 @@ function addSpanSpace(
   scene.add(edges);
 
   scene.add(createTextLabel(
-    '生成する空間：3次元座標空間全体',
+    `${spanLabel ?? '生成する空間'}：3次元座標空間全体`,
     'space-span-label space-span-rank-three-label',
     new THREE.Vector3(
       -geometry.halfSize * 0.72,
@@ -1575,7 +1616,7 @@ function updateVectorScreenPlanePreview(
   colors: readonly string[],
   extent: SpaceExtent,
   camera: THREE.Camera,
-  snapKind: SpaceVectorSnapKind,
+  snapKind: SpaceVectorSnapKind | SpaceTargetSnapKind,
 ): void {
   clearObjectGroup(group);
   const vectorIndex = vectors.findIndex((candidate) => candidate.id === vector.id);
@@ -2162,6 +2203,19 @@ function describeSpaceTargetSnap(
     return `${names[0]} が生成する直線にスナップ（一次結合で表現できます）`;
   }
   return `${names.join('、')} が生成する平面にスナップ（一次結合で表現できます）`;
+}
+
+function describeEditableVectorSpanSnap(
+  snapKind: SpaceTargetSnapKind,
+  spanLabel: string | undefined,
+): string | null {
+  if (!snapKind) {
+    return null;
+  }
+  if (snapKind === 'origin') {
+    return '原点にスナップ（零ベクトル）';
+  }
+  return `${spanLabel ?? '表示中の部分空間'}にスナップ`;
 }
 
 function adaptiveGridStep(gridHalfSize: number): number {

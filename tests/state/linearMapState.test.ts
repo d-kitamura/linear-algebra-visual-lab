@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   LINEAR_MAP_PRESETS,
+  LINEAR_MAP_SHAPES,
   createDefaultLinearMapScene,
+  createDefaultLinearMapScenes,
   createLinearMapDefinition,
   createLinearMapSceneFromPreset,
   findMatchingLinearMapPreset,
@@ -17,6 +19,8 @@ describe('linear-map 2D scene state', () => {
     const second = createDefaultLinearMapScene();
 
     expect(first).toEqual({
+      sourceDimension: 2,
+      targetDimension: 2,
       matrix: [[1, 1], [0, 1]],
       inputVector: [2, 1],
       showTransformedGrid: true,
@@ -27,7 +31,9 @@ describe('linear-map 2D scene state', () => {
   });
 
   it('provides the six 9.3 representative transformations', () => {
-    expect(LINEAR_MAP_PRESETS.map((preset) => preset.id)).toEqual([
+    expect(LINEAR_MAP_PRESETS.filter((preset) =>
+      preset.sourceDimension === 2 && preset.targetDimension === 2,
+    ).map((preset) => preset.id)).toEqual([
       'identity',
       'rotation',
       'reflection',
@@ -41,11 +47,13 @@ describe('linear-map 2D scene state', () => {
     const scene = createLinearMapSceneFromPreset('rotation', [-3, 4], false);
 
     expect(scene).toEqual({
+      sourceDimension: 2,
+      targetDimension: 2,
       matrix: [[0, -1], [1, 0]],
       inputVector: [-3, 4],
       showTransformedGrid: false,
     });
-    expect(findMatchingLinearMapPreset(scene.matrix)).toBe('rotation');
+    expect(findMatchingLinearMapPreset(scene)).toBe('rotation');
   });
 
   it('updates one matrix entry without mutating the previous scene', () => {
@@ -54,7 +62,7 @@ describe('linear-map 2D scene state', () => {
 
     expect(result.matrix).toEqual([[1, 1], [-2.5, 1]]);
     expect(source.matrix).toEqual([[1, 1], [0, 1]]);
-    expect(findMatchingLinearMapPreset(result.matrix)).toBeNull();
+    expect(findMatchingLinearMapPreset(result)).toBeNull();
   });
 
   it('updates a valid input vector and rejects invalid dimensions or values', () => {
@@ -89,5 +97,39 @@ describe('linear-map 2D scene state', () => {
       targetDimension: 2,
       matrix: [[1, 1], [0, 1]],
     });
+  });
+
+  it('provides independent defaults for all four 2D and 3D dimension pairs', () => {
+    const scenes = createDefaultLinearMapScenes();
+
+    expect(LINEAR_MAP_SHAPES.map((shape) => shape.id)).toEqual([
+      '2-to-2', '2-to-3', '3-to-2', '3-to-3',
+    ]);
+    expect(scenes['2-to-3']).toMatchObject({
+      sourceDimension: 2,
+      targetDimension: 3,
+      matrix: [[1, 0], [0, 1], [0, 0]],
+    });
+    expect(scenes['3-to-2']).toMatchObject({
+      sourceDimension: 3,
+      targetDimension: 2,
+      matrix: [[1, 0, 0], [0, 1, 0]],
+    });
+    expect(scenes['3-to-3']).toMatchObject({
+      sourceDimension: 3,
+      targetDimension: 3,
+      matrix: [[1, 0, 0], [0, 1, 0], [0, 0, 0]],
+    });
+    expect(scenes['2-to-2']).not.toBe(scenes['2-to-3']);
+  });
+
+  it('updates rectangular and 3D matrices without mutating the previous scene', () => {
+    const source = createDefaultLinearMapScene(3, 3);
+    const result = updateLinearMapMatrixEntry(source, 2, 2, 4);
+
+    expect(result.matrix[2][2]).toBe(4);
+    expect(source.matrix[2][2]).toBe(0);
+    expect(updateLinearMapInputVector(source, [1, 2, 3]).inputVector).toEqual([1, 2, 3]);
+    expect(() => updateLinearMapInputVector(source, [1, 2])).toThrow(RangeError);
   });
 });

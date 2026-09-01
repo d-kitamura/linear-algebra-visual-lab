@@ -11,6 +11,10 @@ const planeSource = readFileSync(
   new URL('../../src/visualization/VectorPlane2D.tsx', import.meta.url),
   'utf8',
 );
+const spaceSource = readFileSync(
+  new URL('../../src/visualization/VectorSpace3D.tsx', import.meta.url),
+  'utf8',
+);
 const cssSource = readFileSync(new URL('../../src/app/App.css', import.meta.url), 'utf8');
 
 describe('9.3 2Dから2Dへの線形写像Lab', () => {
@@ -23,8 +27,7 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
   });
 
   it('shows domain and codomain as separate responsive coordinate planes', () => {
-    expect(labSource).toContain('定義域 <MathRealSpace name="U" />');
-    expect(labSource).toContain('終域 <MathRealSpace name="V" />');
+    expect(labSource).toContain('name={name} dimension={dimension}');
     expect(labSource).toContain('idPrefix="linear-map-domain-plane"');
     expect(labSource).toContain('idPrefix="linear-map-codomain-plane"');
     expect(cssSource).toMatch(/\.linear-map-diagram-grid,[\s\S]*?grid-template-columns:\s*repeat\(2,/su);
@@ -33,28 +36,25 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
 
   it('edits u only in the domain and derives T(u) in the codomain', () => {
     expect(labSource).toContain('analyzeLinearMap(definition, scene.inputVector)');
-    expect(labSource).toContain('onVectorChange={(_, coordinates) => handleInputDrag(coordinates)}');
+    expect(labSource).toContain('onVectorChange={(_, coordinates) => handlePlaneInputDrag(coordinates)}');
     expect(labSource).toContain('name: \'T(u)\'');
-    expect(labSource).toContain('<MathMapValue argument="u" /> は導出値なので直接編集しません');
+    expect(labSource).not.toContain('は導出値なので直接編集しません');
+    expect(labSource).not.toContain('赤と緑は標準基底の像');
     expect(labSource).not.toMatch(/idPrefix="linear-map-codomain-plane"[\s\S]{0,500}onVectorChange=/u);
   });
 
-  it('connects matrix editing to the two standard-basis images', () => {
+  it('connects matrix editing to every standard-basis image', () => {
     expect(labSource).toContain('updateLinearMapMatrixEntry');
-    expect(labSource).toContain("name: 'T(e1)'");
-    expect(labSource).toContain("name: 'T(e2)'");
-    expect(labSource).toContain('<MathStandardBasisVector subscript="1" />');
-    expect(labSource).toContain('<MathColumnVector values={[1, 0]} />');
-    expect(labSource).toContain('<MathStandardBasisVector subscript="2" />');
-    expect(labSource).toContain('<MathColumnVector values={[0, 1]} />');
+    expect(labSource).toContain('name: `T(e${columnIndex + 1})`');
+    expect(labSource).toContain('<MathStandardBasisVector subscript={columnIndex + 1} />');
+    expect(labSource).toContain('<MathColumnVector values={standardBasis(scene.sourceDimension, columnIndex)} />');
     expect(labSource).toContain('<MathMatrixName /> = [');
-    expect(labSource).toContain('<MathMapValue argument="e" subscript="2" />]');
-    expect(labSource).toContain('<MathMapValue argument="e" subscript="1" />');
-    expect(labSource).toContain('<MathMapValue argument="e" subscript="2" />');
+    expect(labSource).toContain('<MathMapValue argument="e" subscript={index + 1} />');
+    expect(labSource).toContain('scene.matrix.map((row) => row[columnIndex])');
   });
 
   it('switches six representative maps and can hide the grid image', () => {
-    expect(labSource).toContain('LINEAR_MAP_PRESETS.map');
+    expect(labSource).toContain('availablePresets.map');
     expect(labSource).toContain('setTransformedGridVisibility');
     expect(labSource).toContain('終域に格子の像を表示');
     expect(labSource).toContain('transformedGridSegments={transformedGridSegments}');
@@ -75,5 +75,36 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
     expect(labSource).not.toContain('入力 <MathVectorName name="u" /> の矢先をドラッグできます');
     expect(cssSource).toMatch(/@media \(max-width: 640px\)[\s\S]*?\.linear-map-plot-card \.card-heading\s*\{[^}]*display:\s*flex;/su);
     expect(cssSource).toMatch(/\.linear-map-plot-card \.basis-fit-button\s*\{[^}]*width:\s*auto;/su);
+  });
+
+  it('extends the Lab to every 2D and 3D domain-codomain pair', () => {
+    expect(labSource).toContain('LINEAR_MAP_SHAPES.map');
+    expect(labSource).toContain("useState<LinearMapShapeId>('2-to-2')");
+    expect(labSource).toContain('<VectorSpace3D');
+    expect(labSource).toContain('spaceTitle="定義域 U = ℝ³"');
+    expect(labSource).toContain('spaceTitle="終域 V = ℝ³"');
+    expect(labSource).toContain('editableVectorIds={NO_EDITABLE_VECTOR_IDS}');
+  });
+
+  it('shows Ker(T) and Im(T) from the analyzer in both 2D and 3D', () => {
+    expect(labSource).toContain('spanVectors={kernelBasisVectors}');
+    expect(labSource).toContain('spanDimension={analysis.kernelDimension}');
+    expect(labSource).toContain('spanRank={analysis.kernelDimension}');
+    expect(labSource).toContain('spanLabel="Ker(T)"');
+    expect(labSource).toContain('spanVectors={imageBasisVectors}');
+    expect(labSource).toContain('spanDimension={analysis.imageDimension}');
+    expect(labSource).toContain('spanRank={analysis.imageDimension}');
+    expect(labSource).toContain('spanLabel="Im(T)"');
+    expect(planeSource).toContain("spanLabel ?? '生成する空間'");
+    expect(spaceSource).toContain("spanLabel ?? '選択したベクトルが生成する空間'");
+  });
+
+  it('snaps editable inputs to Ker(T) while keeping codomain vectors derived', () => {
+    expect(labSource).toContain('snapTargetToSelectedSpan(');
+    expect(labSource).toContain('snapEditableVectorsToSpan');
+    expect(labSource).toContain('const DOMAIN_VECTOR_COLORS = [DOMAIN_VECTOR_COLOR] as const');
+    expect(labSource).toContain('colors={DOMAIN_VECTOR_COLORS}');
+    expect(spaceSource).toContain('snapEditableVectorsToSpan');
+    expect(spaceSource).toContain('const editableVectors = vectors.filter');
   });
 });
