@@ -73,7 +73,7 @@ const DEFAULT_PRESET_BY_SHAPE: Readonly<Record<LinearMapShapeId, LinearMapPreset
   '3-to-3': 'plane-projection-3',
 };
 
-export const DEFAULT_LINEAR_MAP_SCENE = createSceneFromPresetRecord(presetById('shear'), true);
+export const DEFAULT_LINEAR_MAP_SCENE = createSceneFromPresetRecord(presetById('shear'), false);
 
 export function linearMapShapeId(
   sourceDimension: VectorDimension,
@@ -87,7 +87,7 @@ export function createDefaultLinearMapScene(
   targetDimension: VectorDimension = 2,
 ): LinearMapScene {
   const shapeId = linearMapShapeId(sourceDimension, targetDimension);
-  return createSceneFromPresetRecord(presetById(DEFAULT_PRESET_BY_SHAPE[shapeId]), true);
+  return createSceneFromPresetRecord(presetById(DEFAULT_PRESET_BY_SHAPE[shapeId]), false);
 }
 
 export function createDefaultLinearMapScenes(): Record<LinearMapShapeId, LinearMapScene> {
@@ -106,7 +106,7 @@ export function presetsForLinearMapScene(scene: LinearMapScene): readonly Linear
 export function createLinearMapSceneFromPreset(
   presetId: LinearMapPresetId,
   inputVector?: readonly number[],
-  showTransformedGrid = true,
+  showTransformedGrid = false,
 ): LinearMapScene {
   const selected = presetById(presetId);
   const nextInput = inputVector ?? selected.defaultInput;

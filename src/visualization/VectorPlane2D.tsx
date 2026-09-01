@@ -2,6 +2,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import type { VectorValue } from '../domain';
@@ -40,6 +41,8 @@ interface VectorPlane2DProps {
   readonly spanDimension?: number;
   readonly showSpan?: boolean;
   readonly spanLabel?: string;
+  readonly spanColor?: string;
+  readonly alwaysOpaqueVectorIds?: readonly string[];
   readonly linearCombinationVisible?: boolean;
   readonly target?: readonly [number, number] | null;
   readonly linearCombinationCoefficients?: readonly [number, number] | null;
@@ -70,6 +73,8 @@ export function VectorPlane2D({
   spanDimension = 0,
   showSpan = false,
   spanLabel,
+  spanColor,
+  alwaysOpaqueVectorIds = [],
   linearCombinationVisible = false,
   target = null,
   linearCombinationCoefficients = null,
@@ -112,6 +117,7 @@ export function VectorPlane2D({
         .map((vector) => `${vector.name} は第1成分 ${vector.coordinates[0]}、第2成分 ${vector.coordinates[1]}`)
         .join('。')}。`;
   const spanVectorIds = new Set(spanVectors.map((vector) => vector.id));
+  const alwaysOpaqueVectorIdSet = new Set(alwaysOpaqueVectorIds);
   const spanDirection = spanVectors.find((vector) =>
     vector.coordinates[0] !== 0 || vector.coordinates[1] !== 0,
   )?.coordinates as readonly [number, number] | undefined;
@@ -443,6 +449,11 @@ export function VectorPlane2D({
     <svg
       ref={svgRef}
       className="vector-plane"
+      style={spanColor ? {
+        '--span-neutral-strong': spanColor,
+        '--span-neutral': spanColor,
+        '--span-neutral-soft': spanColor,
+      } as CSSProperties : undefined}
       viewBox={`0 0 ${viewport.width} ${viewport.height}`}
       role="img"
       aria-labelledby={`${idPrefix}-title ${idPrefix}-description`}
@@ -647,7 +658,7 @@ export function VectorPlane2D({
           return (
             <g
               key={vector.id}
-              className={`vector-arrow ${parallelSnapTargetId === vector.id ? 'is-snap-target' : ''} ${spanVectorIds.has(vector.id) ? 'is-span-selected' : ''}`}
+              className={`vector-arrow ${parallelSnapTargetId === vector.id ? 'is-snap-target' : ''} ${spanVectorIds.has(vector.id) ? 'is-span-selected' : ''} ${alwaysOpaqueVectorIdSet.has(vector.id) ? 'is-always-opaque' : ''}`}
             >
               <title>{`${vector.name} は第1成分 ${coordinates[0]}、第2成分 ${coordinates[1]} の列ベクトル`}</title>
               <line

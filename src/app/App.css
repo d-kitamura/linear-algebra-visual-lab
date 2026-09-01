@@ -771,9 +771,9 @@
 
 .space-span-label {
   padding: 5px 8px;
-  border: 1px solid color-mix(in srgb, #737b82 42%, transparent);
-  color: #505960;
-  background: color-mix(in srgb, #fffdf8 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--space-span-color, #737b82) 42%, transparent);
+  color: color-mix(in srgb, var(--space-span-color, #505960) 74%, #26343d);
+  background: color-mix(in srgb, var(--space-span-color, #fffdf8) 12%, #fffdf8 88%);
   font-family: var(--body-font);
   font-size: 0.68rem;
   font-weight: 760;
@@ -1189,7 +1189,7 @@
   transition: opacity 140ms ease;
 }
 
-.vector-arrows.is-showing-span .vector-arrow:not(.is-span-selected) {
+.vector-arrows.is-showing-span .vector-arrow:not(.is-span-selected):not(.is-always-opaque) {
   opacity: 0.38;
 }
 

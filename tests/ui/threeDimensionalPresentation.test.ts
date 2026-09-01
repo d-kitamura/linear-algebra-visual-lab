@@ -89,7 +89,7 @@ describe('固定3D表示とカメラ操作', () => {
   });
 
   it('rank 0〜3のspan幾何を中立色で描画する', () => {
-    expect(componentSource).toContain('addSpanGeometry(spanGeometryGroup, spanVectors, spanRank, extent, spanLabel)');
+    expect(componentSource).toContain('addSpanGeometry(spanGeometryGroup, spanVectors, spanRank, extent, spanLabel, spanColor)');
     expect(componentSource).toContain("case 'origin'");
     expect(componentSource).toContain("case 'line'");
     expect(componentSource).toContain("case 'plane'");

@@ -23,7 +23,7 @@ describe('linear-map 2D scene state', () => {
       targetDimension: 2,
       matrix: [[1, 1], [0, 1]],
       inputVector: [2, 1],
-      showTransformedGrid: true,
+      showTransformedGrid: false,
     });
     expect(first).not.toBe(second);
     expect(first.matrix).not.toBe(second.matrix);

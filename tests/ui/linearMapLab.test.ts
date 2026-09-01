@@ -107,4 +107,26 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
     expect(spaceSource).toContain('snapEditableVectorsToSpan');
     expect(spaceSource).toContain('const editableVectors = vectors.filter');
   });
+
+  it('keeps u and T(u) opaque while color-coding Ker(T) and Im(T)', () => {
+    expect(labSource).toContain("const KERNEL_SPAN_COLOR = '#82b6d3'");
+    expect(labSource).toContain("const IMAGE_SPAN_COLOR = '#d9a0ad'");
+    expect(labSource).toContain('alwaysOpaqueVectorIds={DOMAIN_ALWAYS_OPAQUE_VECTOR_IDS}');
+    expect(labSource).toContain('alwaysOpaqueVectorIds={CODOMAIN_ALWAYS_OPAQUE_VECTOR_IDS}');
+    expect(planeSource).toContain('alwaysOpaqueVectorIdSet.has(vector.id)');
+    expect(spaceSource).toContain('isSpanSelected || isAlwaysOpaque');
+  });
+
+  it('previews T(u) during 3D domain dragging without rebuilding the domain canvas', () => {
+    expect(labSource).toContain('onVectorCoordinatesPreview={(_, coordinates) => setInputCoordinatePreview(coordinates)}');
+    expect(labSource).toContain('vectorCoordinatePreview={codomainSpaceVectorPreview}');
+    expect(spaceSource).toContain('onVectorCoordinatesPreview(activeVectorDrag.vector.id, activeVectorDrag.coordinates)');
+    expect(spaceSource).toContain('setVectorCoordinatePreview(vectorCoordinatePreview)');
+  });
+
+  it('hides lower 3D help in both map figures and starts the 2D grid image off', () => {
+    expect(labSource.match(/showHelpText=\{false\}/gu)).toHaveLength(2);
+    expect(labSource).toContain('終域に格子の像を表示');
+    expect(labSource).toContain('checked={scene.showTransformedGrid}');
+  });
 });

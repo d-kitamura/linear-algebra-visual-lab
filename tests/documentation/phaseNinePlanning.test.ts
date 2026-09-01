@@ -37,7 +37,7 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(specification).toContain('任意の定義域基底・終域基底に関する表現行列と基底変換はフェーズ10候補へ分離する');
     expect(specification).toContain('### AC-53: 線形写像Labの設計境界');
     expect(specification).toContain('9.1では文書・設計の整合だけを検証し、画面、数学API、`linear-map` v1 validatorは未実装');
-    expect(specification).toContain('| 文書バージョン | 0.85 |');
+    expect(specification).toContain('| 文書バージョン | 0.86 |');
   });
 
   it('D-075と9.2の数学APIを利用者確認済みとして記録する', () => {
@@ -67,7 +67,7 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(decisions).toContain('### D-077 線形写像Labの核・像と4つの2D/3D入出力次元');
     expect(decisions).toContain('状態: **実装・自動検証済み、利用者確認待ち**（2026-09-01、作業単位9.4）');
     expect(roadmap).toContain('### 9.4 核・像の2D/3D可視化');
-    expect(roadmap).toContain('50テストファイル・405テスト');
+    expect(roadmap).toContain('50テストファイル・408テスト');
     expect(projectStatus).toContain('実装・自動検証済み、利用者確認待ちの作業単位: 9.4');
     expect(specification).toContain('#### FR-LMAP-06: 核・像の2D/3D可視化（D-077、利用者確認待ち）');
     expect(specification).toContain('### AC-56: 核・像の2D/3D可視化');

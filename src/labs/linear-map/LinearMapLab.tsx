@@ -7,6 +7,7 @@ import {
 import {
   MAX_ABSOLUTE_LINEAR_MAP_INPUT,
   analyzeLinearMap,
+  applyLinearMap,
   type LinearMapAnalysis,
   type VectorValue,
 } from '../../domain';
@@ -52,7 +53,12 @@ const DOMAIN_VECTOR_COLOR = '#245b8d';
 const DOMAIN_VECTOR_COLORS = [DOMAIN_VECTOR_COLOR] as const;
 const COLUMN_VECTOR_COLORS = ['#d55535', '#13877e', '#7661b5'] as const;
 const INPUT_VECTOR_ID = 'linear-map-input-u';
+const IMAGE_VECTOR_ID = 'linear-map-image-u';
+const KERNEL_SPAN_COLOR = '#82b6d3';
+const IMAGE_SPAN_COLOR = '#d9a0ad';
 const DOMAIN_EDITABLE_VECTOR_IDS = [INPUT_VECTOR_ID] as const;
+const DOMAIN_ALWAYS_OPAQUE_VECTOR_IDS = [INPUT_VECTOR_ID] as const;
+const CODOMAIN_ALWAYS_OPAQUE_VECTOR_IDS = [IMAGE_VECTOR_ID] as const;
 const NO_EDITABLE_VECTOR_IDS: readonly string[] = [];
 
 interface LinearMapLabProps {
@@ -77,6 +83,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   const [codomainCamera, setCodomainCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
   const [domainSpaceResetKey, setDomainSpaceResetKey] = useState(0);
   const [codomainSpaceResetKey, setCodomainSpaceResetKey] = useState(0);
+  const [inputCoordinatePreview, setInputCoordinatePreview] = useState<readonly [number, number, number] | null>(null);
 
   const definition = useMemo(() => createLinearMapDefinition(scene), [scene]);
   const analysis = useMemo(
@@ -103,11 +110,35 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
       coordinates: scene.matrix.map((row) => row[columnIndex]),
     })),
     {
-      id: 'linear-map-image-u',
+      id: IMAGE_VECTOR_ID,
       name: 'T(u)',
       coordinates: analysis.imageVector,
     },
   ], [analysis.imageVector, scene.matrix, scene.sourceDimension]);
+  const previewImageVector = useMemo(
+    () => inputCoordinatePreview
+      ? applyLinearMap(definition, inputCoordinatePreview)
+      : null,
+    [definition, inputCoordinatePreview],
+  );
+  const codomainPlaneVectors = useMemo(
+    () => previewImageVector
+      ? codomainVectors.map((vector) => vector.id === IMAGE_VECTOR_ID
+        ? { ...vector, coordinates: previewImageVector }
+        : vector)
+      : codomainVectors,
+    [codomainVectors, previewImageVector],
+  );
+  const codomainSpaceVectorPreview = previewImageVector && scene.targetDimension === 3
+    ? {
+        vectorId: IMAGE_VECTOR_ID,
+        coordinates: [
+          previewImageVector[0] ?? 0,
+          previewImageVector[1] ?? 0,
+          previewImageVector[2] ?? 0,
+        ] as const,
+      }
+    : null;
   const codomainColors = useMemo(
     () => [...COLUMN_VECTOR_COLORS.slice(0, scene.sourceDimension), DOMAIN_VECTOR_COLOR],
     [scene.sourceDimension],
@@ -156,6 +187,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     setDomainManualViewport(null);
     setCodomainManualViewport(null);
     setDragViewport(null);
+    setInputCoordinatePreview(null);
   }
 
   function handlePresetChange(presetId: LinearMapPresetId): void {
@@ -166,10 +198,12 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     );
     replaceActiveScene(nextScene);
     setMatrixDrafts(createMatrixDrafts(nextScene.matrix));
+    setInputCoordinatePreview(null);
     resetViewports();
   }
 
   function handleMatrixDraftChange(rowIndex: number, columnIndex: number, text: string): void {
+    setInputCoordinatePreview(null);
     setMatrixDrafts((current) => current.map((row, currentRowIndex) =>
       row.map((draft, currentColumnIndex) =>
         currentRowIndex === rowIndex && currentColumnIndex === columnIndex ? text : draft)));
@@ -180,6 +214,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   }
 
   function handleInputDraftChange(index: number, text: string): void {
+    setInputCoordinatePreview(null);
     setInputDrafts((current) => current.map((draft, currentIndex) =>
       currentIndex === index ? text : draft));
     const parsed = parseEditableNumber(text);
@@ -194,6 +229,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     const next = updateLinearMapInputFromDrag(scene, coordinates);
     replaceActiveScene(next);
     setInputDrafts(createVectorDrafts(next.inputVector));
+    setInputCoordinatePreview(null);
   }
 
   function handlePlaneInputDrag(coordinates: readonly [number, number]): void {
@@ -215,6 +251,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     setCodomainCamera(DEFAULT_3D_CAMERA_STATE);
     setDomainSpaceResetKey((current) => current + 1);
     setCodomainSpaceResetKey((current) => current + 1);
+    setInputCoordinatePreview(null);
     resetViewports();
   }
 
@@ -258,7 +295,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
             <p className="lab-intro-copy">
               定義域の入力 <MathVectorName name="u" /> と行列 <MathMatrixName /> を変えると、
               終域の像 <MathMapValue argument="u" /> がリアルタイムに決まります。
-              灰色の部分空間で核 <MathNamedSubspace name="Ker" /> と像 <MathNamedSubspace name="Im" /> を比較できます。
+              薄い青色の核 <MathNamedSubspace name="Ker" /> と薄いピンク色の像 <MathNamedSubspace name="Im" /> を比較できます。
             </p>
             <div className="lab-actions" aria-label="線形写像Labの教材状態を操作">
               <button className="reset-button" type="button" onClick={handleReset}>Reset</button>
@@ -284,6 +321,8 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                   spanDimension={analysis.kernelDimension}
                   showSpan
                   spanLabel="Ker(T)"
+                  spanColor={KERNEL_SPAN_COLOR}
+                  alwaysOpaqueVectorIds={DOMAIN_ALWAYS_OPAQUE_VECTOR_IDS}
                 />
               </section>
             ) : (
@@ -297,7 +336,9 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                   spanRank={analysis.kernelDimension}
                   showSpan
                   spanLabel="Ker(T)"
+                  spanColor={KERNEL_SPAN_COLOR}
                   editableVectorIds={DOMAIN_EDITABLE_VECTOR_IDS}
+                  alwaysOpaqueVectorIds={DOMAIN_ALWAYS_OPAQUE_VECTOR_IDS}
                   snapEditableVectorsToSpan
                   linearCombinationVisible={false}
                   linearCombinationTarget={null}
@@ -307,9 +348,11 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                   camera={domainCamera}
                   onCameraChange={setDomainCamera}
                   onVectorCoordinatesCommit={(_, coordinates) => commitInputCoordinates(coordinates)}
+                  onVectorCoordinatesPreview={(_, coordinates) => setInputCoordinatePreview(coordinates)}
                   onLinearCombinationTargetPlacement={() => undefined}
                   onLinearCombinationVisibility={() => undefined}
                   showLinearCombinationControl={false}
+                  showHelpText={false}
                   assistiveDescription="入力uの成分、像、核の次元は後続の数値入力と解析表示でも確認できます。"
                 />
               </Suspense>
@@ -320,7 +363,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                 <PlotHeading id="linear-map-codomain-title" kind="Codomain" name="V" dimension={2} onFit={() => setCodomainManualViewport(null)} />
                 <VectorPlane2D
                   idPrefix="linear-map-codomain-plane"
-                  vectors={codomainVectors}
+                  vectors={codomainPlaneVectors}
                   colors={codomainColors}
                   viewport={codomainViewport}
                   onViewportChange={setCodomainManualViewport}
@@ -328,6 +371,8 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                   spanDimension={analysis.imageDimension}
                   showSpan
                   spanLabel="Im(T)"
+                  spanColor={IMAGE_SPAN_COLOR}
+                  alwaysOpaqueVectorIds={CODOMAIN_ALWAYS_OPAQUE_VECTOR_IDS}
                   transformedGridSegments={transformedGridSegments}
                 />
               </section>
@@ -342,7 +387,10 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                   spanRank={analysis.imageDimension}
                   showSpan
                   spanLabel="Im(T)"
+                  spanColor={IMAGE_SPAN_COLOR}
                   editableVectorIds={NO_EDITABLE_VECTOR_IDS}
+                  alwaysOpaqueVectorIds={CODOMAIN_ALWAYS_OPAQUE_VECTOR_IDS}
+                  vectorCoordinatePreview={codomainSpaceVectorPreview}
                   linearCombinationVisible={false}
                   linearCombinationTarget={null}
                   linearCombinationCoefficients={null}
@@ -354,6 +402,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                   onLinearCombinationTargetPlacement={() => undefined}
                   onLinearCombinationVisibility={() => undefined}
                   showLinearCombinationControl={false}
+                  showHelpText={false}
                   assistiveDescription="標準基底の像、入力の像、像空間の次元は後続の数値表示でも確認できます。"
                 />
               </Suspense>
@@ -545,7 +594,7 @@ function SubspaceSummary({ analysis, imageIsZero }: {
         <small><span className="math-roman">dim</span>(<MathNamedSubspace name="Im" />) = {analysis.imageDimension}</small>
       </div>
       <p className={imageIsZero ? 'is-in-kernel' : undefined}>
-        灰色の <MathNamedSubspace name="Ker" /> 上の入力は、すべて終域の原点へ写ります。灰色の <MathNamedSubspace name="Im" /> は、実際に像として現れるベクトル全体です。
+        薄い青色の <MathNamedSubspace name="Ker" /> 上の入力は、すべて終域の原点へ写ります。薄いピンク色の <MathNamedSubspace name="Im" /> は、実際に像として現れるベクトル全体です。
       </p>
     </div>
   );
