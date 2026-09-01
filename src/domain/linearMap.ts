@@ -36,6 +36,22 @@ export interface LinearMapAnalysis {
   readonly isBijective: boolean;
 }
 
+export interface LinearMapLinearityAnalysis {
+  readonly firstInput: readonly number[];
+  readonly secondInput: readonly number[];
+  readonly scalar: number;
+  readonly inputSum: readonly number[];
+  readonly imageOfFirstInput: readonly number[];
+  readonly imageOfSecondInput: readonly number[];
+  readonly imageOfInputSum: readonly number[];
+  readonly sumOfImages: readonly number[];
+  readonly scaledInput: readonly number[];
+  readonly imageOfScaledInput: readonly number[];
+  readonly scaledImage: readonly number[];
+  readonly preservesAddition: boolean;
+  readonly preservesScalarMultiplication: boolean;
+}
+
 export type LinearMapValidationCode =
   | 'INVALID_SOURCE_DIMENSION'
   | 'INVALID_TARGET_DIMENSION'
@@ -47,7 +63,9 @@ export type LinearMapValidationCode =
   | 'MATRIX_ENTRY_OUT_OF_RANGE'
   | 'INPUT_DIMENSION_MISMATCH'
   | 'NON_FINITE_INPUT_COORDINATE'
-  | 'INPUT_COORDINATE_OUT_OF_RANGE';
+  | 'INPUT_COORDINATE_OUT_OF_RANGE'
+  | 'NON_FINITE_SCALAR'
+  | 'SCALAR_OUT_OF_RANGE';
 
 export class InvalidLinearMapError extends Error {
   readonly code: LinearMapValidationCode;
@@ -68,14 +86,53 @@ export function applyLinearMap(
 ): readonly number[] {
   validateLinearMapInput(definition, inputVector);
 
-  return definition.matrix.map((row) =>
-    cleanNumber(
-      row.reduce(
-        (sum, entry, columnIndex) => sum + entry * inputVector[columnIndex],
-        0,
-      ),
-    ),
+  return multiplyMatrix(definition.matrix, inputVector);
+}
+
+/**
+ * 2つの入力とスカラーについて、行列による写像が和とスカラー倍を
+ * 保つことを、教材表示に必要な両辺の値とともに導出する。
+ */
+export function analyzeLinearMapLinearity(
+  definition: LinearMapDefinition,
+  firstInput: readonly number[],
+  secondInput: readonly number[],
+  scalar: number,
+): LinearMapLinearityAnalysis {
+  validateLinearMapInput(definition, firstInput);
+  validateLinearMapInput(definition, secondInput);
+  validateScalar(
+    scalar,
+    'NON_FINITE_SCALAR',
+    'SCALAR_OUT_OF_RANGE',
+    'スカラー',
   );
+
+  const inputSum = firstInput.map((value, index) => cleanNumber(value + secondInput[index]));
+  const scaledInput = firstInput.map((value) => cleanNumber(scalar * value));
+  const imageOfFirstInput = multiplyMatrix(definition.matrix, firstInput);
+  const imageOfSecondInput = multiplyMatrix(definition.matrix, secondInput);
+  const imageOfInputSum = multiplyMatrix(definition.matrix, inputSum);
+  const sumOfImages = imageOfFirstInput.map((value, index) =>
+    cleanNumber(value + imageOfSecondInput[index]));
+  const imageOfScaledInput = multiplyMatrix(definition.matrix, scaledInput);
+  const scaledImage = imageOfFirstInput.map((value) => cleanNumber(scalar * value));
+
+  return {
+    firstInput: [...firstInput],
+    secondInput: [...secondInput],
+    scalar,
+    inputSum,
+    imageOfFirstInput,
+    imageOfSecondInput,
+    imageOfInputSum,
+    sumOfImages,
+    scaledInput,
+    imageOfScaledInput,
+    scaledImage,
+    preservesAddition: vectorsApproximatelyEqual(imageOfInputSum, sumOfImages),
+    preservesScalarMultiplication: vectorsApproximatelyEqual(imageOfScaledInput, scaledImage),
+  };
 }
 
 /**
@@ -205,8 +262,10 @@ function validateDimension(dimension: unknown, kind: 'source' | 'target'): asser
 
 function validateScalar(
   value: unknown,
-  nonFiniteCode: Extract<LinearMapValidationCode, 'NON_FINITE_MATRIX_ENTRY' | 'NON_FINITE_INPUT_COORDINATE'>,
-  outOfRangeCode: Extract<LinearMapValidationCode, 'MATRIX_ENTRY_OUT_OF_RANGE' | 'INPUT_COORDINATE_OUT_OF_RANGE'>,
+  nonFiniteCode: Extract<LinearMapValidationCode,
+    'NON_FINITE_MATRIX_ENTRY' | 'NON_FINITE_INPUT_COORDINATE' | 'NON_FINITE_SCALAR'>,
+  outOfRangeCode: Extract<LinearMapValidationCode,
+    'MATRIX_ENTRY_OUT_OF_RANGE' | 'INPUT_COORDINATE_OUT_OF_RANGE' | 'SCALAR_OUT_OF_RANGE'>,
   label: string,
 ): asserts value is number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -233,4 +292,25 @@ function createColumnVectorSet(definition: LinearMapDefinition): VectorSet {
 
 function cleanNumber(value: number): number {
   return Object.is(value, -0) || Math.abs(value) <= Number.EPSILON * 16 ? 0 : value;
+}
+
+function multiplyMatrix(
+  matrix: readonly (readonly number[])[],
+  inputVector: readonly number[],
+): readonly number[] {
+  return matrix.map((row) =>
+    cleanNumber(row.reduce(
+      (sum, entry, columnIndex) => sum + entry * inputVector[columnIndex],
+      0,
+    )),
+  );
+}
+
+function vectorsApproximatelyEqual(
+  first: readonly number[],
+  second: readonly number[],
+): boolean {
+  const scale = Math.max(1, ...first.map(Math.abs), ...second.map(Math.abs));
+  return first.length === second.length
+    && first.every((value, index) => Math.abs(value - second[index]) <= scale * 1e-10);
 }

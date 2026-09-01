@@ -36,6 +36,8 @@ export interface LinearMapScene {
   readonly targetDimension: VectorDimension;
   readonly matrix: readonly (readonly number[])[];
   readonly inputVector: readonly number[];
+  readonly secondaryInputVector: readonly number[];
+  readonly scalar: number;
   readonly showTransformedGrid: boolean;
 }
 
@@ -107,18 +109,28 @@ export function createLinearMapSceneFromPreset(
   presetId: LinearMapPresetId,
   inputVector?: readonly number[],
   showTransformedGrid = false,
+  secondaryInputVector?: readonly number[],
+  scalar = 2,
 ): LinearMapScene {
   const selected = presetById(presetId);
   const nextInput = inputVector ?? selected.defaultInput;
+  const nextSecondaryInput = secondaryInputVector ?? defaultSecondaryInput(selected.sourceDimension);
   if (nextInput.length !== selected.sourceDimension) {
     throw new RangeError('代表例と入力ベクトルの次元が一致しません。');
   }
+  if (nextSecondaryInput.length !== selected.sourceDimension) {
+    throw new RangeError('代表例と線形性確認用ベクトルの次元が一致しません。');
+  }
   nextInput.forEach((value) => validateEditableValue(value, '入力ベクトルの成分'));
+  nextSecondaryInput.forEach((value) => validateEditableValue(value, '線形性確認用ベクトルの成分'));
+  validateEditableValue(scalar, '線形性確認用スカラー');
   return {
     sourceDimension: selected.sourceDimension,
     targetDimension: selected.targetDimension,
     matrix: cloneMatrix(selected.matrix),
     inputVector: [...nextInput],
+    secondaryInputVector: [...nextSecondaryInput],
+    scalar,
     showTransformedGrid: showTransformedGrid && selected.sourceDimension === 2 && selected.targetDimension === 2,
   };
 }
@@ -144,6 +156,22 @@ export function updateLinearMapInputVector(scene: LinearMapScene, inputVector: r
   }
   inputVector.forEach((value) => validateEditableValue(value, '入力ベクトルの成分'));
   return { ...scene, inputVector: [...inputVector] };
+}
+
+export function updateLinearMapSecondaryInputVector(
+  scene: LinearMapScene,
+  inputVector: readonly number[],
+): LinearMapScene {
+  if (inputVector.length !== scene.sourceDimension) {
+    throw new RangeError(`線形性確認用ベクトルは${scene.sourceDimension}成分である必要があります。`);
+  }
+  inputVector.forEach((value) => validateEditableValue(value, '線形性確認用ベクトルの成分'));
+  return { ...scene, secondaryInputVector: [...inputVector] };
+}
+
+export function updateLinearMapScalar(scene: LinearMapScene, scalar: number): LinearMapScene {
+  validateEditableValue(scalar, '線形性確認用スカラー');
+  return { ...scene, scalar };
 }
 
 export function updateLinearMapInputFromDrag(scene: LinearMapScene, inputVector: readonly number[]): LinearMapScene {
@@ -190,8 +218,14 @@ function createSceneFromPresetRecord(selected: LinearMapPreset, showTransformedG
     targetDimension: selected.targetDimension,
     matrix: cloneMatrix(selected.matrix),
     inputVector: [...selected.defaultInput],
+    secondaryInputVector: defaultSecondaryInput(selected.sourceDimension),
+    scalar: 2,
     showTransformedGrid: showTransformedGrid && selected.sourceDimension === 2 && selected.targetDimension === 2,
   };
+}
+
+function defaultSecondaryInput(dimension: VectorDimension): number[] {
+  return dimension === 2 ? [1, -1] : [1, -1, 2];
 }
 
 function presetById(presetId: LinearMapPresetId): LinearMapPreset {

@@ -129,4 +129,28 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
     expect(labSource).toContain('終域に格子の像を表示');
     expect(labSource).toContain('checked={scene.showTransformedGrid}');
   });
+
+  it('shows an editable w and scalar c with both linearity laws', () => {
+    expect(labSource).toContain('analyzeLinearMapLinearity(');
+    expect(labSource).toContain('name="w" drafts={secondaryInputDrafts}');
+    expect(labSource).toContain('aria-label="線形性確認用スカラーc"');
+    expect(labSource).toContain('title="和について"');
+    expect(labSource).toContain('title="スカラー倍について"');
+    expect(labSource).toContain("expression=\"u+w\"");
+    expect(labSource).toContain('expression="cu"');
+    expect(labSource).toContain('両辺が一致します');
+  });
+
+  it('connects the dimension theorem to rank, nullity, Ker, and Im', () => {
+    expect(labSource).toContain('<DimensionTheoremCard analysis={analysis} />');
+    expect(labSource).toContain('analysis.sourceDimension');
+    expect(labSource).toContain('analysis.rank');
+    expect(labSource).toContain('analysis.nullity');
+    expect(labSource).toContain('analysis.isInjective');
+    expect(labSource).toContain('analysis.isSurjective');
+    expect(labSource).toContain('analysis.isBijective');
+    expect(labSource).toContain('標準基底の像と行列');
+    expect(cssSource).toContain('.linear-map-dimension-bar > span.is-rank');
+    expect(cssSource).toContain('.linear-map-dimension-bar > span.is-nullity');
+  });
 });

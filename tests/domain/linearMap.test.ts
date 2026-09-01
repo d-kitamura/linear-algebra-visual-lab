@@ -4,6 +4,7 @@ import {
   InvalidLinearMapError,
   InvalidVectorSetError,
   analyzeLinearMap,
+  analyzeLinearMapLinearity,
   applyLinearMap,
   type LinearMapDefinition,
   type LinearMapValidationCode,
@@ -205,6 +206,62 @@ describe('analyzeLinearMap', () => {
       rank: 2,
       nullity: 0,
     });
+  });
+});
+
+describe('analyzeLinearMapLinearity', () => {
+  it('derives both sides of addition preservation for a rectangular map', () => {
+    const result = analyzeLinearMapLinearity(
+      linearMap(3, 2, [[1, 2, 0], [0, -1, 3]]),
+      [2, -1, 4],
+      [-3, 5, 1],
+      2,
+    );
+
+    expect(result).toMatchObject({
+      inputSum: [-1, 4, 5],
+      imageOfFirstInput: [0, 13],
+      imageOfSecondInput: [7, -2],
+      imageOfInputSum: [7, 11],
+      sumOfImages: [7, 11],
+      preservesAddition: true,
+    });
+  });
+
+  it('derives both sides of scalar-multiplication preservation', () => {
+    const result = analyzeLinearMapLinearity(
+      linearMap(2, 3, [[1, 0], [0, 1], [1, -1]]),
+      [2, -3],
+      [4, 1],
+      -1.5,
+    );
+
+    expect(result.scaledInput).toEqual([-3, 4.5]);
+    expect(result.imageOfScaledInput).toEqual([-3, 4.5, -7.5]);
+    expect(result.scaledImage).toEqual([-3, 4.5, -7.5]);
+    expect(result.preservesScalarMultiplication).toBe(true);
+  });
+
+  it('does not mutate either input and validates the scalar', () => {
+    const first = [1, 2];
+    const second = [-3, 4];
+    analyzeLinearMapLinearity(linearMap(2, 2, [[1, 1], [0, 1]]), first, second, 3);
+
+    expect(first).toEqual([1, 2]);
+    expect(second).toEqual([-3, 4]);
+    expectLinearMapError(
+      () => analyzeLinearMapLinearity(linearMap(2, 2, [[1, 0], [0, 1]]), first, second, Number.NaN),
+      'NON_FINITE_SCALAR',
+    );
+    expectLinearMapError(
+      () => analyzeLinearMapLinearity(
+        linearMap(2, 2, [[1, 0], [0, 1]]),
+        first,
+        second,
+        MAX_ABSOLUTE_LINEAR_MAP_INPUT + 1,
+      ),
+      'SCALAR_OUT_OF_RANGE',
+    );
   });
 });
 

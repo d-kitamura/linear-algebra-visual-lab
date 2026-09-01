@@ -13,9 +13,9 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
   it('D-074と9.1を利用者確認済みとして記録する', () => {
     expect(decisions).toContain('### D-074 線形写像Labの教育範囲、連動画面、状態境界');
     expect(decisions).toContain('状態: **利用者確認済み**（2026-08-31、作業単位9.1）');
-    expect(roadmap).toContain('進行中（9.3利用者確認済み、9.4実装済み）');
+    expect(roadmap).toContain('進行中（9.4利用者確認済み、9.5実装済み）');
     expect(roadmap).toContain('### 9.2 線形写像の数学ロジック');
-    expect(projectStatus).toContain('フェーズ9「線形写像Lab」の9.3まで利用者確認済み');
+    expect(projectStatus).toContain('フェーズ9「線形写像Lab」の9.4まで利用者確認済み');
   });
 
   it('対象次元、画面配置、像の導出境界を固定する', () => {
@@ -37,7 +37,7 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(specification).toContain('任意の定義域基底・終域基底に関する表現行列と基底変換はフェーズ10候補へ分離する');
     expect(specification).toContain('### AC-53: 線形写像Labの設計境界');
     expect(specification).toContain('9.1では文書・設計の整合だけを検証し、画面、数学API、`linear-map` v1 validatorは未実装');
-    expect(specification).toContain('| 文書バージョン | 0.86 |');
+    expect(specification).toContain('| 文書バージョン | 0.87 |');
   });
 
   it('D-075と9.2の数学APIを利用者確認済みとして記録する', () => {
@@ -63,13 +63,23 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(specification).toContain('### AC-55: `2→2`線形写像の最小縦断画面');
   });
 
-  it('D-077と9.4の核・像2D/3D画面を実装・自動検証済みとして記録する', () => {
+  it('D-077と9.4の核・像2D/3D画面を利用者確認済みとして記録する', () => {
     expect(decisions).toContain('### D-077 線形写像Labの核・像と4つの2D/3D入出力次元');
-    expect(decisions).toContain('状態: **実装・自動検証済み、利用者確認待ち**（2026-09-01、作業単位9.4）');
+    expect(decisions).toContain('状態: **利用者確認済み**（2026-09-01、作業単位9.4）');
     expect(roadmap).toContain('### 9.4 核・像の2D/3D可視化');
     expect(roadmap).toContain('50テストファイル・408テスト');
-    expect(projectStatus).toContain('実装・自動検証済み、利用者確認待ちの作業単位: 9.4');
-    expect(specification).toContain('#### FR-LMAP-06: 核・像の2D/3D可視化（D-077、利用者確認待ち）');
+    expect(projectStatus).toContain('完了・利用者確認済みの作業単位: 0.1');
+    expect(specification).toContain('#### FR-LMAP-06: 核・像の2D/3D可視化（D-077、利用者確認済み）');
     expect(specification).toContain('### AC-56: 核・像の2D/3D可視化');
+  });
+
+  it('D-078と9.5の線形性・次元定理表示を実装・自動検証済みとして記録する', () => {
+    expect(decisions).toContain('### D-078 線形性の対応図と次元定理の教材表示');
+    expect(decisions).toContain('状態: **実装・自動検証済み、利用者確認待ち**（2026-09-01、作業単位9.5）');
+    expect(roadmap).toContain('### 9.5 線形性と次元定理の教材表示');
+    expect(roadmap).toContain('50テストファイル・415テスト');
+    expect(projectStatus).toContain('実装・自動検証済み、利用者確認待ちの作業単位: 9.5');
+    expect(specification).toContain('#### FR-LMAP-07: 線形性と次元定理の教材表示（D-078、利用者確認待ち）');
+    expect(specification).toContain('### AC-57: 線形性と次元定理の教材表示');
   });
 });

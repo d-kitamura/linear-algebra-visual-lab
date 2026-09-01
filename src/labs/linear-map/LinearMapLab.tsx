@@ -3,12 +3,15 @@ import {
   Suspense,
   useMemo,
   useState,
+  type ReactNode,
 } from 'react';
 import {
   MAX_ABSOLUTE_LINEAR_MAP_INPUT,
   analyzeLinearMap,
+  analyzeLinearMapLinearity,
   applyLinearMap,
   type LinearMapAnalysis,
+  type LinearMapLinearityAnalysis,
   type VectorValue,
 } from '../../domain';
 import {
@@ -39,6 +42,8 @@ import {
   updateLinearMapInputFromDrag,
   updateLinearMapInputVector,
   updateLinearMapMatrixEntry,
+  updateLinearMapScalar,
+  updateLinearMapSecondaryInputVector,
   type LinearMapPresetId,
   type LinearMapScene,
   type LinearMapShapeId,
@@ -76,6 +81,9 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     createMatrixDrafts(createDefaultLinearMapScene().matrix));
   const [inputDrafts, setInputDrafts] = useState<VectorDrafts>(() =>
     createVectorDrafts(createDefaultLinearMapScene().inputVector));
+  const [secondaryInputDrafts, setSecondaryInputDrafts] = useState<VectorDrafts>(() =>
+    createVectorDrafts(createDefaultLinearMapScene().secondaryInputVector));
+  const [scalarDraft, setScalarDraft] = useState(() => formatDraft(createDefaultLinearMapScene().scalar));
   const [domainManualViewport, setDomainManualViewport] = useState<PlaneViewport | null>(null);
   const [codomainManualViewport, setCodomainManualViewport] = useState<PlaneViewport | null>(null);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
@@ -89,6 +97,15 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   const analysis = useMemo(
     () => analyzeLinearMap(definition, scene.inputVector),
     [definition, scene.inputVector],
+  );
+  const linearityAnalysis = useMemo(
+    () => analyzeLinearMapLinearity(
+      definition,
+      scene.inputVector,
+      scene.secondaryInputVector,
+      scene.scalar,
+    ),
+    [definition, scene.inputVector, scene.scalar, scene.secondaryInputVector],
   );
   const domainVectors = useMemo<readonly VectorValue[]>(() => [{
     id: INPUT_VECTOR_ID,
@@ -172,7 +189,12 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   const matchingPresetId = findMatchingLinearMapPreset(scene);
   const availablePresets = presetsForLinearMapScene(scene);
   const selectedPreset = LINEAR_MAP_PRESETS.find((preset) => preset.id === matchingPresetId);
-  const invalidDraftCount = countInvalidDrafts(matrixDrafts.flat(), inputDrafts);
+  const invalidDraftCount = countInvalidDrafts(
+    matrixDrafts.flat(),
+    inputDrafts,
+    secondaryInputDrafts,
+    [scalarDraft],
+  );
   const imageIsZero = analysis.imageVector.every((coordinate) => Math.abs(coordinate) <= 1e-10);
 
   function replaceActiveScene(nextScene: LinearMapScene): void {
@@ -184,6 +206,8 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     setActiveShapeId(nextShapeId);
     setMatrixDrafts(createMatrixDrafts(nextScene.matrix));
     setInputDrafts(createVectorDrafts(nextScene.inputVector));
+    setSecondaryInputDrafts(createVectorDrafts(nextScene.secondaryInputVector));
+    setScalarDraft(formatDraft(nextScene.scalar));
     setDomainManualViewport(null);
     setCodomainManualViewport(null);
     setDragViewport(null);
@@ -195,6 +219,8 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
       presetId,
       scene.inputVector,
       scene.showTransformedGrid,
+      scene.secondaryInputVector,
+      scene.scalar,
     );
     replaceActiveScene(nextScene);
     setMatrixDrafts(createMatrixDrafts(nextScene.matrix));
@@ -225,6 +251,25 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     }
   }
 
+  function handleSecondaryInputDraftChange(index: number, text: string): void {
+    setSecondaryInputDrafts((current) => current.map((draft, currentIndex) =>
+      currentIndex === index ? text : draft));
+    const parsed = parseEditableNumber(text);
+    if (parsed !== null) {
+      const nextCoordinates = scene.secondaryInputVector.map((coordinate, coordinateIndex) =>
+        coordinateIndex === index ? parsed : coordinate);
+      replaceActiveScene(updateLinearMapSecondaryInputVector(scene, nextCoordinates));
+    }
+  }
+
+  function handleScalarDraftChange(text: string): void {
+    setScalarDraft(text);
+    const parsed = parseEditableNumber(text);
+    if (parsed !== null) {
+      replaceActiveScene(updateLinearMapScalar(scene, parsed));
+    }
+  }
+
   function commitInputCoordinates(coordinates: readonly number[]): void {
     const next = updateLinearMapInputFromDrag(scene, coordinates);
     replaceActiveScene(next);
@@ -247,6 +292,8 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     replaceActiveScene(nextScene);
     setMatrixDrafts(createMatrixDrafts(nextScene.matrix));
     setInputDrafts(createVectorDrafts(nextScene.inputVector));
+    setSecondaryInputDrafts(createVectorDrafts(nextScene.secondaryInputVector));
+    setScalarDraft(formatDraft(nextScene.scalar));
     setDomainCamera(DEFAULT_3D_CAMERA_STATE);
     setCodomainCamera(DEFAULT_3D_CAMERA_STATE);
     setDomainSpaceResetKey((current) => current + 1);
@@ -439,7 +486,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                 </div>
                 <div className="linear-map-editor-block">
                   <strong><MathVectorName name="u" /> =</strong>
-                  <VectorInput drafts={inputDrafts} onChange={handleInputDraftChange} />
+                  <VectorInput name="u" drafts={inputDrafts} onChange={handleInputDraftChange} />
                 </div>
               </div>
               {scene.sourceDimension === 2 && scene.targetDimension === 2 ? (
@@ -496,6 +543,17 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                 <small><span className="math-roman">rank</span>(<span className="math-scalar-base">T</span>) = {analysis.rank}</small>
               </div>
             </section>
+          </div>
+
+          <div className="linear-map-concept-grid">
+            <LinearityCard
+              analysis={linearityAnalysis}
+              secondaryInputDrafts={secondaryInputDrafts}
+              scalarDraft={scalarDraft}
+              onSecondaryInputChange={handleSecondaryInputDraftChange}
+              onScalarChange={handleScalarDraftChange}
+            />
+            <DimensionTheoremCard analysis={analysis} />
           </div>
         </div>
       </main>
@@ -556,24 +614,188 @@ function MatrixInput({
   );
 }
 
-function VectorInput({ drafts, onChange }: {
+function VectorInput({ name, drafts, onChange }: {
+  readonly name: 'u' | 'w';
   readonly drafts: VectorDrafts;
   readonly onChange: (index: number, text: string) => void;
 }) {
   return (
-    <span className="linear-map-vector-input" aria-label="入力ベクトルuの成分">
+    <span className="linear-map-vector-input" aria-label={`入力ベクトル${name}の成分`}>
       {drafts.map((draft, index) => (
         <input
           key={index}
           type="text"
           inputMode="decimal"
           value={draft}
-          aria-label={`入力ベクトルuの第${index + 1}成分`}
+          aria-label={`入力ベクトル${name}の第${index + 1}成分`}
           aria-invalid={parseEditableNumber(draft) === null}
           onChange={(event) => onChange(index, event.target.value)}
         />
       ))}
     </span>
+  );
+}
+
+function LinearityCard({
+  analysis,
+  secondaryInputDrafts,
+  scalarDraft,
+  onSecondaryInputChange,
+  onScalarChange,
+}: {
+  readonly analysis: LinearMapLinearityAnalysis;
+  readonly secondaryInputDrafts: VectorDrafts;
+  readonly scalarDraft: string;
+  readonly onSecondaryInputChange: (index: number, text: string) => void;
+  readonly onScalarChange: (text: string) => void;
+}) {
+  return (
+    <section className="linear-map-concept-card linear-map-linearity-card" aria-labelledby="linear-map-linearity-title">
+      <p className="panel-kicker">Check linearity</p>
+      <h2 id="linear-map-linearity-title">線形性を確かめる</h2>
+      <p className="linear-map-concept-intro">
+        もう1本の入力 <MathVectorName name="w" /> とスカラー <MathScalar name="c" /> を変えて、
+        写像の前後で和とスカラー倍が保たれることを比べます。
+      </p>
+      <div className="linear-map-linearity-inputs">
+        <label>
+          <strong><MathVectorName name="w" /> =</strong>
+          <VectorInput name="w" drafts={secondaryInputDrafts} onChange={onSecondaryInputChange} />
+        </label>
+        <label>
+          <strong><MathScalar name="c" /> =</strong>
+          <input
+            className="linear-map-scalar-input"
+            type="text"
+            inputMode="decimal"
+            value={scalarDraft}
+            aria-label="線形性確認用スカラーc"
+            aria-invalid={parseEditableNumber(scalarDraft) === null}
+            onChange={(event) => onScalarChange(event.target.value)}
+          />
+        </label>
+      </div>
+
+      <LinearityLaw
+        title="和について"
+        source={<> <MathVectorName name="u" /> + <MathVectorName name="w" /> = <MathColumnVector values={analysis.inputSum} /></>}
+        firstResult={<><MathMapExpression expression="u+w" /> = <MathColumnVector values={analysis.imageOfInputSum} /></>}
+        secondResult={<><MathMapValue argument="u" /> + <MathMapValue argument="w" /> = <MathColumnVector values={analysis.sumOfImages} /></>}
+        matches={analysis.preservesAddition}
+      />
+      <LinearityLaw
+        title="スカラー倍について"
+        source={<><MathScalar name="c" /><MathVectorName name="u" /> = <MathColumnVector values={analysis.scaledInput} /></>}
+        firstResult={<><MathMapExpression expression="cu" /> = <MathColumnVector values={analysis.imageOfScaledInput} /></>}
+        secondResult={<><MathScalar name="c" /><MathMapValue argument="u" /> = <MathColumnVector values={analysis.scaledImage} /></>}
+        matches={analysis.preservesScalarMultiplication}
+      />
+    </section>
+  );
+}
+
+function LinearityLaw({ title, source, firstResult, secondResult, matches }: {
+  readonly title: string;
+  readonly source: ReactNode;
+  readonly firstResult: ReactNode;
+  readonly secondResult: ReactNode;
+  readonly matches: boolean;
+}) {
+  return (
+    <div className="linear-map-law">
+      <div className="linear-map-law-heading">
+        <strong>{title}</strong>
+        <span className={matches ? 'is-verified' : 'is-not-verified'}>{matches ? '両辺が一致します' : '両辺が一致しません'}</span>
+      </div>
+      <div className="linear-map-law-flow" aria-label={`${title}の定義域と終域の対応`}>
+        <div>
+          <small>定義域 <span className="math-scalar-base">U</span></small>
+          <p>{source}</p>
+        </div>
+        <span className="linear-map-law-arrow" aria-hidden="true"><span className="math-scalar-base">T</span> →</span>
+        <div>
+          <small>終域 <span className="math-scalar-base">V</span></small>
+          <p>{firstResult}</p>
+          <p className="linear-map-law-equality">= {secondResult}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DimensionTheoremCard({ analysis }: { readonly analysis: LinearMapAnalysis }) {
+  return (
+    <section className="linear-map-concept-card linear-map-dimension-card" aria-labelledby="linear-map-dimension-title">
+      <p className="panel-kicker">Dimension theorem</p>
+      <h2 id="linear-map-dimension-title">次元定理</h2>
+      <p className="linear-map-concept-intro">
+        定義域の次元は、像として残る方向と、核へ失われる方向に分かれます。
+      </p>
+      <div className="linear-map-dimension-equation">
+        <span><span className="math-roman">dim</span>(<span className="math-scalar-base">U</span>)</span>
+        <strong>{analysis.sourceDimension}</strong>
+        <span>=</span>
+        <span><span className="math-roman">rank</span>(<span className="math-scalar-base">T</span>)</span>
+        <strong>{analysis.rank}</strong>
+        <span>+</span>
+        <span><span className="math-roman">null</span>(<span className="math-scalar-base">T</span>)</span>
+        <strong>{analysis.nullity}</strong>
+      </div>
+      <div
+        className="linear-map-dimension-bar"
+        aria-label={`定義域${analysis.sourceDimension}次元のうち、rankが${analysis.rank}、退化次数が${analysis.nullity}`}
+      >
+        {Array.from({ length: analysis.rank }, (_, index) => <span className="is-rank" key={`rank-${index}`} />)}
+        {Array.from({ length: analysis.nullity }, (_, index) => <span className="is-nullity" key={`nullity-${index}`} />)}
+      </div>
+      <div className="linear-map-dimension-legend">
+        <p className="is-rank">
+          <strong><span className="math-roman">rank</span>(<span className="math-scalar-base">T</span>) = {analysis.rank}</strong>
+          <span>= <span className="math-roman">dim</span>(<MathNamedSubspace name="Im" />)</span>
+        </p>
+        <p className="is-nullity">
+          <strong><span className="math-roman">null</span>(<span className="math-scalar-base">T</span>) = {analysis.nullity}</strong>
+          <span>= <span className="math-roman">dim</span>(<MathNamedSubspace name="Ker" />)</span>
+        </p>
+      </div>
+      <div className="linear-map-property-grid" aria-label="核と像からわかる写像の性質">
+        <MapProperty
+          name="単射"
+          holds={analysis.isInjective}
+          reason={analysis.isInjective ? 'Ker(T)は原点だけです' : 'Ker(T)に原点以外のベクトルがあります'}
+        />
+        <MapProperty
+          name="全射"
+          holds={analysis.isSurjective}
+          reason={analysis.isSurjective ? 'Im(T)は終域V全体です' : 'Im(T)は終域V全体ではありません'}
+        />
+        <MapProperty
+          name="全単射"
+          holds={analysis.isBijective}
+          reason={analysis.isBijective ? '単射かつ全射です' : '単射と全射の両方は成立しません'}
+        />
+      </div>
+      <details className="linear-map-basis-preview">
+        <summary>標準基底の像と行列</summary>
+        <p>
+          標準基底の像を列に並べると <MathMatrixName /> になります。任意の基底に関する表現行列は、後の単元で扱います。
+        </p>
+      </details>
+    </section>
+  );
+}
+
+function MapProperty({ name, holds, reason }: {
+  readonly name: string;
+  readonly holds: boolean;
+  readonly reason: string;
+}) {
+  return (
+    <div className={holds ? 'is-true' : 'is-false'}>
+      <strong>{name}</strong>
+      <span>{holds ? '成立' : '不成立'}</span>
+      <small>{reason}</small>
+    </div>
   );
 }
 
@@ -619,6 +841,10 @@ function MathVectorName({ name }: { readonly name: string }) {
   return <span className="math-vector"><span className="math-vector-base">{name}</span></span>;
 }
 
+function MathScalar({ name }: { readonly name: string }) {
+  return <span className="linear-map-math math-scalar-base">{name}</span>;
+}
+
 function MathStandardBasisVector({ subscript }: { readonly subscript: number }) {
   return <span className="math-vector"><span className="math-vector-base">e</span><sub className="math-vector-subscript">{subscript}</sub></span>;
 }
@@ -628,13 +854,26 @@ function MathNamedSubspace({ name }: { readonly name: 'Ker' | 'Im' }) {
 }
 
 function MathMapValue({ argument, subscript }: {
-  readonly argument: 'u' | 'e';
+  readonly argument: 'u' | 'w' | 'e';
   readonly subscript?: number;
 }) {
   return (
     <span className="linear-map-math math-map-value">
       <span className="math-scalar-base">T</span>(<span className="math-vector-base">{argument}</span>
       {subscript ? <sub className="math-vector-subscript">{subscript}</sub> : null})
+    </span>
+  );
+}
+
+function MathMapExpression({ expression }: { readonly expression: 'u+w' | 'cu' }) {
+  return (
+    <span className="linear-map-math math-map-value">
+      <span className="math-scalar-base">T</span>(
+      {expression === 'u+w' ? (
+        <><span className="math-vector-base">u</span> + <span className="math-vector-base">w</span></>
+      ) : (
+        <><span className="math-scalar-base">c</span><span className="math-vector-base">u</span></>
+      )})
     </span>
   );
 }

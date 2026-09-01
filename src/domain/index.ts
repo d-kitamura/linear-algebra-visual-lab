@@ -55,11 +55,13 @@ export {
   MAX_ABSOLUTE_LINEAR_MAP_INPUT,
   InvalidLinearMapError,
   analyzeLinearMap,
+  analyzeLinearMapLinearity,
   applyLinearMap,
 } from './linearMap';
 
 export type {
   LinearMapAnalysis,
   LinearMapDefinition,
+  LinearMapLinearityAnalysis,
   LinearMapValidationCode,
 } from './linearMap';

@@ -11,6 +11,8 @@ import {
   updateLinearMapInputFromDrag,
   updateLinearMapInputVector,
   updateLinearMapMatrixEntry,
+  updateLinearMapScalar,
+  updateLinearMapSecondaryInputVector,
 } from '../../src/labs/linear-map/linearMapState';
 
 describe('linear-map 2D scene state', () => {
@@ -23,6 +25,8 @@ describe('linear-map 2D scene state', () => {
       targetDimension: 2,
       matrix: [[1, 1], [0, 1]],
       inputVector: [2, 1],
+      secondaryInputVector: [1, -1],
+      scalar: 2,
       showTransformedGrid: false,
     });
     expect(first).not.toBe(second);
@@ -44,13 +48,15 @@ describe('linear-map 2D scene state', () => {
   });
 
   it('keeps the input and grid preference while applying a preset', () => {
-    const scene = createLinearMapSceneFromPreset('rotation', [-3, 4], false);
+    const scene = createLinearMapSceneFromPreset('rotation', [-3, 4], false, [5, -2], -1.5);
 
     expect(scene).toEqual({
       sourceDimension: 2,
       targetDimension: 2,
       matrix: [[0, -1], [1, 0]],
       inputVector: [-3, 4],
+      secondaryInputVector: [5, -2],
+      scalar: -1.5,
       showTransformedGrid: false,
     });
     expect(findMatchingLinearMapPreset(scene)).toBe('rotation');
@@ -78,6 +84,19 @@ describe('linear-map 2D scene state', () => {
     const result = updateLinearMapInputFromDrag(source, [2_000_000, -2_000_000]);
 
     expect(result.inputVector).toEqual([1_000_000, -1_000_000]);
+  });
+
+  it('updates the second input and scalar without mutating the previous scene', () => {
+    const source = createDefaultLinearMapScene();
+    const withSecondInput = updateLinearMapSecondaryInputVector(source, [-2, 4]);
+    const withScalar = updateLinearMapScalar(withSecondInput, -0.5);
+
+    expect(withScalar.secondaryInputVector).toEqual([-2, 4]);
+    expect(withScalar.scalar).toBe(-0.5);
+    expect(source.secondaryInputVector).toEqual([1, -1]);
+    expect(source.scalar).toBe(2);
+    expect(() => updateLinearMapSecondaryInputVector(source, [1])).toThrow(RangeError);
+    expect(() => updateLinearMapScalar(source, Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
 
   it('toggles the transformed grid without changing the mathematical inputs', () => {
@@ -114,6 +133,8 @@ describe('linear-map 2D scene state', () => {
       sourceDimension: 3,
       targetDimension: 2,
       matrix: [[1, 0, 0], [0, 1, 0]],
+      secondaryInputVector: [1, -1, 2],
+      scalar: 2,
     });
     expect(scenes['3-to-3']).toMatchObject({
       sourceDimension: 3,

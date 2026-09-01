@@ -3856,6 +3856,7 @@
 .linear-map-preset-field select:focus-visible,
 .linear-map-matrix-input input:focus-visible,
 .linear-map-vector-input input:focus-visible,
+.linear-map-scalar-input:focus-visible,
 .linear-map-grid-toggle input:focus-visible {
   outline: 3px solid color-mix(in srgb, #2f6690 28%, transparent);
   outline-offset: 2px;
@@ -4129,6 +4130,299 @@
   font-size: 0.72rem;
 }
 
+.linear-map-concept-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+
+.linear-map-concept-card {
+  min-width: 0;
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  box-shadow: 0 18px 52px rgba(28, 36, 44, 0.075);
+}
+
+.linear-map-concept-card h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+  letter-spacing: -0.03em;
+}
+
+.linear-map-concept-intro {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.65;
+}
+
+.linear-map-linearity-inputs {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(116px, 0.42fr);
+  gap: 10px;
+}
+
+.linear-map-linearity-inputs > label {
+  min-width: 0;
+  padding: 11px 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.linear-map-linearity-inputs strong,
+.linear-map-law,
+.linear-map-dimension-equation,
+.linear-map-dimension-legend,
+.linear-map-basis-preview {
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+}
+
+.linear-map-scalar-input {
+  min-width: 0;
+  width: 100%;
+  height: 36px;
+  padding: 5px 7px;
+  border: 1px solid #d8d3c8;
+  border-radius: 7px;
+  background: white;
+  font: 0.8rem var(--mono-font);
+  text-align: center;
+}
+
+.linear-map-scalar-input[aria-invalid='true'] {
+  border-color: #a33a35;
+  background: #fff2ef;
+}
+
+.linear-map-law {
+  margin-top: 13px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fffdf8;
+}
+
+.linear-map-law-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.linear-map-law-heading > strong {
+  color: #244e70;
+  font-size: 0.86rem;
+}
+
+.linear-map-law-heading > span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-family: var(--body-font);
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
+.linear-map-law-heading > span.is-verified {
+  color: #235d53;
+  background: color-mix(in srgb, #2d7669 12%, transparent);
+}
+
+.linear-map-law-heading > span.is-not-verified {
+  color: #8d352f;
+  background: color-mix(in srgb, #a33a35 10%, transparent);
+}
+
+.linear-map-law-flow {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) auto minmax(0, 1.14fr);
+  align-items: stretch;
+  gap: 9px;
+}
+
+.linear-map-law-flow > div {
+  min-width: 0;
+  padding: 10px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #2f6690 6%, #fffdf8);
+  overflow-wrap: anywhere;
+}
+
+.linear-map-law-flow small {
+  color: var(--muted);
+  font-family: var(--body-font);
+  font-size: 0.63rem;
+  font-weight: 760;
+}
+
+.linear-map-law-flow p {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
+.linear-map-law-equality {
+  color: #244e70;
+}
+
+.linear-map-law-arrow {
+  align-self: center;
+  color: #2f6690;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.linear-map-dimension-equation {
+  margin-top: 17px;
+  padding: 15px 13px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 13px;
+  color: #244e70;
+  background: #fffdf8;
+  font-size: clamp(0.84rem, 1.8vw, 1.08rem);
+}
+
+.linear-map-dimension-equation > strong {
+  font-size: 1.2em;
+}
+
+.linear-map-dimension-bar {
+  margin-top: 13px;
+  min-height: 54px;
+  padding: 5px;
+  display: flex;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.linear-map-dimension-bar > span {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 7px;
+}
+
+.linear-map-dimension-bar > span.is-rank {
+  background: color-mix(in srgb, #d9a0ad 58%, #fffdf8);
+}
+
+.linear-map-dimension-bar > span.is-nullity {
+  background: color-mix(in srgb, #82b6d3 58%, #fffdf8);
+}
+
+.linear-map-dimension-legend {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.linear-map-dimension-legend p {
+  min-width: 0;
+  margin: 0;
+  padding: 10px 11px;
+  display: grid;
+  gap: 3px;
+  border-left: 4px solid;
+  border-radius: 9px;
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.linear-map-dimension-legend p.is-rank {
+  border-color: #d9a0ad;
+  background: color-mix(in srgb, #d9a0ad 10%, transparent);
+}
+
+.linear-map-dimension-legend p.is-nullity {
+  border-color: #82b6d3;
+  background: color-mix(in srgb, #82b6d3 10%, transparent);
+}
+
+.linear-map-property-grid {
+  margin-top: 13px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.linear-map-property-grid > div {
+  min-width: 0;
+  padding: 10px;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+}
+
+.linear-map-property-grid strong {
+  font-size: 0.76rem;
+}
+
+.linear-map-property-grid span {
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.linear-map-property-grid small {
+  color: var(--muted);
+  font-size: 0.63rem;
+  line-height: 1.45;
+}
+
+.linear-map-property-grid .is-true span {
+  color: #235d53;
+}
+
+.linear-map-property-grid .is-false span {
+  color: #8d352f;
+}
+
+.linear-map-basis-preview {
+  margin-top: 13px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fffdf8;
+  font-size: 0.72rem;
+}
+
+.linear-map-basis-preview summary {
+  color: #244e70;
+  font-family: var(--body-font);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.linear-map-basis-preview p {
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+
 .math-roman {
   font-style: normal;
 }
@@ -4169,7 +4463,8 @@
   }
 
   .linear-map-diagram-grid,
-  .linear-map-detail-grid {
+  .linear-map-detail-grid,
+  .linear-map-concept-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -4472,7 +4767,22 @@
   }
 
   .linear-map-editor-row,
-  .linear-map-column-list {
+  .linear-map-column-list,
+  .linear-map-linearity-inputs,
+  .linear-map-dimension-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .linear-map-law-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .linear-map-law-arrow {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .linear-map-property-grid {
     grid-template-columns: 1fr;
   }
 
