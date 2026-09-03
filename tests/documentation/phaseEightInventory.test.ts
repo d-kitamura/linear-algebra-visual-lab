@@ -29,8 +29,8 @@ describe('フェーズ8開始後の棚卸し記録', () => {
   });
 
   it('フェーズ8完了を後続フェーズ開始後も現在地へ残す', () => {
-    expect(specification).toContain('| 文書バージョン | 0.90 |');
-    expect(specification).toContain('フェーズ8まで完了');
+    expect(specification).toContain('| 文書バージョン | 0.91 |');
+    expect(specification).toContain('フェーズ8・9は利用者確認と統合棚卸しまで完了');
     expect(decisions).toContain('### D-061 フェーズ8開始後の棚卸しと8.3への引渡し');
     expect(decisions).toContain('### D-062 基底・次元の対象空間、判定API、数式表記');
     expect(decisions).toContain('### D-063 2D/3D基底エクスプローラの画面と段階的共有境界');

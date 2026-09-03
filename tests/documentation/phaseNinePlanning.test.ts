@@ -13,9 +13,9 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
   it('D-074と9.1を利用者確認済みとして記録する', () => {
     expect(decisions).toContain('### D-074 線形写像Labの教育範囲、連動画面、状態境界');
     expect(decisions).toContain('状態: **利用者確認済み**（2026-08-31、作業単位9.1）');
-    expect(roadmap).toContain('進行中（9.6利用者確認済み、9.7実装・棚卸し済み）');
+    expect(roadmap).toContain('完了（9.1〜9.7・利用者確認・統合棚卸し済み）');
     expect(roadmap).toContain('### 9.2 線形写像の数学ロジック');
-    expect(projectStatus).toContain('フェーズ9「線形写像Lab」の9.6まで利用者確認済み');
+    expect(projectStatus).toContain('9「線形写像Lab」');
   });
 
   it('対象次元、画面配置、像の導出境界を固定する', () => {
@@ -37,7 +37,7 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(specification).toContain('任意の定義域基底・終域基底に関する表現行列と基底変換はフェーズ10候補へ分離する');
     expect(specification).toContain('### AC-53: 線形写像Labの設計境界');
     expect(specification).toContain('9.1では文書・設計の整合だけを検証し、画面、数学API、`linear-map` v1 validatorは未実装');
-    expect(specification).toContain('| 文書バージョン | 0.90 |');
+    expect(specification).toContain('| 文書バージョン | 0.91 |');
   });
 
   it('D-075と9.2の数学APIを利用者確認済みとして記録する', () => {
@@ -90,17 +90,17 @@ describe('フェーズ9.1 線形写像Labの設計境界', () => {
     expect(projectStatus).toContain('完了・利用者確認済みの作業単位: 0.1');
     expect(specification).toContain('#### FR-LMAP-08: 共有・教材例・アクセシビリティ（D-079、利用者確認済み）');
     expect(specification).toContain('### AC-58: 線形写像Labの共有・教材例・アクセシビリティ');
-    expect(specification).toContain('| 文書バージョン | 0.90 |');
+    expect(specification).toContain('| 文書バージョン | 0.91 |');
   });
 
-  it('D-080と9.7の統合棚卸し、表現行列Labへの引渡しを記録する', () => {
+  it('D-080と9.7の統合棚卸し、表現行列Labへの引渡しを利用者確認済みとして記録する', () => {
     expect(decisions).toContain('### D-080 フェーズ9統合棚卸しと表現行列Labへの引渡し');
-    expect(decisions).toContain('状態: **実装・自動検証済み、利用者確認待ち**（2026-09-03、作業単位9.7）');
+    expect(decisions).toContain('状態: **利用者確認済み**（2026-09-03、作業単位9.7）');
     expect(roadmap).toContain('### 9.7 統合確認と棚卸し');
     expect(roadmap).toContain('代表例は16件・4件・8件の計28件');
-    expect(projectStatus).toContain('実装・自動検証済み、利用者確認待ちの作業単位: 9.7');
-    expect(specification).toContain('#### FR-LMAP-09: 複数Lab回帰と表現行列への責務境界（D-080、利用者確認待ち）');
+    expect(projectStatus).toContain('9.1〜9.7');
+    expect(specification).toContain('#### FR-LMAP-09: 複数Lab回帰と表現行列への責務境界（D-080、利用者確認済み）');
     expect(specification).toContain('### AC-59: フェーズ9統合確認と表現行列Labへの引渡し');
-    expect(specification).toContain('| 文書バージョン | 0.90 |');
+    expect(specification).toContain('| 文書バージョン | 0.91 |');
   });
 });
