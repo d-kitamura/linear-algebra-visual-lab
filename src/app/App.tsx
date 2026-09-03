@@ -11,9 +11,7 @@ export function App() {
   const usageDialogRef = useRef<HTMLDialogElement>(null);
   const [activeLabId, setActiveLabId] = useState<LabId>(() => {
     const result = readShareStateFromUrl(window.location.href);
-    return result.status === 'success' && result.state.lab === 'basis-dimension'
-      ? 'basis-dimension'
-      : 'vector-space';
+    return result.status === 'success' ? result.state.lab : 'vector-space';
   });
 
   function handleOpenUsageDialog(): void {

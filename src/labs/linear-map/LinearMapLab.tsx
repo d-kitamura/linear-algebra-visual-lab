@@ -2,8 +2,10 @@ import {
   lazy,
   Suspense,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
 import {
@@ -16,9 +18,15 @@ import {
   type VectorValue,
 } from '../../domain';
 import {
-  DEFAULT_3D_CAMERA_STATE,
+  ShareUrlBuildError,
+  buildShareUrl,
+  createShareQrCodeDataUrl,
+  createShareQrCodeFileName,
+  createShareTextFileContents,
+  createShareTextFileName,
   type SharedCameraState,
 } from '../../sharing';
+import { LabActionControls } from '../../app/LabActionControls';
 import {
   parallelSnapDistanceForViewWidth,
   snapTargetToSelectedSpan,
@@ -33,8 +41,6 @@ import {
 import {
   LINEAR_MAP_PRESETS,
   LINEAR_MAP_SHAPES,
-  createDefaultLinearMapScene,
-  createDefaultLinearMapScenes,
   createLinearMapDefinition,
   createLinearMapSceneFromPreset,
   findMatchingLinearMapPreset,
@@ -49,6 +55,11 @@ import {
   type LinearMapScene,
   type LinearMapShapeId,
 } from './linearMapState';
+import {
+  createLinearMapInitialization,
+  createLinearMapShareState,
+  type LinearMapInitialState,
+} from './linearMapInitialization';
 
 const VectorSpace3D = lazy(async () => {
   const module = await import('../../visualization/VectorSpace3D');
@@ -73,6 +84,10 @@ interface LinearMapLabProps {
 
 type MatrixDrafts = string[][];
 type VectorDrafts = string[];
+type ShareFeedback = {
+  readonly kind: 'success' | 'error';
+  readonly message: string;
+} | null;
 type LinearMapInspectorTabId = 'control' | 'reading' | 'linearity' | 'dimension';
 
 const LINEAR_MAP_INSPECTOR_TABS: readonly {
@@ -87,25 +102,45 @@ const LINEAR_MAP_INSPECTOR_TABS: readonly {
 ];
 
 export function LinearMapLab({ active }: LinearMapLabProps) {
-  const [scenes, setScenes] = useState(createDefaultLinearMapScenes);
-  const [activeShapeId, setActiveShapeId] = useState<LinearMapShapeId>('2-to-2');
+  const [initialization] = useState(() => createLinearMapInitialization(window.location.href));
+  const initialScene = initialization.initialStates[initialization.activeShapeId].scene;
+  const [scenes, setScenes] = useState(() => scenesFromInitialStates(initialization.initialStates));
+  const [activeShapeId, setActiveShapeId] = useState<LinearMapShapeId>(initialization.activeShapeId);
   const scene = scenes[activeShapeId];
   const [matrixDrafts, setMatrixDrafts] = useState<MatrixDrafts>(() =>
-    createMatrixDrafts(createDefaultLinearMapScene().matrix));
+    createMatrixDrafts(initialScene.matrix));
   const [inputDrafts, setInputDrafts] = useState<VectorDrafts>(() =>
-    createVectorDrafts(createDefaultLinearMapScene().inputVector));
+    createVectorDrafts(initialScene.inputVector));
   const [secondaryInputDrafts, setSecondaryInputDrafts] = useState<VectorDrafts>(() =>
-    createVectorDrafts(createDefaultLinearMapScene().secondaryInputVector));
-  const [scalarDraft, setScalarDraft] = useState(() => formatDraft(createDefaultLinearMapScene().scalar));
+    createVectorDrafts(initialScene.secondaryInputVector));
+  const [scalarDraft, setScalarDraft] = useState(() => formatDraft(initialScene.scalar));
   const [activeInspectorTab, setActiveInspectorTab] = useState<LinearMapInspectorTabId>('control');
   const [domainManualViewport, setDomainManualViewport] = useState<PlaneViewport | null>(null);
   const [codomainManualViewport, setCodomainManualViewport] = useState<PlaneViewport | null>(null);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
-  const [domainCamera, setDomainCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
-  const [codomainCamera, setCodomainCamera] = useState<SharedCameraState>(DEFAULT_3D_CAMERA_STATE);
+  const [domainCameras, setDomainCameras] = useState(() => camerasFromInitialStates(
+    initialization.initialStates,
+    'domainCamera',
+  ));
+  const [codomainCameras, setCodomainCameras] = useState(() => camerasFromInitialStates(
+    initialization.initialStates,
+    'codomainCamera',
+  ));
+  const domainCamera = domainCameras[activeShapeId];
+  const codomainCamera = codomainCameras[activeShapeId];
   const [domainSpaceResetKey, setDomainSpaceResetKey] = useState(0);
   const [codomainSpaceResetKey, setCodomainSpaceResetKey] = useState(0);
   const [inputCoordinatePreview, setInputCoordinatePreview] = useState<readonly [number, number, number] | null>(null);
+  const [loadErrorMessage, setLoadErrorMessage] = useState(initialization.errorMessage);
+  const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareQrCodeDataUrl, setShareQrCodeDataUrl] = useState('');
+  const [shareQrCodeErrorMessage, setShareQrCodeErrorMessage] = useState<string | null>(null);
+  const [isShareQrCodeLoading, setIsShareQrCodeLoading] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState<ShareFeedback>(null);
+  const shareQrCodeRequestIdRef = useRef(0);
+  const shareDialogRef = useRef<HTMLDialogElement>(null);
+  const shareUrlFieldRef = useRef<HTMLTextAreaElement>(null);
 
   const definition = useMemo(() => createLinearMapDefinition(scene), [scene]);
   const analysis = useMemo(
@@ -302,24 +337,151 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   }
 
   function handleReset(): void {
-    const nextScene = createDefaultLinearMapScene(scene.sourceDimension, scene.targetDimension);
+    const initialState = initialization.initialStates[activeShapeId];
+    const nextScene = initialState.scene;
     replaceActiveScene(nextScene);
     setMatrixDrafts(createMatrixDrafts(nextScene.matrix));
     setInputDrafts(createVectorDrafts(nextScene.inputVector));
     setSecondaryInputDrafts(createVectorDrafts(nextScene.secondaryInputVector));
     setScalarDraft(formatDraft(nextScene.scalar));
-    setDomainCamera(DEFAULT_3D_CAMERA_STATE);
-    setCodomainCamera(DEFAULT_3D_CAMERA_STATE);
+    setDomainCameras((current) => ({
+      ...current,
+      [activeShapeId]: initialState.domainCamera,
+    }));
+    setCodomainCameras((current) => ({
+      ...current,
+      [activeShapeId]: initialState.codomainCamera,
+    }));
     setDomainSpaceResetKey((current) => current + 1);
     setCodomainSpaceResetKey((current) => current + 1);
     setInputCoordinatePreview(null);
     resetViewports();
+    clearShareDialogState();
   }
 
   function resetViewports(): void {
     setDomainManualViewport(null);
     setCodomainManualViewport(null);
     setDragViewport(null);
+  }
+
+  function handleDomainCameraChange(camera: SharedCameraState): void {
+    setDomainCameras((current) => ({ ...current, [activeShapeId]: camera }));
+  }
+
+  function handleCodomainCameraChange(camera: SharedCameraState): void {
+    setCodomainCameras((current) => ({ ...current, [activeShapeId]: camera }));
+  }
+
+  function clearShareDialogState(): void {
+    setExportErrorMessage(null);
+    setShareUrl('');
+    shareQrCodeRequestIdRef.current += 1;
+    setShareQrCodeDataUrl('');
+    setShareQrCodeErrorMessage(null);
+    setIsShareQrCodeLoading(false);
+    setShareFeedback(null);
+    shareDialogRef.current?.close();
+  }
+
+  function handleOpenShareDialog(): void {
+    if (invalidDraftCount > 0) {
+      return;
+    }
+
+    try {
+      const nextShareUrl = buildShareUrl(window.location.href, createLinearMapShareState({
+        scene,
+        domainCamera,
+        codomainCamera,
+      }));
+      const requestId = shareQrCodeRequestIdRef.current + 1;
+      shareQrCodeRequestIdRef.current = requestId;
+      setShareUrl(nextShareUrl);
+      setShareQrCodeDataUrl('');
+      setShareQrCodeErrorMessage(null);
+      setIsShareQrCodeLoading(true);
+      setShareFeedback(null);
+      setExportErrorMessage(null);
+      shareDialogRef.current?.showModal();
+      void createShareQrCodeDataUrl(nextShareUrl)
+        .then((dataUrl) => {
+          if (shareQrCodeRequestIdRef.current === requestId) {
+            setShareQrCodeDataUrl(dataUrl);
+            setIsShareQrCodeLoading(false);
+          }
+        })
+        .catch((error: unknown) => {
+          if (shareQrCodeRequestIdRef.current !== requestId) {
+            return;
+          }
+          setShareQrCodeErrorMessage(error instanceof Error
+            ? error.message
+            : '共有URLからQRコードを生成できませんでした。');
+          setIsShareQrCodeLoading(false);
+        });
+      window.requestAnimationFrame(() => {
+        shareUrlFieldRef.current?.focus();
+        shareUrlFieldRef.current?.select();
+      });
+    } catch (error) {
+      setExportErrorMessage(error instanceof ShareUrlBuildError
+        ? error.message
+        : '共有URLを生成できませんでした。入力内容を確認してください。');
+    }
+  }
+
+  async function handleCopyShareUrl(): Promise<void> {
+    try {
+      if (!navigator.clipboard) {
+        throw new Error('Clipboard API is unavailable.');
+      }
+      await navigator.clipboard.writeText(shareUrl);
+      setShareFeedback({ kind: 'success', message: 'クリップボードにコピーしました。' });
+    } catch {
+      shareUrlFieldRef.current?.focus();
+      shareUrlFieldRef.current?.select();
+      setShareFeedback({
+        kind: 'error',
+        message: '自動でコピーできませんでした。選択されたURLを手動でコピーしてください。',
+      });
+    }
+  }
+
+  function handleDownloadShareUrl(): void {
+    const blob = new Blob([createShareTextFileContents(shareUrl)], {
+      type: 'text/plain;charset=utf-8',
+    });
+    downloadBlobUrl(URL.createObjectURL(blob), createShareTextFileName(), true);
+    setShareFeedback({
+      kind: 'success',
+      message: 'URLを記載したテキストファイルのダウンロードを開始しました。',
+    });
+  }
+
+  function handleDownloadShareQrCode(): void {
+    if (!shareQrCodeDataUrl) {
+      setShareFeedback({
+        kind: 'error',
+        message: 'QRコードを保存できませんでした。URLのコピーまたはテキスト保存をご利用ください。',
+      });
+      return;
+    }
+    downloadBlobUrl(shareQrCodeDataUrl, createShareQrCodeFileName(), false);
+    setShareFeedback({
+      kind: 'success',
+      message: 'QRコードのPNG画像のダウンロードを開始しました。',
+    });
+  }
+
+  function handleCloseShareDialog(): void {
+    shareDialogRef.current?.close();
+  }
+
+  function handleShareDialogClick(event: ReactMouseEvent<HTMLDialogElement>): void {
+    if (event.target === event.currentTarget) {
+      handleCloseShareDialog();
+    }
   }
 
   function handleInspectorTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>): void {
@@ -340,6 +502,24 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     document.getElementById(`linear-map-inspector-tab-${nextTab.id}`)?.focus();
   }
 
+  function handleShapeTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+      return;
+    }
+    event.preventDefault();
+    const currentIndex = LINEAR_MAP_SHAPES.findIndex((shape) => shape.id === activeShapeId);
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? LINEAR_MAP_SHAPES.length - 1
+        : event.key === 'ArrowRight'
+          ? (currentIndex + 1) % LINEAR_MAP_SHAPES.length
+          : (currentIndex - 1 + LINEAR_MAP_SHAPES.length) % LINEAR_MAP_SHAPES.length;
+    const nextShape = LINEAR_MAP_SHAPES[nextIndex];
+    handleShapeChange(nextShape.id);
+    document.getElementById(`linear-map-shape-tab-${nextShape.id}`)?.focus();
+  }
+
   return (
     <div className="linear-map-lab" data-lab-id="linear-map" aria-hidden={!active}>
       <a className="skip-link" href="#linear-map-workspace">線形写像の操作領域へ移動</a>
@@ -349,10 +529,14 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
             {LINEAR_MAP_SHAPES.map((shape) => (
               <button
                 key={shape.id}
+                id={`linear-map-shape-tab-${shape.id}`}
                 type="button"
                 role="tab"
                 aria-selected={activeShapeId === shape.id}
+                aria-controls="linear-map-workspace"
+                tabIndex={activeShapeId === shape.id ? 0 : -1}
                 onClick={() => handleShapeChange(shape.id)}
+                onKeyDown={handleShapeTabKeyDown}
               >{shape.label}</button>
             ))}
           </div>
@@ -376,13 +560,53 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
               終域の像 <MathMapValue argument="u" /> がリアルタイムに決まります。
               薄い青色の核 <MathNamedSubspace name="Ker" /> と薄いピンク色の像 <MathNamedSubspace name="Im" /> を比較できます。
             </p>
-            <div className="lab-actions" aria-label="線形写像Labの教材状態を操作">
-              <button className="reset-button" type="button" onClick={handleReset}>Reset</button>
-            </div>
+            <LabActionControls
+              exportDisabled={invalidDraftCount > 0}
+              exportDescriptionId={invalidDraftCount > 0 ? 'linear-map-share-disabled-help' : undefined}
+              onExport={handleOpenShareDialog}
+              onReset={handleReset}
+            />
+            {invalidDraftCount > 0 ? (
+              <p className="lab-action-help" id="linear-map-share-disabled-help" role="status">
+                未確定の成分が{invalidDraftCount}か所あります。訂正すると共有URLを作成できます。
+              </p>
+            ) : null}
           </div>
         </section>
 
-        <div className="linear-map-workspace" id="linear-map-workspace">
+        {loadErrorMessage ? (
+          <div className="page-alert" role="alert" aria-labelledby="linear-map-load-error-title">
+            <div>
+              <strong id="linear-map-load-error-title">共有URLを開けませんでした</strong>
+              <p>{loadErrorMessage}</p>
+            </div>
+            <button type="button" onClick={() => setLoadErrorMessage(null)}>閉じる</button>
+          </div>
+        ) : null}
+
+        {exportErrorMessage ? (
+          <div className="page-alert" role="alert" aria-labelledby="linear-map-export-error-title">
+            <div>
+              <strong id="linear-map-export-error-title">共有URLを作成できませんでした</strong>
+              <p>{exportErrorMessage}</p>
+            </div>
+            <button type="button" onClick={() => setExportErrorMessage(null)}>閉じる</button>
+          </div>
+        ) : null}
+
+        <p className="visually-hidden" aria-live="polite">
+          現在は{scene.sourceDimension}次元から{scene.targetDimension}次元への線形写像です。
+          rankは{analysis.rank}、核の次元は{analysis.kernelDimension}、像の次元は{analysis.imageDimension}です。
+          入力ベクトルuの成分は{scene.inputVector.join('、')}、像T(u)の成分は{analysis.imageVector.join('、')}です。
+          図を使わなくても、行列と入力タブの数値入力と、行列の列・核・像タブの数値説明から同じ結果を確認できます。
+        </p>
+
+        <div
+          className="linear-map-workspace"
+          id="linear-map-workspace"
+          role="tabpanel"
+          aria-labelledby={`linear-map-shape-tab-${activeShapeId}`}
+        >
           <div className="linear-map-diagram-grid">
             {scene.sourceDimension === 2 ? (
               <section className="plot-card linear-map-plot-card" aria-labelledby="linear-map-domain-title">
@@ -425,7 +649,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                   active={active && scene.sourceDimension === 3}
                   resetKey={domainSpaceResetKey}
                   camera={domainCamera}
-                  onCameraChange={setDomainCamera}
+                  onCameraChange={handleDomainCameraChange}
                   onVectorCoordinatesCommit={(_, coordinates) => commitInputCoordinates(coordinates)}
                   onVectorCoordinatesPreview={(_, coordinates) => setInputCoordinatePreview(coordinates)}
                   onLinearCombinationTargetPlacement={() => undefined}
@@ -476,7 +700,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                   active={active && scene.targetDimension === 3}
                   resetKey={codomainSpaceResetKey}
                   camera={codomainCamera}
-                  onCameraChange={setCodomainCamera}
+                  onCameraChange={handleCodomainCameraChange}
                   onVectorCoordinatesCommit={() => undefined}
                   onLinearCombinationTargetPlacement={() => undefined}
                   onLinearCombinationVisibility={() => undefined}
@@ -619,6 +843,86 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
           </div>
         </div>
       </main>
+
+      <dialog
+        className="share-dialog"
+        ref={shareDialogRef}
+        aria-labelledby="linear-map-share-dialog-title"
+        aria-describedby="linear-map-share-dialog-description"
+        onClick={handleShareDialogClick}
+        onClose={() => setShareFeedback(null)}
+      >
+        <div className="share-dialog-content">
+          <p className="panel-kicker">Export current state</p>
+          <h2 id="linear-map-share-dialog-title">共有URLをエクスポート</h2>
+          <p className="share-dialog-description" id="linear-map-share-dialog-description">
+            このURLを開くと、入出力次元、行列、入力ベクトルu・w、スカラーc、格子表示が復元されます。
+            {scene.sourceDimension === 3 || scene.targetDimension === 3
+              ? '3Dの定義域・終域では、それぞれのカメラの向き、注視点、拡大率も復元されます。'
+              : '表示範囲は教材状態全体が見えるように自動調整されます。'}
+          </p>
+          <section
+            className={`share-qr-code ${shareQrCodeErrorMessage ? 'has-error' : ''}`}
+            aria-labelledby="linear-map-share-qr-code-title"
+            aria-busy={isShareQrCodeLoading}
+          >
+            <h3 id="linear-map-share-qr-code-title">共有URLのQRコード</h3>
+            <div className="share-qr-code-frame">
+              {shareQrCodeDataUrl ? (
+                <img
+                  src={shareQrCodeDataUrl}
+                  alt="現在の線形写像Lab共有URLを表すQRコード"
+                  width="768"
+                  height="768"
+                />
+              ) : (
+                <p role={shareQrCodeErrorMessage ? 'alert' : 'status'}>
+                  {shareQrCodeErrorMessage ?? 'QRコードを生成しています。'}
+                </p>
+              )}
+            </div>
+            <p className="share-qr-code-help">
+              スマートフォンのカメラで読み取ると、同じ教材状態を開けます。
+            </p>
+          </section>
+          <label className="share-url-field">
+            <span>共有URL</span>
+            <textarea
+              ref={shareUrlFieldRef}
+              rows={5}
+              readOnly
+              value={shareUrl}
+              spellCheck={false}
+              aria-describedby="linear-map-share-dialog-description linear-map-share-dialog-feedback"
+              onFocus={(event) => event.currentTarget.select()}
+            />
+          </label>
+          <p
+            className={`share-feedback ${shareFeedback?.kind === 'error' ? 'has-error' : ''}`}
+            id="linear-map-share-dialog-feedback"
+            role={shareFeedback?.kind === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            {shareFeedback?.message ?? 'URLはドラッグして選択し、手動でもコピーできます。'}
+          </p>
+          <div className="share-dialog-actions">
+            <button className="copy-share-button" type="button" onClick={handleCopyShareUrl}>
+              クリップボードにコピー
+            </button>
+            <button
+              type="button"
+              disabled={!shareQrCodeDataUrl}
+              onClick={handleDownloadShareQrCode}
+            >
+              QRコードを保存
+            </button>
+            <button type="button" onClick={handleDownloadShareUrl}>
+              テキストで保存
+            </button>
+            <button type="button" onClick={handleCloseShareDialog}>閉じる</button>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 }
@@ -1017,4 +1321,35 @@ function parseEditableNumber(text: string): number | null {
 
 function countInvalidDrafts(...groups: readonly (readonly string[])[]): number {
   return groups.flat().filter((draft) => parseEditableNumber(draft) === null).length;
+}
+
+function scenesFromInitialStates(
+  initialStates: Readonly<Record<LinearMapShapeId, LinearMapInitialState>>,
+): Record<LinearMapShapeId, LinearMapScene> {
+  return Object.fromEntries(LINEAR_MAP_SHAPES.map((shape) => [
+    shape.id,
+    initialStates[shape.id].scene,
+  ])) as Record<LinearMapShapeId, LinearMapScene>;
+}
+
+function camerasFromInitialStates(
+  initialStates: Readonly<Record<LinearMapShapeId, LinearMapInitialState>>,
+  key: 'domainCamera' | 'codomainCamera',
+): Record<LinearMapShapeId, SharedCameraState> {
+  return Object.fromEntries(LINEAR_MAP_SHAPES.map((shape) => [
+    shape.id,
+    initialStates[shape.id][key],
+  ])) as Record<LinearMapShapeId, SharedCameraState>;
+}
+
+function downloadBlobUrl(url: string, fileName: string, revoke: boolean): void {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  if (revoke) {
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
 }

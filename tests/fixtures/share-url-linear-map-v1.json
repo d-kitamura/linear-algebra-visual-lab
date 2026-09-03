@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoxLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjoyLCJ0YXJnZXREaW1lbnNpb24iOjMsIm1hdHJpeCI6W1sxLDBdLFswLDFdLFsxLDFdXSwiaW5wdXRWZWN0b3IiOlsyLC0xXSwic2Vjb25kYXJ5SW5wdXRWZWN0b3IiOlstMyw0XSwic2NhbGFyIjowLjUsInZpc3VhbGl6YXRpb24iOnsic2hvd1RyYW5zZm9ybWVkR3JpZCI6ZmFsc2UsImRvbWFpbkNhbWVyYSI6bnVsbCwiY29kb21haW5DYW1lcmEiOnsiZGlyZWN0aW9uIjpbMC41MDMwNTU0NiwtMC42ODA2MDQ0NSwwLjUzMjY0Njk2XSwidGFyZ2V0IjpbMCwwLDBdLCJ1cCI6WzAsMCwxXSwiem9vbSI6MX19fQ",
+  "expectedState": {
+    "v": 1,
+    "lab": "linear-map",
+    "sourceDimension": 2,
+    "targetDimension": 3,
+    "matrix": [[1, 0], [0, 1], [1, 1]],
+    "inputVector": [2, -1],
+    "secondaryInputVector": [-3, 4],
+    "scalar": 0.5,
+    "visualization": {
+      "showTransformedGrid": false,
+      "domainCamera": null,
+      "codomainCamera": {
+        "direction": [0.50305546, -0.68060445, 0.53264696],
+        "target": [0, 0, 0],
+        "up": [0, 0, 1],
+        "zoom": 1
+      }
+    }
+  }
+}

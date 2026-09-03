@@ -8,7 +8,7 @@ export type Matrix2 = readonly [readonly [number, number], readonly [number, num
 export type Vector2 = readonly [number, number];
 export type LinearMapShapeId = '2-to-2' | '2-to-3' | '3-to-2' | '3-to-3';
 export type LinearMapPresetId =
-  | 'identity' | 'rotation' | 'reflection' | 'shear' | 'scaling' | 'rank-one'
+  | 'identity' | 'rotation' | 'reflection' | 'shear' | 'scaling' | 'projection-x' | 'rank-one' | 'zero-2'
   | 'embedding-2-to-3' | 'rank-one-2-to-3'
   | 'projection-3-to-2' | 'rank-one-3-to-2'
   | 'identity-3' | 'plane-projection-3' | 'line-projection-3' | 'zero-3';
@@ -57,7 +57,9 @@ export const LINEAR_MAP_PRESETS: readonly LinearMapPreset[] = [
   preset('reflection', '鏡映', 'x軸について折り返します。', 2, 2, [[1, 0], [0, -1]], [2, 1]),
   preset('shear', 'せん断', '高さに応じて水平方向へずらします。', 2, 2, [[1, 1], [0, 1]], [2, 1]),
   preset('scaling', '拡大・縮小', 'x方向を1.5倍、y方向を0.5倍にします。', 2, 2, [[1.5, 0], [0, 0.5]], [2, 1]),
+  preset('projection-x', 'x軸への射影', 'y成分を失い、像はx軸になります。', 2, 2, [[1, 0], [0, 0]], [2, 1]),
   preset('rank-one', 'rank 1へ退化', '2次元の格子を原点を通る直線へ押しつぶします。', 2, 2, [[1, 2], [0.5, 1]], [2, 1]),
+  preset('zero-2', '零写像', 'すべての入力を原点へ移します。', 2, 2, [[0, 0], [0, 0]], [2, 1]),
   preset('embedding-2-to-3', 'xy平面への埋め込み', '2次元の入力を3次元のxy平面へ移します。', 2, 3, [[1, 0], [0, 1], [0, 0]], [2, 1]),
   preset('rank-one-2-to-3', '3次元内の直線へ退化', '2次元の入力を3次元内の1本の直線へ移します。', 2, 3, [[1, 2], [0, 0], [1, 2]], [2, 1]),
   preset('projection-3-to-2', 'xy成分への射影', 'z成分を失い、xy成分だけを終域へ移します。', 3, 2, [[1, 0, 0], [0, 1, 0]], [2, 1, 1]),

@@ -34,7 +34,7 @@ describe('linear-map 2D scene state', () => {
     expect(first.inputVector).not.toBe(second.inputVector);
   });
 
-  it('provides the six 9.3 representative transformations', () => {
+  it('provides the eight 9.6 representative 2D transformations', () => {
     expect(LINEAR_MAP_PRESETS.filter((preset) =>
       preset.sourceDimension === 2 && preset.targetDimension === 2,
     ).map((preset) => preset.id)).toEqual([
@@ -43,7 +43,9 @@ describe('linear-map 2D scene state', () => {
       'reflection',
       'shear',
       'scaling',
+      'projection-x',
       'rank-one',
+      'zero-2',
     ]);
   });
 

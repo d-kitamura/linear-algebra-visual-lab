@@ -96,7 +96,7 @@
 
 ## 関連文書
 
-- [`TEACHING_SCENARIOS.md`](./TEACHING_SCENARIOS.md): 両Labの代表例20件と観察手順
+- [`TEACHING_SCENARIOS.md`](./TEACHING_SCENARIOS.md): 3つのLabの代表例28件と観察手順
 - [`SHARE_URL_COMPATIBILITY.md`](./SHARE_URL_COMPATIBILITY.md): 正式リリース後のURL互換契約
 - [`GITHUB_PAGES.md`](./GITHUB_PAGES.md): 正規配布先の更新手順
 - [`NGINX.md`](./NGINX.md): 学内nginxを採用する場合の設定・確認手順

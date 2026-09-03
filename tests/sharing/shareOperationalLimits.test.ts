@@ -10,6 +10,7 @@ import {
 } from '../../src/sharing';
 import {
   LINEAR_COMBINATION_TEACHING_SCENARIOS,
+  LINEAR_MAP_TEACHING_SCENARIOS,
   THREE_DIMENSIONAL_LINEAR_COMBINATION_SCENARIOS,
   THREE_DIMENSIONAL_TEACHING_SCENARIOS,
   TWO_DIMENSIONAL_TEACHING_SCENARIOS,
@@ -97,5 +98,17 @@ describe('共有URL・QRコードの運用上限', () => {
     const shareUrl = buildShareUrl(PRODUCTION_BASE_URL, reachableBasisBoundaryState);
     expect(shareUrl.length).toBeLessThanOrEqual(MAX_OPERATIONAL_SHARE_URL_LENGTH);
     expect(await createShareQrCodeDataUrl(shareUrl)).toMatch(/^data:image\/png;base64,/u);
+  });
+
+  it('線形写像Labの代表例8件も完全URLとQRの運用上限に収まる', async () => {
+    const shareUrls = LINEAR_MAP_TEACHING_SCENARIOS.map((scenario) => (
+      buildShareUrl(PRODUCTION_BASE_URL, scenario.state)
+    ));
+
+    expect(shareUrls).toHaveLength(8);
+    expect(Math.max(...shareUrls.map((url) => url.length)))
+      .toBeLessThanOrEqual(MAX_OPERATIONAL_SHARE_URL_LENGTH);
+    expect(await createShareQrCodeDataUrl(shareUrls.at(-1) ?? ''))
+      .toMatch(/^data:image\/png;base64,/u);
   });
 });

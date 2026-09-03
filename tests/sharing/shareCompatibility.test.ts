@@ -5,12 +5,15 @@ import {
   readShareStateFromUrl,
   type ShareState,
   type BasisDimensionShareState,
+  type LinearMapShareState,
 } from '../../src/sharing';
 import v3Fixture from '../fixtures/share-url-v3.json';
 import basisV1Fixture from '../fixtures/share-url-basis-dimension-v1.json';
+import linearMapV1Fixture from '../fixtures/share-url-linear-map-v1.json';
 
 const expectedState = v3Fixture.expectedState as ShareState;
 const expectedBasisState = basisV1Fixture.expectedState as BasisDimensionShareState;
+const expectedLinearMapState = linearMapV1Fixture.expectedState as LinearMapShareState;
 
 describe('正式リリース候補の共有URL互換性', () => {
   it('最初の保証対象を共有状態v3として固定する', () => {
@@ -42,5 +45,17 @@ describe('正式リリース候補の共有URL互換性', () => {
       'https://d-kitamura.github.io/linear-algebra-visual-lab/',
       expectedBasisState,
     )).toBe(basisV1Fixture.url);
+  });
+
+  it('線形写像Lab v1の正式リリース候補URLを固定して再生成する', () => {
+    expect(linearMapV1Fixture.schemaVersion).toBe(1);
+    expect(readShareStateFromUrl(linearMapV1Fixture.url)).toEqual({
+      status: 'success',
+      state: expectedLinearMapState,
+    });
+    expect(buildShareUrl(
+      'https://d-kitamura.github.io/linear-algebra-visual-lab/',
+      expectedLinearMapState,
+    )).toBe(linearMapV1Fixture.url);
   });
 });

@@ -7,6 +7,10 @@ const labSource = readFileSync(
   new URL('../../src/labs/linear-map/LinearMapLab.tsx', import.meta.url),
   'utf8',
 );
+const initializationSource = readFileSync(
+  new URL('../../src/labs/linear-map/linearMapInitialization.ts', import.meta.url),
+  'utf8',
+);
 const planeSource = readFileSync(
   new URL('../../src/visualization/VectorPlane2D.tsx', import.meta.url),
   'utf8',
@@ -53,7 +57,7 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
     expect(labSource).toContain('scene.matrix.map((row) => row[columnIndex])');
   });
 
-  it('switches six representative maps and can hide the grid image', () => {
+  it('switches the expanded representative maps and can hide the grid image', () => {
     expect(labSource).toContain('availablePresets.map');
     expect(labSource).toContain('setTransformedGridVisibility');
     expect(labSource).toContain('終域に格子の像を表示');
@@ -61,6 +65,17 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
     expect(planeSource).toContain('className="linear-map-grid-image"');
     expect(cssSource).toContain('.linear-map-grid-image .is-first-coordinate');
     expect(cssSource).toContain('.linear-map-grid-image .is-second-coordinate');
+  });
+
+  it('shares and restores the linear-map state with QR export and shared-state Reset', () => {
+    expect(labSource).toContain('createLinearMapInitialization(window.location.href)');
+    expect(labSource).toContain('createLinearMapShareState');
+    expect(labSource).toContain('<LabActionControls');
+    expect(labSource).toContain('共有URLのQRコード');
+    expect(labSource).toContain('QRコードを保存');
+    expect(labSource).toContain('initialization.initialStates[activeShapeId]');
+    expect(initializationSource).toContain("source: 'shared'");
+    expect(initializationSource).toContain('result.state.lab !== \'linear-map\'');
   });
 
   it('keeps zoom, pan, pinch, fit, and mobile touch policy on both figures', () => {
@@ -79,7 +94,7 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
 
   it('extends the Lab to every 2D and 3D domain-codomain pair', () => {
     expect(labSource).toContain('LINEAR_MAP_SHAPES.map');
-    expect(labSource).toContain("useState<LinearMapShapeId>('2-to-2')");
+    expect(labSource).toContain('useState<LinearMapShapeId>(initialization.activeShapeId)');
     expect(labSource).toContain('<VectorSpace3D');
     expect(labSource).toContain('spaceTitle="定義域 U = ℝ³"');
     expect(labSource).toContain('spaceTitle="終域 V = ℝ³"');
@@ -169,5 +184,12 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
     expect(cssSource).toContain('.linear-map-inspector-tablist');
     expect(cssSource).not.toContain('.linear-map-detail-grid');
     expect(cssSource).not.toContain('.linear-map-concept-grid');
+  });
+
+  it('offers keyboard tab navigation and a numeric non-graph alternative', () => {
+    expect(labSource).toContain('handleShapeTabKeyDown');
+    expect(labSource).toContain('tabIndex={activeShapeId === shape.id ? 0 : -1}');
+    expect(labSource).toContain('className="visually-hidden" aria-live="polite"');
+    expect(labSource).toContain('図を使わなくても');
   });
 });
