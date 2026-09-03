@@ -49,6 +49,7 @@ export interface VectorLine1DProps {
   readonly onTargetDragEnd?: () => void;
   readonly idPrefix?: string;
   readonly axisLabel?: string;
+  readonly showViewportControls?: boolean;
 }
 
 interface SvgPointerPoint {
@@ -83,6 +84,7 @@ export function VectorLine1D({
   onTargetDragEnd,
   idPrefix = 'vector-line',
   axisLabel = 'x',
+  showViewportControls = true,
 }: VectorLine1DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportRef = useRef(viewport);
@@ -421,6 +423,7 @@ export function VectorLine1D({
 
   return (
     <div className="one-dimensional-figure">
+      {showViewportControls ? (
       <div className="one-dimensional-controls" role="toolbar" aria-label="1次元数直線の表示範囲">
         <button
           type="button"
@@ -446,6 +449,7 @@ export function VectorLine1D({
           全体を表示
         </button>
       </div>
+      ) : null}
       <svg
         ref={svgRef}
         className="vector-line"

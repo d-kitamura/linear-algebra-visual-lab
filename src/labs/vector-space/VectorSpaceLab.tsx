@@ -49,12 +49,23 @@ import {
   splitVectorName,
 } from '../../ui';
 import {
+  VectorLine1D,
   VectorPlane2D,
+  ZeroSpace0D,
+  createAutoFitLineViewport,
   createAutoFitViewport,
+  zoomLineViewportAtCenter,
   zoomViewportAtCenter,
+  type LineViewport,
   type PlaneViewport,
 } from '../../visualization';
 import { LabActionControls } from '../../app/LabActionControls';
+import {
+  addOneDimensionalVector,
+  createInitialOneDimensionalVectorSpaceState,
+  removeOneDimensionalVector,
+  type OneDimensionalVectorSpaceState,
+} from './oneDimensionalState';
 
 const VectorSpace3D = lazy(async () => {
   const module = await import('../../visualization/VectorSpace3D');
@@ -79,6 +90,8 @@ const inspectorTabs = [
   { id: 'all', label: '全ベクトル', shortLabel: '全体' },
 ] as const;
 const dimensionTabs = [
+  { dimension: 0, label: '0D零ベクトル空間', shortLabel: '0D' },
+  { dimension: 1, label: '1D数直線', shortLabel: '1D' },
   { dimension: 2, label: '2D座標平面', shortLabel: '2D' },
   { dimension: 3, label: '3D座標空間', shortLabel: '3D' },
 ] as const;
@@ -92,6 +105,7 @@ const threeDimensionalInspectorTabs = [
 type CoordinateDrafts = Readonly<Record<string, readonly string[]>>;
 type TargetCoordinateDrafts = readonly string[];
 type ViewMode = 'auto' | 'manual';
+type VectorSpaceLabDimension = 0 | 1 | AppDimension;
 type InspectorTabId = typeof inspectorTabs[number]['id'];
 type ThreeDimensionalInspectorTabId =
   typeof threeDimensionalInspectorTabs[number]['id'];
@@ -118,7 +132,10 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   const [initialization] = useState(() => createAppInitialization(window.location.href));
   const initial2DState = initialization.initialStates[2];
   const initial3DState = initialization.initialStates[3];
-  const [activeDimension, setActiveDimension] = useState<AppDimension>(
+  const [initialOneDimensionalState] = useState(
+    createInitialOneDimensionalVectorSpaceState,
+  );
+  const [activeDimension, setActiveDimension] = useState<VectorSpaceLabDimension>(
     initialization.activeDimension,
   );
   const [hasActivatedThreeDimensions, setHasActivatedThreeDimensions] = useState(
@@ -128,11 +145,15 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   const [threeDimensionalState, setThreeDimensionalState] = useState<ShareState>(
     initial3DState,
   );
+  const [oneDimensionalState, setOneDimensionalState] =
+    useState<OneDimensionalVectorSpaceState>(initialOneDimensionalState);
   const [threeDimensionalCameraResetKey, setThreeDimensionalCameraResetKey] =
     useState(0);
   const [coordinateDrafts, setCoordinateDrafts] = useState<CoordinateDrafts>(() =>
     createCoordinateDrafts(initial2DState.vectors),
   );
+  const [oneDimensionalCoordinateDrafts, setOneDimensionalCoordinateDrafts] =
+    useState<CoordinateDrafts>(() => createCoordinateDrafts(initialOneDimensionalState.vectors));
   const [
     threeDimensionalCoordinateDrafts,
     setThreeDimensionalCoordinateDrafts,
@@ -142,6 +163,8 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   const [targetCoordinateDrafts, setTargetCoordinateDrafts] = useState<TargetCoordinateDrafts>(
     () => createTargetCoordinateDrafts(initial2DState.linearCombination.target, 2),
   );
+  const [oneDimensionalTargetDrafts, setOneDimensionalTargetDrafts] =
+    useState<TargetCoordinateDrafts>(['']);
   const [
     threeDimensionalTargetCoordinateDrafts,
     setThreeDimensionalTargetCoordinateDrafts,
@@ -149,6 +172,11 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
     () => createTargetCoordinateDrafts(initial3DState.linearCombination.target, 3),
   );
   const [viewMode, setViewMode] = useState<ViewMode>('auto');
+  const [oneDimensionalViewMode, setOneDimensionalViewMode] = useState<ViewMode>('auto');
+  const [oneDimensionalManualViewport, setOneDimensionalManualViewport] =
+    useState<LineViewport | null>(null);
+  const [oneDimensionalDragViewport, setOneDimensionalDragViewport] =
+    useState<LineViewport | null>(null);
   const [manualViewport, setManualViewport] = useState<PlaneViewport | null>(null);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
@@ -156,6 +184,8 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   const [activeInspectorTab, setActiveInspectorTab] = useState<InspectorTabId>(
     initial2DState.linearCombination.visible ? 'combination' : 'edit',
   );
+  const [activeOneDimensionalInspectorTab, setActiveOneDimensionalInspectorTab] =
+    useState<InspectorTabId>('edit');
   const [
     activeThreeDimensionalInspectorTab,
     setActiveThreeDimensionalInspectorTab,
@@ -173,6 +203,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   const shareDialogRef = useRef<HTMLDialogElement>(null);
   const shareUrlFieldRef = useRef<HTMLTextAreaElement>(null);
   const addVectorButtonRef = useRef<HTMLButtonElement>(null);
+  const oneDimensionalAddVectorButtonRef = useRef<HTMLButtonElement>(null);
   const threeDimensionalAddVectorButtonRef = useRef<HTMLButtonElement>(null);
   const coordinateInputIssues = useMemo(
     () => collectCoordinateInputIssues(
@@ -189,6 +220,22 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
     ],
   );
   const hasInvalid2DCoordinateDraft = coordinateInputIssues.length > 0;
+  const oneDimensionalCoordinateInputIssues = useMemo(
+    () => collectCoordinateInputIssues(
+      oneDimensionalState.vectors,
+      oneDimensionalCoordinateDrafts,
+      oneDimensionalState.linearCombinationVisible,
+      oneDimensionalTargetDrafts,
+      '1d-',
+      '1d-linear-combination-target-coordinate-',
+    ),
+    [
+      oneDimensionalState.vectors,
+      oneDimensionalState.linearCombinationVisible,
+      oneDimensionalCoordinateDrafts,
+      oneDimensionalTargetDrafts,
+    ],
+  );
   const threeDimensionalCoordinateInputIssues = useMemo(
     () => collectCoordinateInputIssues(
       threeDimensionalState.vectors,
@@ -205,16 +252,49 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
       threeDimensionalTargetCoordinateDrafts,
     ],
   );
-  const hasInvalidCoordinateDraft = activeDimension === 2
-    ? hasInvalid2DCoordinateDraft
-    : threeDimensionalCoordinateInputIssues.length > 0;
-  const activeCoordinateInputIssues = activeDimension === 2
-    ? coordinateInputIssues
-    : threeDimensionalCoordinateInputIssues;
-  const activeShareState = activeDimension === 2 ? state : threeDimensionalState;
+  const hasInvalidCoordinateDraft = activeDimension === 1
+    ? oneDimensionalCoordinateInputIssues.length > 0
+    : activeDimension === 2
+      ? hasInvalid2DCoordinateDraft
+      : activeDimension === 3
+        ? threeDimensionalCoordinateInputIssues.length > 0
+        : false;
+  const activeCoordinateInputIssues = activeDimension === 1
+    ? oneDimensionalCoordinateInputIssues
+    : activeDimension === 2
+      ? coordinateInputIssues
+      : activeDimension === 3
+        ? threeDimensionalCoordinateInputIssues
+        : [];
+  const shareIsDeferredForDimension = activeDimension === 0 || activeDimension === 1;
+  const activeShareState = activeDimension === 3 ? threeDimensionalState : state;
   const analysis = useMemo(
     () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
     [state],
+  );
+  const oneDimensionalAnalysis = useMemo(
+    () => analyzeVectorSet({ dimension: 1, vectors: oneDimensionalState.vectors }),
+    [oneDimensionalState.vectors],
+  );
+  const oneDimensionalSpanVectors = useMemo(
+    () => selectSpanVectors(
+      oneDimensionalState.vectors,
+      oneDimensionalState.spanSelection,
+    ),
+    [oneDimensionalState.vectors, oneDimensionalState.spanSelection],
+  );
+  const oneDimensionalSpanAnalysis = useMemo(
+    () => analyzeVectorSet({ dimension: 1, vectors: oneDimensionalSpanVectors }),
+    [oneDimensionalSpanVectors],
+  );
+  const oneDimensionalLinearCombinationAnalysis = useMemo(
+    () => oneDimensionalState.target === null
+      ? null
+      : analyzeLinearCombination(
+          { dimension: 1, vectors: oneDimensionalSpanVectors },
+          [oneDimensionalState.target],
+        ),
+    [oneDimensionalSpanVectors, oneDimensionalState.target],
   );
   const threeDimensionalAnalysis = useMemo(
     () => analyzeVectorSet({
@@ -295,6 +375,25 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
       : state.vectors),
     [state.vectors, state.linearCombination.visible, targetCoordinates],
   );
+  const oneDimensionalAutoViewport = useMemo(
+    () => createAutoFitLineViewport([
+      ...oneDimensionalState.vectors.map((vector) => vector.coordinates[0] ?? 0),
+      ...(oneDimensionalState.linearCombinationVisible
+        && oneDimensionalState.target !== null
+        ? [oneDimensionalState.target]
+        : []),
+    ]),
+    [
+      oneDimensionalState.vectors,
+      oneDimensionalState.linearCombinationVisible,
+      oneDimensionalState.target,
+    ],
+  );
+  const selectedOneDimensionalViewport = oneDimensionalViewMode === 'auto'
+    ? oneDimensionalAutoViewport
+    : (oneDimensionalManualViewport ?? oneDimensionalAutoViewport);
+  const oneDimensionalViewport = oneDimensionalDragViewport
+    ?? selectedOneDimensionalViewport;
   const selectedViewport = viewMode === 'auto' ? autoViewport : (manualViewport ?? autoViewport);
   const viewport = dragViewport ?? selectedViewport;
   const isIndependent = analysis.isLinearlyIndependent;
@@ -303,6 +402,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
     analysis.isLinearlyIndependent,
   );
   const spanShape = describeSpanShape(spanAnalysis.rank, 2);
+  const oneDimensionalSpanShape = describeSpanShape(oneDimensionalSpanAnalysis.rank, 1);
   const threeDimensionalSpanShape = describeSpanShape(threeDimensionalSpanAnalysis.rank, 3);
   const threeDimensionalAllVectorRelation = describeAllVectorRelation(
     threeDimensionalAnalysis.vectorCount,
@@ -311,12 +411,120 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   const availableInspectorTabs = state.linearCombination.visible
     ? inspectorTabs
     : inspectorTabs.filter((tab) => tab.id !== 'combination');
+  const availableOneDimensionalInspectorTabs = oneDimensionalState.linearCombinationVisible
+    ? inspectorTabs
+    : inspectorTabs.filter((tab) => tab.id !== 'combination');
   const availableThreeDimensionalInspectorTabs = threeDimensionalState.linearCombination.visible
     ? threeDimensionalInspectorTabs
     : threeDimensionalInspectorTabs.filter((tab) => tab.id !== 'combination');
   const viewportLabel = viewMode === 'auto'
     ? `自動表示 ±${formatViewportNumber((viewport.maxX - viewport.minX) / 2)}`
     : `手動表示・幅 ${formatViewportNumber(viewport.maxX - viewport.minX)}`;
+  const oneDimensionalViewportLabel = oneDimensionalViewMode === 'auto'
+    ? `自動表示 ±${formatViewportNumber((oneDimensionalViewport.max - oneDimensionalViewport.min) / 2)}`
+    : `手動表示・幅 ${formatViewportNumber(oneDimensionalViewport.max - oneDimensionalViewport.min)}`;
+
+  function handleOneDimensionalViewportChange(nextViewport: LineViewport): void {
+    setOneDimensionalManualViewport(nextViewport);
+    setOneDimensionalViewMode('manual');
+  }
+
+  function handleOneDimensionalVectorChange(
+    vectorId: string,
+    coordinates: readonly [number],
+  ): void {
+    const coordinate = clampDraggedCoordinate(coordinates[0]);
+    setOneDimensionalState((current) => ({
+      ...current,
+      vectors: current.vectors.map((vector) => vector.id === vectorId
+        ? { ...vector, coordinates: [coordinate] }
+        : vector),
+    }));
+    setOneDimensionalCoordinateDrafts((current) => ({
+      ...current,
+      [vectorId]: [String(coordinate)],
+    }));
+  }
+
+  function handleOneDimensionalCoordinateChange(vectorId: string, input: string): void {
+    setOneDimensionalCoordinateDrafts((current) => ({ ...current, [vectorId]: [input] }));
+    const parsed = parseCoordinateInput(input);
+    if (!parsed.ok) {
+      return;
+    }
+    setOneDimensionalState((current) => ({
+      ...current,
+      vectors: current.vectors.map((vector) => vector.id === vectorId
+        ? { ...vector, coordinates: [parsed.value] }
+        : vector),
+    }));
+  }
+
+  function handleOneDimensionalSpanSelection(vectorId: string, selected: boolean): void {
+    setOneDimensionalState((current) => ({
+      ...current,
+      spanSelection: updateSpanSelection(
+        current.vectors,
+        current.spanSelection,
+        vectorId,
+        selected,
+      ),
+    }));
+  }
+
+  function handleOneDimensionalLinearCombinationVisibility(): void {
+    const nextVisible = !oneDimensionalState.linearCombinationVisible;
+    setOneDimensionalState((current) => ({
+      ...current,
+      linearCombinationVisible: nextVisible,
+    }));
+    setActiveOneDimensionalInspectorTab((current) => (
+      nextVisible ? 'combination' : current === 'combination' ? 'span' : current
+    ));
+  }
+
+  function handleOneDimensionalTargetChange(coordinate: number): void {
+    const safeCoordinate = clampDraggedCoordinate(coordinate);
+    setOneDimensionalState((current) => ({ ...current, target: safeCoordinate }));
+    setOneDimensionalTargetDrafts([String(safeCoordinate)]);
+  }
+
+  function handleOneDimensionalTargetCoordinateChange(input: string): void {
+    setOneDimensionalTargetDrafts([input]);
+    if (input.trim().length === 0) {
+      setOneDimensionalState((current) => ({ ...current, target: null }));
+      return;
+    }
+    const parsed = parseCoordinateInput(input);
+    if (parsed.ok) {
+      setOneDimensionalState((current) => ({ ...current, target: parsed.value }));
+    }
+  }
+
+  function handleOneDimensionalAddVector(): void {
+    const result = addOneDimensionalVector(oneDimensionalState);
+    if (!result.addedVector) {
+      return;
+    }
+    const addedVector = result.addedVector;
+    setOneDimensionalState(result.state);
+    setOneDimensionalCoordinateDrafts((current) => ({
+      ...current,
+      [addedVector.id]: addedVector.coordinates.map(String),
+    }));
+    window.requestAnimationFrame(() => {
+      document.getElementById(`1d-${addedVector.id}-coordinate-0`)?.focus();
+    });
+  }
+
+  function handleOneDimensionalRemoveVector(vectorId: string): void {
+    setOneDimensionalState((current) => removeOneDimensionalVector(current, vectorId));
+    setOneDimensionalCoordinateDrafts((current) => Object.fromEntries(
+      Object.entries(current).filter(([id]) => id !== vectorId),
+    ));
+    setOneDimensionalDragViewport(null);
+    window.requestAnimationFrame(() => oneDimensionalAddVectorButtonRef.current?.focus());
+  }
 
   function handleManualViewportChange(nextViewport: PlaneViewport): void {
     setManualViewport(nextViewport);
@@ -678,6 +886,27 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   }
 
   function handleReset(): void {
+    if (activeDimension === 0) {
+      setExportErrorMessage(null);
+      shareDialogRef.current?.close();
+      return;
+    }
+
+    if (activeDimension === 1) {
+      setOneDimensionalState(initialOneDimensionalState);
+      setOneDimensionalCoordinateDrafts(createCoordinateDrafts(
+        initialOneDimensionalState.vectors,
+      ));
+      setOneDimensionalTargetDrafts(['']);
+      setOneDimensionalViewMode('auto');
+      setOneDimensionalManualViewport(null);
+      setOneDimensionalDragViewport(null);
+      setActiveOneDimensionalInspectorTab('edit');
+      setExportErrorMessage(null);
+      shareDialogRef.current?.close();
+      return;
+    }
+
     if (activeDimension === 3) {
       setThreeDimensionalState(initial3DState);
       setThreeDimensionalCoordinateDrafts(createCoordinateDrafts(initial3DState.vectors));
@@ -723,7 +952,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   }
 
   function handleOpenShareDialog(): void {
-    if (hasInvalidCoordinateDraft) {
+    if (hasInvalidCoordinateDraft || shareIsDeferredForDimension) {
       return;
     }
 
@@ -782,9 +1011,15 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
           ? 'combination'
           : 'edit',
       );
-    } else {
+    } else if (activeDimension === 2) {
       setActiveInspectorTab(
         firstIssue.inputId.startsWith('linear-combination-target-')
+          ? 'combination'
+          : 'edit',
+      );
+    } else if (activeDimension === 1) {
+      setActiveOneDimensionalInspectorTab(
+        firstIssue.inputId.startsWith('1d-linear-combination-target-')
           ? 'combination'
           : 'edit',
       );
@@ -916,6 +1151,32 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
     document.getElementById(`3d-inspector-tab-${nextTab.id}`)?.focus();
   }
 
+  function handleOneDimensionalInspectorTabKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+  ): void {
+    const currentIndex = availableOneDimensionalInspectorTabs.findIndex(
+      (tab) => tab.id === activeOneDimensionalInspectorTab,
+    );
+    let nextIndex = currentIndex;
+    if (event.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % availableOneDimensionalInspectorTabs.length;
+    } else if (event.key === 'ArrowLeft') {
+      nextIndex = (
+        currentIndex - 1 + availableOneDimensionalInspectorTabs.length
+      ) % availableOneDimensionalInspectorTabs.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = availableOneDimensionalInspectorTabs.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    const nextTab = availableOneDimensionalInspectorTabs[nextIndex];
+    setActiveOneDimensionalInspectorTab(nextTab.id);
+    document.getElementById(`1d-inspector-tab-${nextTab.id}`)?.focus();
+  }
+
   function handleDimensionTabKeyDown(
     event: ReactKeyboardEvent<HTMLButtonElement>,
   ): void {
@@ -942,7 +1203,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
     document.getElementById(`dimension-tab-${nextTab.dimension}`)?.focus();
   }
 
-  function handleDimensionChange(dimension: AppDimension): void {
+  function handleDimensionChange(dimension: VectorSpaceLabDimension): void {
     setActiveDimension(dimension);
     if (dimension === 3) {
       setHasActivatedThreeDimensions(true);
@@ -1021,7 +1282,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
 
       <main className="lab-page">
         <nav className="dimension-switcher" aria-label="教材の次元">
-          <div className="dimension-tablist" role="tablist" aria-label="2Dと3Dの切替">
+          <div className="dimension-tablist" role="tablist" aria-label="0Dから3Dの切替">
             {dimensionTabs.map((tab) => (
               <button
                 key={tab.dimension}
@@ -1040,9 +1301,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
             ))}
           </div>
           <p aria-live="polite">
-            {activeDimension === 2
-              ? '2次元の教材状態を表示しています。'
-              : '3次元の教材状態を表示しています。'}
+            {`${activeDimension}次元の教材状態を表示しています。`}
           </p>
         </nav>
 
@@ -1053,7 +1312,17 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
           </div>
           <div className="lab-intro-side">
             <p className="lab-intro-copy">
-              {activeDimension === 2 ? (
+              {activeDimension === 0 ? (
+                <>
+                  零ベクトルだけからなる0次元空間を、編集対象のない一点の空間として確認します。
+                  空集合と零ベクトルを含む集合の違いにも注目します。
+                </>
+              ) : activeDimension === 1 ? (
+                <>
+                  1成分の数ベクトルを数直線上で編集し、非零ベクトル1本が数直線全体を
+                  生成することと、複数の生成元による一次結合を確かめます。
+                </>
+              ) : activeDimension === 2 ? (
                 <>
                   列ベクトルの成分を編集すると、座標平面と数学的な判定が連動します。
                   ベクトルを選ぶと、その集合が生成する空間を原点、直線、座標平面として比較できます。
@@ -1066,14 +1335,14 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
               )}
             </p>
             <LabActionControls
-              exportDisabled={hasInvalidCoordinateDraft}
-              exportDescriptionId={hasInvalidCoordinateDraft
+              exportDisabled={hasInvalidCoordinateDraft || shareIsDeferredForDimension}
+              exportDescriptionId={hasInvalidCoordinateDraft || shareIsDeferredForDimension
                 ? 'share-export-disabled-help'
                 : undefined}
               onExport={handleOpenShareDialog}
               onReset={handleReset}
             />
-            {hasInvalidCoordinateDraft ? (
+            {hasInvalidCoordinateDraft || shareIsDeferredForDimension ? (
               <div
                 className="lab-action-help"
               >
@@ -1082,12 +1351,15 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
                   role="status"
                   aria-live="polite"
                 >
-                  未確定の成分が{activeCoordinateInputIssues.length}か所あります。
-                  訂正するまで、表示と判定には各欄の直前の有効値を使い、エクスポートを停止します。
+                  {shareIsDeferredForDimension
+                    ? '0D・1Dの共有URLは共有スキーマを更新する10.7で有効になります。Resetは現在の次元の初期状態へ戻ります。'
+                    : `未確定の成分が${activeCoordinateInputIssues.length}か所あります。訂正するまで、表示と判定には各欄の直前の有効値を使い、エクスポートを停止します。`}
                 </p>
-                <button type="button" onClick={handleFocusFirstCoordinateIssue}>
-                  入力欄を確認
-                </button>
+                {hasInvalidCoordinateDraft ? (
+                  <button type="button" onClick={handleFocusFirstCoordinateIssue}>
+                    入力欄を確認
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -1124,6 +1396,161 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
             </button>
           </div>
         ) : null}
+
+        <div
+          className="lab-workspace low-dimensional-workspace"
+          id="dimension-panel-0"
+          role="tabpanel"
+          aria-labelledby="dimension-tab-0"
+          hidden={activeDimension !== 0}
+          tabIndex={-1}
+        >
+          <section className="plot-card" aria-labelledby="zero-dimensional-plot-title">
+            <div className="card-heading">
+              <div>
+                <p className="panel-kicker">Zero vector space</p>
+                <h2 id="zero-dimensional-plot-title">0次元零ベクトル空間</h2>
+              </div>
+            </div>
+            <ZeroSpace0D idPrefix="vector-space-zero" />
+          </section>
+          <aside className="analysis-column" aria-label="0次元空間の定義と生成">
+            <section className="span-card zero-dimensional-definition-card">
+              <p className="panel-kicker">Span of the empty set</p>
+              <h2>空集合が生成する空間</h2>
+              <div className="zero-dimensional-equations math-display">
+                <p><span className="math-set-name">S</span> = ∅</p>
+                <p><MathOperator name="span" />(<span className="math-set-name">S</span>) = &#123;<MathVectorName name="0" />&#125; = <span className="math-scalar">V</span></p>
+                <p><MathOperator name="dim" />(<span className="math-scalar">V</span>) = 0</p>
+              </div>
+              <div className="span-shape-result">
+                <span className="span-shape-symbol" aria-hidden="true">⊙</span>
+                <div>
+                  <strong>生成する空間は原点だけです</strong>
+                  <p>線形結合で使える生成元がなくても、空和を零ベクトルと定めるためです。</p>
+                </div>
+              </div>
+            </section>
+            <section className="result-card zero-dimensional-comparison-card">
+              <p className="panel-kicker">Empty set and zero vector</p>
+              <h2>空集合と零ベクトルの集合は異なります</h2>
+              <p>
+                ∅ はベクトルを1本も含みません。一方、&#123;<MathVectorName name="0" />&#125; は
+                零ベクトルを1本含みます。どちらも生成する空間は &#123;<MathVectorName name="0" />&#125;
+                ですが、空集合は一次独立、零ベクトルを含む集合は一次従属です。
+              </p>
+              <p className="development-note">
+                0Dでは追加・削除・成分・ターゲットを編集せず、定義上の境界例として固定表示します。
+              </p>
+            </section>
+          </aside>
+        </div>
+
+        <div
+          className="lab-workspace low-dimensional-workspace"
+          id="dimension-panel-1"
+          role="tabpanel"
+          aria-labelledby="dimension-tab-1"
+          hidden={activeDimension !== 1}
+          tabIndex={-1}
+        >
+          <section className="plot-card" aria-labelledby="one-dimensional-plot-title">
+            <div className="card-heading">
+              <div>
+                <p className="panel-kicker">Number line</p>
+                <h2 id="one-dimensional-plot-title">1次元数直線</h2>
+              </div>
+              <div className="viewport-toolbar">
+                <button
+                  className="target-mode-button"
+                  type="button"
+                  aria-pressed={oneDimensionalState.linearCombinationVisible}
+                  onClick={handleOneDimensionalLinearCombinationVisibility}
+                >
+                  {oneDimensionalState.linearCombinationVisible
+                    ? '一次結合モードを終了'
+                    : '一次結合を調べる'}
+                </button>
+                <span className={`example-badge ${oneDimensionalViewMode === 'manual' ? 'is-manual' : ''}`}>
+                  {oneDimensionalViewportLabel}
+                </span>
+                <div className="viewport-controls" role="group" aria-label="数直線の表示範囲">
+                  <button
+                    type="button"
+                    aria-label="縮小して広い範囲を表示"
+                    onClick={() => handleOneDimensionalViewportChange(
+                      zoomLineViewportAtCenter(oneDimensionalViewport, 1.25),
+                    )}
+                  >−</button>
+                  <button
+                    type="button"
+                    aria-label="拡大して狭い範囲を表示"
+                    onClick={() => handleOneDimensionalViewportChange(
+                      zoomLineViewportAtCenter(oneDimensionalViewport, 0.8),
+                    )}
+                  >＋</button>
+                  <button
+                    className="fit-viewport-button"
+                    type="button"
+                    disabled={oneDimensionalViewMode === 'auto'}
+                    onClick={() => {
+                      setOneDimensionalManualViewport(null);
+                      setOneDimensionalViewMode('auto');
+                    }}
+                  >全体を表示</button>
+                </div>
+              </div>
+            </div>
+            <VectorLine1D
+              vectors={oneDimensionalState.vectors}
+              colors={vectorColors}
+              viewport={oneDimensionalViewport}
+              onViewportChange={handleOneDimensionalViewportChange}
+              onVectorDragStart={() => setOneDimensionalDragViewport(oneDimensionalViewport)}
+              onVectorChange={handleOneDimensionalVectorChange}
+              onVectorDragEnd={() => setOneDimensionalDragViewport(null)}
+              spanDimension={oneDimensionalSpanAnalysis.rank as 0 | 1}
+              showSpan={oneDimensionalState.showSpan}
+              spanVectorIds={oneDimensionalState.spanSelection}
+              linearCombinationVisible={oneDimensionalState.linearCombinationVisible}
+              target={oneDimensionalState.target}
+              onTargetPlacement={handleOneDimensionalTargetChange}
+              onTargetDragStart={() => setOneDimensionalDragViewport(oneDimensionalViewport)}
+              onTargetChange={handleOneDimensionalTargetChange}
+              onTargetDragEnd={() => setOneDimensionalDragViewport(null)}
+              idPrefix="vector-space-one-dimensional"
+              showViewportControls={false}
+            />
+          </section>
+          <OneDimensionalInspector
+            state={oneDimensionalState}
+            drafts={oneDimensionalCoordinateDrafts}
+            analysis={oneDimensionalAnalysis}
+            spanVectors={oneDimensionalSpanVectors}
+            spanAnalysis={oneDimensionalSpanAnalysis}
+            spanShape={oneDimensionalSpanShape}
+            targetDrafts={oneDimensionalTargetDrafts}
+            linearCombinationAnalysis={oneDimensionalLinearCombinationAnalysis}
+            activeTab={activeOneDimensionalInspectorTab}
+            addButtonRef={oneDimensionalAddVectorButtonRef}
+            onTabChange={setActiveOneDimensionalInspectorTab}
+            onTabKeyDown={handleOneDimensionalInspectorTabKeyDown}
+            onCoordinateChange={handleOneDimensionalCoordinateChange}
+            onSpanSelection={handleOneDimensionalSpanSelection}
+            onShowSpan={(showSpan) => setOneDimensionalState((current) => ({
+              ...current,
+              showSpan,
+            }))}
+            onTargetCoordinateChange={handleOneDimensionalTargetCoordinateChange}
+            onClearTarget={() => {
+              setOneDimensionalState((current) => ({ ...current, target: null }));
+              setOneDimensionalTargetDrafts(['']);
+              setOneDimensionalDragViewport(null);
+            }}
+            onAddVector={handleOneDimensionalAddVector}
+            onRemoveVector={handleOneDimensionalRemoveVector}
+          />
+        </div>
 
         <div
           className="lab-workspace"
@@ -1673,6 +2100,245 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   );
 }
 
+function OneDimensionalInspector({
+  state,
+  drafts,
+  analysis,
+  spanVectors,
+  spanAnalysis,
+  spanShape,
+  targetDrafts,
+  linearCombinationAnalysis,
+  activeTab,
+  addButtonRef,
+  onTabChange,
+  onTabKeyDown,
+  onCoordinateChange,
+  onSpanSelection,
+  onShowSpan,
+  onTargetCoordinateChange,
+  onClearTarget,
+  onAddVector,
+  onRemoveVector,
+}: {
+  readonly state: OneDimensionalVectorSpaceState;
+  readonly drafts: CoordinateDrafts;
+  readonly analysis: VectorSetAnalysis;
+  readonly spanVectors: readonly VectorValue[];
+  readonly spanAnalysis: VectorSetAnalysis;
+  readonly spanShape: SpanShapeDescription;
+  readonly targetDrafts: TargetCoordinateDrafts;
+  readonly linearCombinationAnalysis: LinearCombinationAnalysis | null;
+  readonly activeTab: InspectorTabId;
+  readonly addButtonRef: RefObject<HTMLButtonElement | null>;
+  readonly onTabChange: (tab: InspectorTabId) => void;
+  readonly onTabKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => void;
+  readonly onCoordinateChange: (vectorId: string, input: string) => void;
+  readonly onSpanSelection: (vectorId: string, selected: boolean) => void;
+  readonly onShowSpan: (showSpan: boolean) => void;
+  readonly onTargetCoordinateChange: (input: string) => void;
+  readonly onClearTarget: () => void;
+  readonly onAddVector: () => void;
+  readonly onRemoveVector: (vectorId: string) => void;
+}) {
+  const tabs = state.linearCombinationVisible
+    ? inspectorTabs
+    : inspectorTabs.filter((tab) => tab.id !== 'combination');
+  const relation = describeAllVectorRelation(
+    analysis.vectorCount,
+    analysis.isLinearlyIndependent,
+  );
+
+  return (
+    <aside className="analysis-column" aria-label="1次元ベクトル集合の編集と解析結果">
+      <section className="analysis-summary" aria-label="現在の解析要約">
+        <button className="summary-tile summary-span" type="button" onClick={() => onTabChange('span')}>
+          <span className="summary-label">選択集合 <span className="math-set-name">S</span></span>
+          <strong>{spanShape.summary}</strong>
+          <span className="summary-math"><MathOperator name="dim" />(<MathOperator name="span" />(<span className="math-set-name">S</span>)) = {spanAnalysis.rank}</span>
+        </button>
+        <button className="summary-tile summary-all" type="button" onClick={() => onTabChange('all')}>
+          <span className="summary-label">表示中の全ベクトル</span>
+          <strong>{analysis.isLinearlyIndependent ? '一次独立' : '一次従属'}</strong>
+          <span className="summary-math"><MathOperator name="rank" />(<MathMatrixName />) = {analysis.rank}</span>
+        </button>
+      </section>
+
+      <div className="inspector-tablist" role="tablist" aria-label="1次元の編集・解析の詳細">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            id={`1d-inspector-tab-${tab.id}`}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`1d-inspector-panel-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
+            onClick={() => onTabChange(tab.id)}
+            onKeyDown={onTabKeyDown}
+          >
+            <span className="tab-label-wide">{tab.label}</span>
+            <span className="tab-label-short">{tab.shortLabel}</span>
+          </button>
+        ))}
+      </div>
+
+      <section
+        className="vector-editor-card inspector-panel"
+        id="1d-inspector-panel-edit"
+        role="tabpanel"
+        aria-labelledby="1d-inspector-tab-edit 1d-vector-editor-title"
+        hidden={activeTab !== 'edit'}
+      >
+        <div className="vector-editor-heading">
+          <div>
+            <p className="panel-kicker">Edit vectors / 1D</p>
+            <h2 id="1d-vector-editor-title">数ベクトルの成分</h2>
+            <p className="editor-hint">1個の成分を入力します。追加したベクトルはspanの対象に含まれます。</p>
+          </div>
+          <div className="vector-collection-controls">
+            <span aria-live="polite">{state.vectors.length} / {MAX_SHARE_VECTORS} 本</span>
+            <button
+              ref={addButtonRef}
+              type="button"
+              disabled={state.vectors.length >= MAX_SHARE_VECTORS}
+              onClick={onAddVector}
+            >＋ ベクトルを追加</button>
+          </div>
+        </div>
+        <div className="vector-editor-list">
+          {state.vectors.length === 0 ? (
+            <p className="empty-vector-editor">ベクトルはありません。空集合のspanは原点だけです。</p>
+          ) : null}
+          {state.vectors.map((vector, vectorIndex) => {
+            const draft = drafts[vector.id]?.[0] ?? String(vector.coordinates[0] ?? 0);
+            const result = parseCoordinateInput(draft);
+            const inputId = `1d-${vector.id}-coordinate-0`;
+            const errorId = `${inputId}-error`;
+            const spokenName = formatVectorSpokenName(vector.name);
+            return (
+              <div className="vector-editor" key={vector.id}>
+                <span
+                  className="vector-key"
+                  style={{ '--vector-color': vectorColors[vectorIndex % vectorColors.length] } as CSSProperties}
+                  aria-hidden="true"
+                >{vectorIndex + 1}</span>
+                <MathVectorName name={vector.name} />
+                <span className="math-equals" aria-hidden="true">=</span>
+                <div className="editable-column-vector one-dimensional-column-vector">
+                  <label className="coordinate-field" htmlFor={inputId}>
+                    <span className="visually-hidden">{`${spokenName} の成分`}</span>
+                    <input
+                      id={inputId}
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={draft}
+                      aria-invalid={!result.ok}
+                      aria-describedby={!result.ok ? errorId : undefined}
+                      onChange={(event) => onCoordinateChange(vector.id, event.target.value)}
+                    />
+                    {!result.ok ? <span className="visually-hidden" id={errorId}>{result.message}</span> : null}
+                  </label>
+                </div>
+                <div className="vector-editor-actions">
+                  <label className="span-selection-control">
+                    <input
+                      type="checkbox"
+                      checked={state.spanSelection.includes(vector.id)}
+                      aria-label={`${spokenName} を生成する空間の対象に含める`}
+                      onChange={(event) => onSpanSelection(vector.id, event.target.checked)}
+                    />
+                    <span><MathOperator name="span" /> の対象に含める</span>
+                  </label>
+                  <button className="remove-vector-button" type="button" onClick={() => onRemoveVector(vector.id)}>削除</button>
+                </div>
+                <p className={`coordinate-feedback ${!result.ok ? 'has-error' : ''}`}>
+                  {result.ok ? '入力は数直線と判定へすぐに反映されます。' : `${result.message} 直前の有効値を使います。`}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section
+        className={`span-card inspector-panel is-rank-${spanAnalysis.rank}`}
+        id="1d-inspector-panel-span"
+        role="tabpanel"
+        aria-labelledby="1d-inspector-tab-span 1d-span-card-title"
+        hidden={activeTab !== 'span'}
+      >
+        <div className="span-card-heading">
+          <div><p className="panel-kicker">Selected span / 1D</p><h2 id="1d-span-card-title">選択したベクトルが生成する空間</h2></div>
+          <label className="span-visibility-control">
+            <input type="checkbox" checked={state.showSpan} onChange={(event) => onShowSpan(event.target.checked)} />
+            <span>数直線に表示</span>
+          </label>
+        </div>
+        <VectorSetDefinition vectors={spanVectors} />
+        <SelectedMatrixDefinition vectors={spanVectors} />
+        <div className="span-shape-result">
+          <span className="span-shape-symbol" aria-hidden="true">{spanAnalysis.rank === 0 ? '⊙' : '━'}</span>
+          <div><strong>{spanShape.heading}</strong><p>{spanShape.explanation}</p></div>
+        </div>
+        <p className="span-relation">
+          {spanVectors.length === 0
+            ? '空集合は一次独立で、生成する空間は原点だけです。'
+            : spanAnalysis.isLinearlyIndependent
+              ? '非零ベクトル1本は一次独立で、数直線全体を生成します。'
+              : '零ベクトルを含むか、2本以上を選んだため一次従属です。'}
+        </p>
+        <dl className="span-metric-grid">
+          <div><dt>選択数</dt><dd>{spanAnalysis.vectorCount}</dd></div>
+          <div><dt><MathOperator name="rank" />(<MathMatrixName />)</dt><dd>{spanAnalysis.rank}</dd></div>
+          <div><dt><MathOperator name="dim" />(<MathOperator name="span" />(<span className="math-set-name">S</span>))</dt><dd>{spanAnalysis.spanDimension}</dd></div>
+        </dl>
+      </section>
+
+      <LinearCombinationExplorer
+        visible={state.linearCombinationVisible}
+        active={activeTab === 'combination'}
+        target={state.target === null ? null : [state.target]}
+        vectors={spanVectors}
+        analysis={linearCombinationAnalysis}
+        ambientDimension={1}
+        idPrefix="1d-"
+        targetEditor={(
+          <TargetEditor
+            drafts={targetDrafts}
+            target={state.target === null ? null : [state.target]}
+            dimension={1}
+            inputIdPrefix="1d-"
+            onCoordinateChange={(_, input) => onTargetCoordinateChange(input)}
+            onClear={onClearTarget}
+          />
+        )}
+      />
+
+      <section
+        className={`result-card inspector-panel ${analysis.isLinearlyIndependent ? 'is-independent' : 'is-dependent'}`}
+        id="1d-inspector-panel-all"
+        role="tabpanel"
+        aria-labelledby="1d-inspector-tab-all"
+        hidden={activeTab !== 'all'}
+      >
+        <p className="panel-kicker">All vectors / 1D</p>
+        <MatrixDefinition vectors={state.vectors} />
+        <p className="result-symbol" aria-hidden="true">{analysis.isLinearlyIndependent ? '∥' : '≈'}</p>
+        <h2>{relation.heading}</h2>
+        <p className="result-explanation">{relation.explanation}</p>
+        <dl className="metric-grid">
+          <div><dt>ベクトル数</dt><dd>{analysis.vectorCount}</dd></div>
+          <div><dt><MathOperator name="rank" />(<MathMatrixName />)</dt><dd>{analysis.rank}</dd></div>
+          <div><dt>生成する空間の次元</dt><dd>{analysis.spanDimension}</dd></div>
+        </dl>
+      </section>
+    </aside>
+  );
+}
+
 function ThreeDimensionalLoading() {
   return (
     <section className="three-dimensional-loading" aria-live="polite" aria-busy="true">
@@ -2074,7 +2740,7 @@ function TargetEditor({
 }: {
   readonly drafts: TargetCoordinateDrafts;
   readonly target: readonly number[] | null;
-  readonly dimension?: AppDimension;
+  readonly dimension?: 1 | AppDimension;
   readonly inputIdPrefix?: string;
   readonly onCoordinateChange: (coordinateIndex: number, input: string) => void;
   readonly onClear: () => void;
@@ -2092,11 +2758,13 @@ function TargetEditor({
           ターゲット <MathVectorName name="v" />
         </h3>
         <p>
-          {dimension === 2
+          {dimension === 1
+            ? '数直線をクリックまたはタップして配置するか、1個の成分を入力してください。'
+            : dimension === 2
             ? '座標面をクリックまたはタップして配置するか、成分を入力してください。'
             : '3D表示の背景を短くクリックまたはタップして、原点を通る現在の画面平行面上へ配置するか、3つの成分を入力してください。配置後は青い矢先のドラッグでも変更できます。'}
           選択集合 <span className="math-set-name">S</span> の一次結合で表せるかを
-          {dimension === 2 ? '右側の「一次結合」タブ' : 'このカード'}に表示します。
+          {dimension === 3 ? 'このカード' : '右側の「一次結合」タブ'}に表示します。
         </p>
       </div>
       <div className="target-editor-controls">
@@ -2152,10 +2820,12 @@ function TargetEditor({
         {firstError && !firstError.ok
           ? `${invalidResults.length}か所が未確定です。${firstError.message} ターゲットには直前の有効値を使います。`
           : target
-            ? dimension === 2
-              ? '入力と座標面上のターゲットは同期しています。'
-              : '入力と3D座標空間のターゲットは同期しています。'
-            : 'ターゲットは未配置です。この状態も共有できます。'}
+            ? dimension === 1
+              ? '入力と数直線上のターゲットは同期しています。'
+              : dimension === 2
+                ? '入力と座標面上のターゲットは同期しています。'
+                : '入力と3D座標空間のターゲットは同期しています。'
+            : 'ターゲットは未配置です。'}
       </p>
     </section>
   );
@@ -2176,7 +2846,7 @@ function LinearCombinationExplorer({
   readonly target: readonly number[] | null;
   readonly vectors: readonly VectorValue[];
   readonly analysis: LinearCombinationAnalysis | null;
-  readonly ambientDimension?: AppDimension;
+  readonly ambientDimension?: 1 | AppDimension;
   readonly idPrefix?: string;
   readonly targetEditor?: ReactNode;
 }) {
@@ -2184,11 +2854,11 @@ function LinearCombinationExplorer({
   const showsGeneralTargetFormula = Boolean(
     ambientDimension === 2 && analysis && vectors.length === 2 && analysis.rank === 2,
   );
-  const coefficientGeometryIsDegenerate = analysis?.particularSolution
+  const coefficientGeometryIsDegenerate = ambientDimension >= 2 && analysis?.particularSolution
     ? isCombinationGeometryDegenerate(
         vectors,
         analysis.particularSolution,
-        ambientDimension,
+        ambientDimension as AppDimension,
       )
     : false;
   const panelId = `${idPrefix}inspector-panel-combination`;
@@ -2214,9 +2884,11 @@ function LinearCombinationExplorer({
           <div>
             <strong>ターゲットを配置してください</strong>
             <p>
-              {ambientDimension === 2
-                ? '座標面をクリック・タップするか、2つの成分を入力すると結果を表示します。'
-                : '3D表示を短くクリックまたはタップするか、3つの成分を入力すると結果を表示します。'}
+              {ambientDimension === 1
+                ? '数直線をクリック・タップするか、1個の成分を入力すると結果を表示します。'
+                : ambientDimension === 2
+                  ? '座標面をクリック・タップするか、2つの成分を入力すると結果を表示します。'
+                  : '3D表示を短くクリックまたはタップするか、3つの成分を入力すると結果を表示します。'}
             </p>
           </div>
         </div>
@@ -2274,12 +2946,19 @@ function LinearCombinationExplorer({
                 </details>
               ) : null}
 
-              {vectors.length === 2 ? (
+              {ambientDimension >= 2 && vectors.length === 2 ? (
                 <p className="parallelogram-note">
-                  {ambientDimension === 2 ? '座標面' : '3D座標空間'}では
+                  {ambientDimension === 1 ? '数直線' : ambientDimension === 2 ? '座標面' : '3D座標空間'}では
                   {' '}<CoefficientName index={1} /><MathVectorName name={vectors[0].name} /> と
                   {' '}<CoefficientName index={2} /><MathVectorName name={vectors[1].name} /> を原点からの2辺とする
                   {coefficientGeometryIsDegenerate ? '退化した平行四辺形' : '平行四辺形'}を重ねています。
+                </p>
+              ) : null}
+              {ambientDimension === 1 ? (
+                <p className="parallelogram-note">
+                  非零の生成元が1本だけなら任意のターゲットの係数は一意です。
+                  非零の生成元が複数なら同じターゲットを表す係数は無数にあり、
+                  生成元がすべて零なら非零ターゲットを表せません。
                 </p>
               ) : null}
               {ambientDimension === 3 && vectors.length === 3 ? (
@@ -2843,7 +3522,10 @@ function SelectedMatrixDefinition({ vectors }: { readonly vectors: readonly Vect
   );
 }
 
-function describeSpanShape(rank: number, ambientDimension: AppDimension): SpanShapeDescription {
+function describeSpanShape(
+  rank: number,
+  ambientDimension: 1 | AppDimension,
+): SpanShapeDescription {
   if (rank === 0) {
     return {
       heading: '原点だけです',
@@ -2853,11 +3535,17 @@ function describeSpanShape(rank: number, ambientDimension: AppDimension): SpanSh
   }
 
   if (rank === 1) {
-    return {
-      heading: '原点を通る直線です',
-      explanation: '選択した非零ベクトルの実数倍が、この直線全体を作ります。',
-      summary: '原点を通る直線',
-    };
+    return ambientDimension === 1
+      ? {
+          heading: '1次元数直線全体です',
+          explanation: '選択した非零ベクトル1本の実数倍で、数直線上のすべてのベクトルを作れます。',
+          summary: '1次元数直線全体',
+        }
+      : {
+          heading: '原点を通る直線です',
+          explanation: '選択した非零ベクトルの実数倍が、この直線全体を作ります。',
+          summary: '原点を通る直線',
+        };
   }
 
   if (rank === 2) {

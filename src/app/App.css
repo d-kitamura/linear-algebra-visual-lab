@@ -244,10 +244,10 @@
 }
 
 .dimension-tablist {
-  min-width: min(100%, 390px);
+  min-width: min(100%, 720px);
   padding: 5px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 5px;
   border: 1px solid var(--line);
   border-radius: 15px;
@@ -478,6 +478,40 @@
 
 .three-dimensional-workspace {
   min-width: 0;
+}
+
+.low-dimensional-workspace .one-dimensional-figure {
+  margin-top: 18px;
+}
+
+.one-dimensional-column-vector {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.zero-dimensional-definition-card,
+.zero-dimensional-comparison-card {
+  padding: 24px;
+}
+
+.zero-dimensional-equations {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--paper) 82%, #e7e9e8);
+}
+
+.zero-dimensional-equations p {
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+
+.zero-dimensional-comparison-card h2 {
+  margin-bottom: 16px;
+}
+
+.zero-dimensional-comparison-card > p:not(.panel-kicker) {
+  line-height: 1.8;
 }
 
 .three-dimensional-layout {
