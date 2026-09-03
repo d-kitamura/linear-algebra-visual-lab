@@ -2,6 +2,7 @@ import {
   DEFAULT_RELATIVE_TOLERANCE,
   analyzeVectorSet,
   type RankOptions,
+  type VectorSpaceDimension,
   type VectorSet,
   type VectorValue,
 } from './vectorSet';
@@ -23,7 +24,7 @@ export class InvalidLinearCombinationError extends Error {
 }
 
 export interface LinearCombinationAnalysis {
-  readonly ambientDimension: 2 | 3;
+  readonly ambientDimension: VectorSpaceDimension;
   readonly coefficientCount: number;
   readonly rank: number;
   readonly augmentedRank: number;
@@ -145,7 +146,7 @@ export function analyzeLinearCombination(
   };
 }
 
-function validateTarget(target: readonly number[], dimension: 2 | 3): void {
+function validateTarget(target: readonly number[], dimension: VectorSpaceDimension): void {
   if (!Array.isArray(target) || target.length !== dimension) {
     throw new InvalidLinearCombinationError(
       'TARGET_DIMENSION_MISMATCH',

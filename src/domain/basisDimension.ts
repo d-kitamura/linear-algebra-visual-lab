@@ -1,6 +1,7 @@
 import {
   analyzeVectorSet,
   type RankOptions,
+  type VectorSpaceDimension,
   type VectorSet,
   type VectorValue,
 } from './vectorSet';
@@ -28,7 +29,7 @@ export class InvalidBasisCandidateError extends Error {
  * candidateVectorIds の順序付きの組が基底かどうかを表す。
  */
 export interface BasisCandidateAnalysis {
-  readonly ambientDimension: 2 | 3;
+  readonly ambientDimension: VectorSpaceDimension;
   readonly sourceVectorCount: number;
   readonly sourceRank: number;
   readonly targetDimension: number;

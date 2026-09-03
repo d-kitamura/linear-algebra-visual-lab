@@ -8,11 +8,12 @@ import {
   applyLinearMap,
   type LinearMapDefinition,
   type LinearMapValidationCode,
+  type VectorSpaceDimension,
 } from '../../src/domain';
 
 const linearMap = (
-  sourceDimension: 2 | 3,
-  targetDimension: 2 | 3,
+  sourceDimension: VectorSpaceDimension,
+  targetDimension: VectorSpaceDimension,
   matrix: readonly (readonly number[])[],
 ): LinearMapDefinition => ({ sourceDimension, targetDimension, matrix });
 
@@ -272,7 +273,7 @@ describe('linear-map validation', () => {
       'INVALID_SOURCE_DIMENSION',
     );
     expectLinearMapError(
-      () => analyzeLinearMap({ sourceDimension: 2, targetDimension: 1, matrix: [] } as unknown as LinearMapDefinition, []),
+      () => analyzeLinearMap({ sourceDimension: 2, targetDimension: -1, matrix: [] } as unknown as LinearMapDefinition, []),
       'INVALID_TARGET_DIMENSION',
     );
   });

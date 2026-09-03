@@ -1,3 +1,7 @@
+/** 数学ロジックが扱う有限次元。描画対応次元とは分離して段階的に広げる。 */
+export type VectorSpaceDimension = 0 | 1 | 2 | 3;
+
+/** 10.2時点で既存画面が直接描画できる次元。0D/1D描画は10.3以降で追加する。 */
 export type VectorDimension = 2 | 3;
 
 export interface VectorValue {
@@ -7,7 +11,7 @@ export interface VectorValue {
 }
 
 export interface VectorSet {
-  readonly dimension: VectorDimension;
+  readonly dimension: VectorSpaceDimension;
   readonly vectors: readonly VectorValue[];
 }
 
@@ -16,7 +20,7 @@ export interface RankOptions {
 }
 
 export interface VectorSetAnalysis {
-  readonly ambientDimension: VectorDimension;
+  readonly ambientDimension: VectorSpaceDimension;
   readonly vectorCount: number;
   readonly rank: number;
   readonly spanDimension: number;
@@ -73,10 +77,15 @@ export function analyzeVectorSet(
 }
 
 function validateVectorSet(vectorSet: VectorSet): void {
-  if (vectorSet.dimension !== 2 && vectorSet.dimension !== 3) {
+  if (
+    vectorSet.dimension !== 0
+    && vectorSet.dimension !== 1
+    && vectorSet.dimension !== 2
+    && vectorSet.dimension !== 3
+  ) {
     throw new InvalidVectorSetError(
       'INVALID_DIMENSION',
-      'ベクトル空間の次元は 2 または 3 である必要があります。',
+      'ベクトル空間の次元は 0 以上 3 以下である必要があります。',
     );
   }
 
@@ -143,7 +152,7 @@ function validateTolerance(tolerance: number): void {
 }
 
 function calculateNormalizedRank(vectorSet: VectorSet, tolerance: number): number {
-  if (vectorSet.vectors.length === 0) {
+  if (vectorSet.dimension === 0 || vectorSet.vectors.length === 0) {
     return 0;
   }
 

@@ -19,12 +19,22 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(specification).toContain('フェーズ8・9は利用者確認と統合棚卸しまで完了');
   });
 
-  it('D-082として0D・1Dを先に補う独立フェーズ10を提案する', () => {
+  it('D-082として0D・1Dを先に補う独立フェーズ10を承認済みにする', () => {
     expect(decisions).toContain('### D-082 0・1次元空間を既存3Labへ補うフェーズ10挿入案');
-    expect(decisions).toContain('状態: **提案・利用者確認待ち**（2026-09-03、フェーズ10計画）');
+    expect(decisions).toContain('状態: **利用者確認済み**（2026-09-03、作業単位10.1）');
     expect(roadmap).toContain('## 11. フェーズ10「0・1次元空間の基礎拡張」の詳細作業単位案');
     expect(roadmap).toContain('中〜大規模の基礎改修として扱う');
-    expect(projectStatus).toContain('D-082としてフェーズ10「0・1次元空間の基礎拡張」');
+    expect(projectStatus).toContain('D-082・10.1は利用者確認済み');
+  });
+
+  it('D-083として数学APIを0〜3次元へ一般化し描画型と分離する', () => {
+    expect(decisions).toContain('### D-083 0〜3次元を扱う数学APIと0次元の内部表現');
+    expect(decisions).toContain('状態: **実装済み・利用者確認待ち**（2026-09-03、作業単位10.2）');
+    expect(roadmap).toContain('`VectorSpaceDimension = 0 | 1 | 2 | 3`');
+    expect(roadmap).toContain('`VectorDimension = 2 | 3`は10.3以降まで分離して維持する');
+    expect(projectStatus).toContain('全56テストファイル・470テスト');
+    expect(specification).toContain('#### FR-LOWDIM-01: 0〜3次元の描画非依存数学API');
+    expect(specification).toContain('### AC-60: 0〜3次元の数学API');
   });
 
   it('1Dを通常操作、0Dを制約付き境界教材として分ける', () => {
@@ -75,6 +85,6 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(roadmap).toContain('基底変換行列の「どの基底の座標から、どの基底の座標へ変換するか」');
     expect(roadmap).toContain('仮の記号で先行実装しない');
     expect(projectStatus).toContain('表現行列と写像定義用行列の文字');
-    expect(specification).toContain('| 文書バージョン | 0.92 |');
+    expect(specification).toContain('| 文書バージョン | 0.93 |');
   });
 });

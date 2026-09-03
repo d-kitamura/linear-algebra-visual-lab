@@ -18,6 +18,7 @@ export type {
 export type {
   RankOptions,
   VectorDimension,
+  VectorSpaceDimension,
   VectorSet,
   VectorSetAnalysis,
   VectorSetValidationCode,

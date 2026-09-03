@@ -3,7 +3,7 @@ import { analyzeLinearCombination } from './linearCombination';
 import {
   analyzeVectorSet,
   type RankOptions,
-  type VectorDimension,
+  type VectorSpaceDimension,
   type VectorSet,
   type VectorValue,
 } from './vectorSet';
@@ -11,15 +11,18 @@ import {
 export const MAX_ABSOLUTE_LINEAR_MAP_INPUT = 1_000_000;
 
 export interface LinearMapDefinition {
-  readonly sourceDimension: VectorDimension;
-  readonly targetDimension: VectorDimension;
-  /** m rows and n columns for T: R^n -> R^m. */
+  readonly sourceDimension: VectorSpaceDimension;
+  readonly targetDimension: VectorSpaceDimension;
+  /**
+   * m rows and n columns for T: R^n -> R^m.
+   * A 0×n matrix has no rows in JavaScript, so sourceDimension retains n.
+   */
   readonly matrix: readonly (readonly number[])[];
 }
 
 export interface LinearMapAnalysis {
-  readonly sourceDimension: VectorDimension;
-  readonly targetDimension: VectorDimension;
+  readonly sourceDimension: VectorSpaceDimension;
+  readonly targetDimension: VectorSpaceDimension;
   readonly inputVector: readonly number[];
   readonly imageVector: readonly number[];
   readonly rank: number;
@@ -248,15 +251,18 @@ function validateLinearMapInput(
   ));
 }
 
-function validateDimension(dimension: unknown, kind: 'source' | 'target'): asserts dimension is VectorDimension {
-  if (dimension === 2 || dimension === 3) {
+function validateDimension(
+  dimension: unknown,
+  kind: 'source' | 'target',
+): asserts dimension is VectorSpaceDimension {
+  if (dimension === 0 || dimension === 1 || dimension === 2 || dimension === 3) {
     return;
   }
 
   const source = kind === 'source';
   throw new InvalidLinearMapError(
     source ? 'INVALID_SOURCE_DIMENSION' : 'INVALID_TARGET_DIMENSION',
-    `${source ? '定義域' : '終域'}の次元は2または3である必要があります。`,
+    `${source ? '定義域' : '終域'}の次元は0以上3以下である必要があります。`,
   );
 }
 
