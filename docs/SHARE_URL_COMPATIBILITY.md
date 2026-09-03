@@ -4,7 +4,7 @@
 
 ## 目的
 
-授業スライド、LMS、配布資料、QRコードに保存した教材状態を、アプリ更新後も同じ数学的状態として開けるようにする。本書はD-032、D-039、D-050、D-051を運用手順へまとめたものである。
+授業スライド、LMS、配布資料、QRコードに保存した教材状態を、アプリ更新後も同じ数学的状態として開けるようにする。本書はD-032、D-039、D-050、D-051、D-073、D-079、D-080を運用手順へまとめたものである。
 
 ## 保証開始前の現在地
 
@@ -39,6 +39,7 @@
 - `tests/fixtures/share-url-basis-dimension-v1.json`は、2Dの全ベクトル、候補順、ターゲット、比較用基底を含む基底・次元Lab v1 URLと期待状態を固定する。
 - `tests/fixtures/share-url-linear-map-v1.json`は、`2→3`の行列、入力`u,w`、スカラー、終域3Dカメラを含む線形写像Lab v1 URLと期待状態を固定する。
 - `tests/sharing/shareCompatibility.test.ts`は、固定URLの復元と、正式リリース候補期間中の決定的な再生成を確認する。
+- `tests/integration/multiLabRegression.test.ts`は、各固定URLが対象Labだけを共有InitialStateにすること、Reset基準からの決定的再生成、3件のQR生成、3Lab計28代表例を横断して確認する。
 - 将来いずれかのLabを更新するときは、別Labを含む既存fixtureを変更または削除しない。旧版の復元テストを残し、新版fixtureと旧版からの移行テストを追加する。
 - 互換fixtureのURLはコード整形、表示名変更、既定値変更を理由に更新しない。fixture自体が誤っていた場合だけ、理由を意思決定記録へ残して修正する。
 
