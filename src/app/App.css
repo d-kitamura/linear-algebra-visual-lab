@@ -1015,6 +1015,291 @@
   user-select: none;
 }
 
+.one-dimensional-figure {
+  width: 100%;
+  min-width: 0;
+}
+
+.one-dimensional-controls {
+  margin: 0 0 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.one-dimensional-controls button {
+  min-width: 42px;
+  min-height: 40px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--paper) 92%, white);
+  font-size: 0.78rem;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.one-dimensional-controls button:hover:not(:disabled),
+.one-dimensional-controls button:focus-visible {
+  border-color: color-mix(in srgb, #2f6690 55%, var(--line));
+  background: color-mix(in srgb, #dceaf3 52%, var(--paper));
+}
+
+.one-dimensional-controls button:focus-visible {
+  outline: 3px solid color-mix(in srgb, #2f6690 30%, transparent);
+  outline-offset: 2px;
+}
+
+.one-dimensional-controls button:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
+.vector-line {
+  --span-neutral-strong: #5d686f;
+  --span-neutral: #7b858b;
+  --span-neutral-soft: #e7e9e8;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: auto;
+  display: block;
+  border-radius: 16px;
+  overscroll-behavior: contain;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.line-plot-background {
+  fill: #fffdf7;
+  stroke: #d9d4c8;
+}
+
+.line-interaction-surface {
+  cursor: grab;
+  touch-action: none;
+}
+
+.line-interaction-surface.is-target-mode {
+  cursor: crosshair;
+}
+
+.line-interaction-surface.is-panning {
+  cursor: grabbing;
+}
+
+.line-span,
+.number-line-axis,
+.number-line-ticks,
+.line-vector-arrows,
+.line-target-vector,
+.line-span-label {
+  pointer-events: none;
+}
+
+.line-span-1 line {
+  stroke: var(--span-neutral-strong);
+  stroke-width: 18;
+  stroke-linecap: round;
+  stroke-dasharray: 24 12;
+  opacity: 0.48;
+}
+
+.line-span-origin circle {
+  fill: color-mix(in srgb, var(--span-neutral-soft) 75%, #fffdf7);
+  stroke: var(--span-neutral-strong);
+  stroke-width: 4;
+  stroke-dasharray: 6 4;
+}
+
+.line-span-origin path {
+  fill: none;
+  stroke: var(--span-neutral-strong);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.number-line-axis line,
+.number-line-axis path {
+  fill: none;
+  stroke: #39434c;
+  stroke-width: 2;
+}
+
+.number-line-axis .axis-symbol {
+  fill: #303942;
+  font-family: Cambria, "Times New Roman", serif;
+  font-size: 17px;
+  font-style: italic;
+}
+
+.number-line-ticks line {
+  stroke: #68717a;
+  stroke-width: 1.4;
+}
+
+.number-line-ticks text {
+  fill: #68717a;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 13px;
+}
+
+.line-vector-arrow line {
+  stroke-width: 7;
+  stroke-linecap: round;
+  opacity: 0.86;
+}
+
+.line-vector-arrow polygon,
+.line-vector-arrow .vector-tip {
+  opacity: 0.92;
+}
+
+.line-vector-arrows.is-showing-span .line-vector-arrow:not(.is-span-selected) {
+  opacity: 0.38;
+}
+
+.line-vector-drag-handle,
+.line-target-drag-handle {
+  pointer-events: all;
+  cursor: grab;
+  touch-action: none;
+  fill-opacity: 0;
+  stroke-width: 3;
+  stroke-opacity: 0;
+}
+
+.line-vector-drag-handle.is-dragging,
+.line-target-vector.is-snapped .line-target-drag-handle {
+  cursor: grabbing;
+  fill-opacity: 0.16;
+  stroke-opacity: 0.78;
+}
+
+.line-vector-drag-handle.is-snapped,
+.line-target-vector.is-snapped .line-target-drag-handle {
+  fill-opacity: 0.24;
+  stroke-width: 4;
+  stroke-opacity: 1;
+}
+
+.line-vector-label {
+  font-size: 21px;
+}
+
+.line-target-vector {
+  --target-color: #245b8d;
+  color: var(--target-color);
+}
+
+.line-target-vector line {
+  stroke: var(--target-color);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 13 7;
+}
+
+.line-target-vector polygon,
+.line-target-vector .target-zero,
+.line-target-vector .target-tip,
+.line-target-drag-handle {
+  fill: var(--target-color);
+}
+
+.line-target-vector.is-snapped line {
+  stroke-width: 8;
+}
+
+.zero-dimensional-figure {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fffdf7;
+  text-align: center;
+}
+
+.zero-dimensional-figure figcaption {
+  color: var(--ink);
+  font-family: var(--display-font);
+  font-size: clamp(1.2rem, 2.5vw, 1.65rem);
+  font-weight: 760;
+}
+
+.zero-dimensional-space {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: auto;
+  display: block;
+}
+
+.zero-space-halo {
+  fill: color-mix(in srgb, #e7e9e8 72%, #fffdf7);
+  stroke: #7b858b;
+  stroke-width: 2;
+  stroke-dasharray: 7 6;
+}
+
+.zero-space-point {
+  fill: #303942;
+  stroke: #fffdf7;
+  stroke-width: 3;
+}
+
+.zero-space-vector-label,
+.zero-space-formula {
+  fill: #24313a;
+  font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+  font-size: 22px;
+}
+
+.zero-space-vector-label .svg-vector-base,
+.zero-space-formula .svg-vector-base {
+  font-size: 26px;
+  font-style: normal;
+}
+
+.zero-space-scalar {
+  font-family: Cambria, "Times New Roman", serif;
+  font-style: italic;
+}
+
+.zero-dimensional-figure p {
+  max-width: 620px;
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+@media (hover: hover) {
+  .line-vector-drag-handle:hover,
+  .line-target-drag-handle:hover {
+    fill-opacity: 0.12;
+    stroke-opacity: 0.65;
+  }
+}
+
+@media (max-width: 640px) {
+  .one-dimensional-controls {
+    gap: 6px;
+  }
+
+  .one-dimensional-controls button {
+    min-height: 42px;
+    padding-inline: 10px;
+  }
+
+  .zero-dimensional-figure {
+    padding: 14px 10px;
+  }
+}
+
 .plot-interaction-surface {
   cursor: grab;
   touch-action: none;

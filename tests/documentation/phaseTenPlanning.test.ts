@@ -24,17 +24,28 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(decisions).toContain('状態: **利用者確認済み**（2026-09-03、作業単位10.1）');
     expect(roadmap).toContain('## 11. フェーズ10「0・1次元空間の基礎拡張」の詳細作業単位案');
     expect(roadmap).toContain('中〜大規模の基礎改修として扱う');
-    expect(projectStatus).toContain('D-082・10.1は利用者確認済み');
+    expect(projectStatus).toContain('D-082・10.1とD-083・10.2は利用者確認済み');
   });
 
   it('D-083として数学APIを0〜3次元へ一般化し描画型と分離する', () => {
     expect(decisions).toContain('### D-083 0〜3次元を扱う数学APIと0次元の内部表現');
-    expect(decisions).toContain('状態: **実装済み・利用者確認待ち**（2026-09-03、作業単位10.2）');
+    expect(decisions).toContain('状態: **利用者確認済み**（2026-09-03、作業単位10.2）');
     expect(roadmap).toContain('`VectorSpaceDimension = 0 | 1 | 2 | 3`');
     expect(roadmap).toContain('`VectorDimension = 2 | 3`は10.3以降まで分離して維持する');
     expect(projectStatus).toContain('全56テストファイル・470テスト');
     expect(specification).toContain('#### FR-LOWDIM-01: 0〜3次元の描画非依存数学API');
     expect(specification).toContain('### AC-60: 0〜3次元の数学API');
+  });
+
+  it('D-084として共通1D数直線と0D一点表示を実装する', () => {
+    expect(decisions).toContain('### D-084 1D数直線と0D一点表示の共通描画');
+    expect(decisions).toContain('状態: **実装済み・利用者確認待ち**（2026-09-03、作業単位10.3）');
+    expect(roadmap).toContain('共通`VectorLine1D`を実装する');
+    expect(roadmap).toContain('表示幅2%の`LINE_SNAP_DISTANCE_RATIO`');
+    expect(roadmap).toContain('`ZeroSpace0D`の一点表示');
+    expect(projectStatus).toContain('全59テストファイル・486テスト');
+    expect(specification).toContain('#### FR-LOWDIM-02: 1D数直線と0D一点表示の共通描画');
+    expect(specification).toContain('### AC-61: 1D数直線と0D一点表示の共通描画');
   });
 
   it('1Dを通常操作、0Dを制約付き境界教材として分ける', () => {
@@ -85,6 +96,6 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(roadmap).toContain('基底変換行列の「どの基底の座標から、どの基底の座標へ変換するか」');
     expect(roadmap).toContain('仮の記号で先行実装しない');
     expect(projectStatus).toContain('表現行列と写像定義用行列の文字');
-    expect(specification).toContain('| 文書バージョン | 0.93 |');
+    expect(specification).toContain('| 文書バージョン | 0.94 |');
   });
 });

@@ -27,6 +27,12 @@ export type {
   SpaceTargetSnapResult,
 } from './spaceTargetSnapping';
 export { snapTargetToSelectedSpan } from './targetSnapping';
+export {
+  LINE_SNAP_DISTANCE_RATIO,
+  lineSnapDistanceForViewWidth,
+  snapLineCoordinateToOrigin,
+} from './lineSnapping';
+export type { LineOriginSnapResult } from './lineSnapping';
 export type { TargetSnapKind, TargetSnapResult } from './targetSnapping';
 export type { AppInitialization } from './appInitialization';
 export type { AppDimension, InitialStatesByDimension } from './appInitialization';
