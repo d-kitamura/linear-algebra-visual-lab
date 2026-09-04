@@ -17,6 +17,7 @@ import {
   type BasisCandidateAnalysis,
   type BasisCoordinateAnalysis,
   type VectorDimension,
+  type VectorSpaceDimension,
   type VectorValue,
 } from '../../domain';
 import {
@@ -36,6 +37,13 @@ import {
   type TargetSnapKind,
 } from '../../state';
 import { VectorPlane2D } from '../../visualization/VectorPlane2D';
+import { VectorLine1D } from '../../visualization/VectorLine1D';
+import { ZeroSpace0D } from '../../visualization/ZeroSpace0D';
+import {
+  createAutoFitLineViewport,
+  zoomLineViewportAtCenter,
+  type LineViewport,
+} from '../../visualization/lineGeometry';
 import {
   DEFAULT_PLANE_VIEWPORT,
   createAutoFitViewport,
@@ -44,6 +52,7 @@ import {
 import { LabActionControls } from '../../app/LabActionControls';
 import {
   createCoordinateDrafts,
+  createDefaultBasisScene,
   moveBasisCandidate,
   toggleBasisCandidate,
   updateBasisTarget,
@@ -73,6 +82,8 @@ const VECTOR_COLORS = [
 ] as const;
 
 const DIMENSION_TABS = [
+  { dimension: 0 as const, label: '0次元', shortLabel: '0D' },
+  { dimension: 1 as const, label: '1次元', shortLabel: '1D' },
   { dimension: 2 as const, label: '2次元', shortLabel: '2D' },
   { dimension: 3 as const, label: '3次元', shortLabel: '3D' },
 ];
@@ -87,6 +98,7 @@ const BASIS_INSPECTOR_TABS = [
 ] as const;
 
 type BasisInspectorTabId = typeof BASIS_INSPECTOR_TABS[number]['id'];
+type BasisLabDimension = VectorSpaceDimension;
 type ShareFeedback = {
   readonly kind: 'success' | 'error';
   readonly message: string;
@@ -100,41 +112,60 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   const [initialization] = useState(() => createBasisDimensionInitialization(window.location.href));
   const initial2DState = initialization.initialStates[2];
   const initial3DState = initialization.initialStates[3];
-  const [activeDimension, setActiveDimension] = useState<VectorDimension>(
+  const initial0DScene = createDefaultBasisScene(0);
+  const initial1DScene = createDefaultBasisScene(1);
+  const [activeDimension, setActiveDimension] = useState<BasisLabDimension>(
     initialization.activeDimension,
   );
   const [representations, setRepresentations] = useState<
-    Record<VectorDimension, BasisRepresentation>
-  >({ 2: initial2DState.representation, 3: initial3DState.representation });
-  const [linearCombinationVisibility, setLinearCombinationVisibility] = useState<
-    Record<VectorDimension, boolean>
+    Record<BasisLabDimension, BasisRepresentation>
   >({
+    0: 'coordinate',
+    1: 'coordinate',
+    2: initial2DState.representation,
+    3: initial3DState.representation,
+  });
+  const [linearCombinationVisibility, setLinearCombinationVisibility] = useState<
+    Record<BasisLabDimension, boolean>
+  >({
+    0: false,
+    1: false,
     2: initial2DState.linearCombinationVisible,
     3: initial3DState.linearCombinationVisible,
   });
-  const [scenes, setScenes] = useState<Record<VectorDimension, BasisDimensionScene>>({
+  const [scenes, setScenes] = useState<Record<BasisLabDimension, BasisDimensionScene>>({
+    0: initial0DScene,
+    1: initial1DScene,
     2: initial2DState.scene,
     3: initial3DState.scene,
   });
   const [coordinateDrafts, setCoordinateDrafts] = useState<
-    Record<VectorDimension, Readonly<Record<string, readonly string[]>>>
+    Record<BasisLabDimension, Readonly<Record<string, readonly string[]>>>
   >({
+    0: {},
+    1: createCoordinateDrafts(initial1DScene.vectors),
     2: createCoordinateDrafts(initial2DState.scene.vectors),
     3: createCoordinateDrafts(initial3DState.scene.vectors),
   });
-  const [targetDrafts, setTargetDrafts] = useState<Record<VectorDimension, readonly string[]>>({
+  const [targetDrafts, setTargetDrafts] = useState<Record<BasisLabDimension, readonly string[]>>({
+    0: [],
+    1: createBasisTargetDrafts(initial1DScene),
     2: createBasisTargetDrafts(initial2DState.scene),
     3: createBasisTargetDrafts(initial3DState.scene),
   });
   const [comparisonBasisIds, setComparisonBasisIds] = useState<
-    Record<VectorDimension, readonly string[] | null>
+    Record<BasisLabDimension, readonly string[] | null>
   >({
+    0: null,
+    1: null,
     2: initial2DState.comparisonBasisIds,
     3: initial3DState.comparisonBasisIds,
   });
   const [activeInspectorTabs, setActiveInspectorTabs] = useState<
-    Record<VectorDimension, BasisInspectorTabId>
+    Record<BasisLabDimension, BasisInspectorTabId>
   >({
+    0: 'basis',
+    1: 'vectors',
     2: initial2DState.linearCombinationVisible ? 'combination' : 'vectors',
     3: initial3DState.linearCombinationVisible ? 'combination' : 'vectors',
   });
@@ -148,6 +179,9 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   ));
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
   const [targetSnapKind, setTargetSnapKind] = useState<TargetSnapKind>(null);
+  const [lineViewport, setLineViewport] = useState<LineViewport>(() => (
+    createBasisAutoFitLineViewport(initial1DScene, false)
+  ));
   const [camera, setCamera] = useState<SharedCameraState>(initial3DState.camera);
   const [spaceResetKey, setSpaceResetKey] = useState(0);
   const [loadErrorMessage, setLoadErrorMessage] = useState(initialization.errorMessage);
@@ -200,13 +234,13 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   const hasInvalidCoordinateDraft = invalidDraftCount > 0;
 
   function updateScene(
-    dimension: VectorDimension,
+    dimension: BasisLabDimension,
     update: (current: BasisDimensionScene) => BasisDimensionScene,
   ): void {
     setScenes((current) => ({ ...current, [dimension]: update(current[dimension]) }));
   }
 
-  function handleDimensionChange(dimension: VectorDimension): void {
+  function handleDimensionChange(dimension: BasisLabDimension): void {
     setParallelSnapTargetId(null);
     setTargetSnapKind(null);
     setActiveDimension(dimension);
@@ -217,7 +251,15 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
       return;
     }
     event.preventDefault();
-    const nextDimension = event.key === 'ArrowLeft' || event.key === 'Home' ? 2 : 3;
+    const currentIndex = DIMENSION_TABS.findIndex((tab) => tab.dimension === activeDimension);
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? DIMENSION_TABS.length - 1
+        : event.key === 'ArrowRight'
+          ? (currentIndex + 1) % DIMENSION_TABS.length
+          : (currentIndex - 1 + DIMENSION_TABS.length) % DIMENSION_TABS.length;
+    const nextDimension = DIMENSION_TABS[nextIndex].dimension;
     handleDimensionChange(nextDimension);
     document.getElementById(`basis-dimension-tab-${nextDimension}`)?.focus();
   }
@@ -319,6 +361,10 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     setParallelSnapTargetId(result.snapTargetVectorId);
   }
 
+  function handleLineVectorDrag(vectorId: string, coordinates: readonly [number]): void {
+    commitVectorCoordinates(vectorId, coordinates);
+  }
+
   function handleCoordinateChange(vectorId: string, coordinateIndex: number, value: string): void {
     const nextDrafts = [...(coordinateDrafts[activeDimension][vectorId] ?? [])];
     nextDrafts[coordinateIndex] = value;
@@ -374,6 +420,10 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     setTargetSnapKind(null);
   }
 
+  function handleLineTargetChange(coordinate: number): void {
+    commitTarget([coordinate]);
+  }
+
   function handleTargetCoordinateChange(coordinateIndex: number, value: string): void {
     const nextDrafts = [...targetDrafts[activeDimension]];
     nextDrafts[coordinateIndex] = value;
@@ -420,6 +470,32 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   }
 
   function handleReset(): void {
+    if (activeDimension === 0 || activeDimension === 1) {
+      const resetScene = createDefaultBasisScene(activeDimension);
+      setScenes((current) => ({ ...current, [activeDimension]: resetScene }));
+      setCoordinateDrafts((current) => ({
+        ...current,
+        [activeDimension]: createCoordinateDrafts(resetScene.vectors),
+      }));
+      setTargetDrafts((current) => ({
+        ...current,
+        [activeDimension]: createBasisTargetDrafts(resetScene),
+      }));
+      setComparisonBasisIds((current) => ({ ...current, [activeDimension]: null }));
+      setActiveInspectorTabs((current) => ({
+        ...current,
+        [activeDimension]: activeDimension === 0 ? 'basis' : 'vectors',
+      }));
+      setRepresentations((current) => ({ ...current, [activeDimension]: 'coordinate' }));
+      setLinearCombinationVisibility((current) => ({ ...current, [activeDimension]: false }));
+      if (activeDimension === 1) {
+        setLineViewport(createBasisAutoFitLineViewport(resetScene, false));
+      }
+      setExportErrorMessage(null);
+      setTargetSnapKind(null);
+      return;
+    }
+
     const initialState = initialization.initialStates[activeDimension];
     const resetScene = initialState.scene;
     setScenes((current) => ({ ...current, [activeDimension]: resetScene }));
@@ -469,15 +545,18 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   }
 
   function handleOpenShareDialog(): void {
-    if (hasInvalidCoordinateDraft) {
+    if (hasInvalidCoordinateDraft || activeDimension <= 1) {
       return;
     }
 
     try {
+      const shareScene: BasisDimensionScene<VectorDimension> = activeDimension === 2
+        ? { ...scenes[2], dimension: 2 }
+        : { ...scenes[3], dimension: 3 };
       const nextShareUrl = buildShareUrl(window.location.href, createBasisDimensionShareState({
-        scene,
-        representation,
-        linearCombinationVisible,
+        scene: shareScene,
+        representation: representations[activeDimension],
+        linearCombinationVisible: linearCombinationVisibility[activeDimension],
         comparisonBasisIds: comparisonBasisIds[activeDimension],
         camera,
       }));
@@ -577,7 +656,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
       </a>
       <main className="lab-page">
         <nav className="dimension-switcher" aria-label="基底・次元Labの次元">
-          <div className="dimension-tablist" role="tablist" aria-label="2Dと3Dの切替">
+          <div className="dimension-tablist" role="tablist" aria-label="0D・1D・2D・3Dの切替">
             {DIMENSION_TABS.map((tab) => (
               <button
                 key={tab.dimension}
@@ -595,21 +674,25 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               </button>
             ))}
           </div>
-          <div className="basis-representation-switcher" role="group" aria-label="対象の見方">
-            <span>対象の見方</span>
-            <button
-              type="button"
-              aria-pressed={!polynomialMode}
-              onClick={() => setRepresentation('coordinate')}
-            >数ベクトル</button>
-            <button
-              type="button"
-              aria-pressed={polynomialMode}
-              onClick={() => setRepresentation('polynomial')}
-            >多項式</button>
-          </div>
+          {activeDimension > 0 ? (
+            <div className="basis-representation-switcher" role="group" aria-label="対象の見方">
+              <span>対象の見方</span>
+              <button
+                type="button"
+                aria-pressed={!polynomialMode}
+                onClick={() => setRepresentation('coordinate')}
+              >数ベクトル</button>
+              <button
+                type="button"
+                aria-pressed={polynomialMode}
+                onClick={() => setRepresentation('polynomial')}
+              >多項式</button>
+            </div>
+          ) : null}
           <p aria-live="polite">
-            {polynomialMode
+            {activeDimension === 0
+              ? '零ベクトルだけからなる空間と、ベクトルを1本も含まない空の基底を調べています。'
+              : polynomialMode
               ? `高々${activeDimension - 1}次の実数係数多項式を、${activeDimension}個の係数で調べています。`
               : `${activeDimension}次元の数ベクトルとして基底候補と座標を調べています。`}
           </p>
@@ -618,7 +701,9 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
         <section className="lab-intro" aria-labelledby="basis-dimension-title">
           <div>
             <p className="eyebrow">
-              基底・次元 / {polynomialMode
+              基底・次元 / {activeDimension === 0
+                ? '0D'
+                : polynomialMode
                 ? <MathPolynomialSpace degree={activeDimension - 1} />
                 : `${activeDimension}D`}
             </p>
@@ -626,7 +711,12 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
           </div>
           <div className="lab-intro-side">
             <p className="lab-intro-copy">
-              {polynomialMode ? (
+              {activeDimension === 0 ? (
+                <>
+                  零ベクトル空間 <MathSpaceName /> = &#123;<MathVectorName name="0" />&#125; では、
+                  ベクトルを1本も含まない空の組が基底になります。2つの基底条件から次元0の意味を確かめます。
+                </>
+              ) : polynomialMode ? (
                 <>
                   集合 <MathSetName /> の多項式をベクトルとして扱い、順序付きの基底候補 <MathBasisName /> を選びます。
                   係数ベクトルとの対応から、基底と座標の関係を調べます。
@@ -645,8 +735,10 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               )}
             </p>
             <LabActionControls
-              exportDisabled={hasInvalidCoordinateDraft}
-              exportDescriptionId={hasInvalidCoordinateDraft
+              exportDisabled={hasInvalidCoordinateDraft || activeDimension <= 1}
+              exportDescriptionId={activeDimension <= 1
+                ? 'basis-low-dimensional-share-help'
+                : hasInvalidCoordinateDraft
                 ? 'basis-share-disabled-help'
                 : undefined}
               onExport={handleOpenShareDialog}
@@ -655,6 +747,11 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
             {hasInvalidCoordinateDraft ? (
               <p className="lab-action-help" id="basis-share-disabled-help" role="status">
                 未確定の成分が{invalidDraftCount}か所あります。訂正すると共有URLを作成できます。
+              </p>
+            ) : null}
+            {activeDimension <= 1 ? (
+              <p className="lab-action-help" id="basis-low-dimensional-share-help" role="status">
+                0D・1Dの共有URLは、3つのLabの共有形式を更新する10.7で有効になります。
               </p>
             ) : null}
           </div>
@@ -687,8 +784,81 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
           aria-labelledby={`basis-dimension-tab-${activeDimension}`}
           tabIndex={-1}
         >
+          {activeDimension === 0 ? (
+            <ZeroDimensionalBasisWorkspace />
+          ) : (
+            <>
           <div className="basis-visual-column">
-            {activeDimension === 2 ? (
+            {activeDimension === 1 ? (
+              <section className="plot-card" aria-labelledby="basis-line-title">
+                <div className="card-heading">
+                  <div>
+                    <p className="panel-kicker">Candidate span</p>
+                    <h2 id="basis-line-title">
+                      {polynomialMode
+                        ? '基底候補の係数が生成する係数空間'
+                        : '基底候補の数ベクトルが生成する空間'}
+                    </h2>
+                  </div>
+                  <div className="viewport-toolbar">
+                    <button
+                      className="target-mode-button"
+                      type="button"
+                      aria-pressed={linearCombinationVisible}
+                      onClick={handleLinearCombinationVisibility}
+                    >
+                      {linearCombinationVisible ? '一次結合モードを終了' : '一次結合を調べる'}
+                    </button>
+                    <div className="viewport-controls" role="group" aria-label="数直線の表示範囲">
+                      <button
+                        type="button"
+                        aria-label="縮小して広い範囲を表示"
+                        onClick={() => setLineViewport(zoomLineViewportAtCenter(lineViewport, 1.25))}
+                      >−</button>
+                      <button
+                        type="button"
+                        aria-label="拡大して狭い範囲を表示"
+                        onClick={() => setLineViewport(zoomLineViewportAtCenter(lineViewport, 0.8))}
+                      >＋</button>
+                      <button
+                        className="fit-viewport-button"
+                        type="button"
+                        onClick={() => setLineViewport(createBasisAutoFitLineViewport(
+                          scene,
+                          linearCombinationVisible,
+                        ))}
+                      >全体を表示</button>
+                    </div>
+                  </div>
+                </div>
+                <VectorLine1D
+                  idPrefix="basis-vector-line"
+                  axisLabel={polynomialMode ? 'b₀' : 'x'}
+                  vectors={scene.vectors}
+                  colors={VECTOR_COLORS}
+                  viewport={lineViewport}
+                  onViewportChange={setLineViewport}
+                  onVectorChange={handleLineVectorDrag}
+                  spanDimension={analysis.candidateRank as 0 | 1}
+                  showSpan
+                  spanVectorIds={scene.candidateVectorIds}
+                  spanLabel="基底候補が生成する空間"
+                  linearCombinationVisible={linearCombinationVisible}
+                  target={scene.target?.[0] ?? null}
+                  onTargetPlacement={handleLineTargetChange}
+                  onTargetChange={handleLineTargetChange}
+                  showViewportControls={false}
+                />
+                <p className="viewport-help">
+                  {polynomialMode
+                    ? <>矢印は定数多項式の係数ベクトルです。灰色は基底候補 <MathBasisName /> が生成する係数空間です。</>
+                    : <>灰色は基底候補 <MathBasisName /> が生成する空間です。</>}
+                  {' '}{linearCombinationVisible
+                    ? <>クリックまたはタップでターゲット <MathVectorName name="v" /> を配置し、矢先をドラッグできます。</>
+                    : '矢印先端の丸をドラッグすると数ベクトルを変更できます。'}
+                </p>
+              </section>
+            ) : activeDimension === 2 ? (
               <section className="plot-card" aria-labelledby="basis-plane-title">
                 <div className="card-heading">
                   <div>
@@ -855,6 +1025,8 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                 && activeInspectorTabs[activeDimension] === 'combination'}
             />
           </aside>
+            </>
+          )}
         </div>
       </main>
 
@@ -1454,6 +1626,72 @@ function ConditionResult({ success, title, detail }: {
   );
 }
 
+function ZeroDimensionalBasisWorkspace() {
+  return (
+    <>
+      <div className="basis-visual-column">
+        <section className="plot-card" aria-labelledby="basis-zero-title">
+          <div className="card-heading">
+            <div>
+              <p className="panel-kicker">Zero vector space</p>
+              <h2 id="basis-zero-title">0次元零ベクトル空間</h2>
+            </div>
+          </div>
+          <ZeroSpace0D idPrefix="basis-zero-space" />
+        </section>
+      </div>
+      <aside className="basis-analysis-column" aria-label="0次元空間の空の基底と次元">
+        <section className="basis-candidate-card zero-basis-candidate-card">
+          <p className="panel-kicker">Empty basis</p>
+          <h2>空の基底 <MathBasisName /></h2>
+          <div className="basis-tuple">
+            <p><MathSetName /> = ∅</p>
+            <p><MathBasisName /> = ()</p>
+          </div>
+          <p>
+            <MathSpaceName /> = &#123;<MathVectorName name="0" />&#125; では、基底に選ぶベクトルは1本もありません。
+            空の組 <MathBasisName /> = () が基底です。
+          </p>
+          <p className="basis-card-note">
+            空集合 ∅ と、零ベクトルを1本含む集合 &#123;<MathVectorName name="0" />&#125; は異なります。
+          </p>
+        </section>
+
+        <section className="basis-result-card inspector-panel is-basis zero-basis-result-card">
+          <p className="panel-kicker">Basis &amp; dimension</p>
+          <h2>空の組は基底です</h2>
+          <div className="basis-target-summary">
+            <p><strong>対象としている空間：</strong><MathSpaceName /> = &#123;<MathVectorName name="0" />&#125;</p>
+            <p><strong>現在選んでいるベクトルの組：</strong><MathBasisName /> = ()</p>
+          </div>
+          <div className="basis-condition-list">
+            <ConditionResult
+              success
+              title="条件1：一次独立である"
+              detail="一次従属にする非自明な係数の選び方がないため、空の組は一次独立です。"
+            />
+            <ConditionResult
+              success
+              title={<>条件2：対象空間 <MathSpaceName /> を生成する</>}
+              detail="ベクトルを1本も足さない空和を零ベクトルと定めるため、零ベクトル空間全体を生成します。"
+            />
+          </div>
+          <div className="basis-example zero-basis-conclusion">
+            <p><MathOperator name="span" />(∅) = &#123;<MathVectorName name="0" />&#125; = <MathSpaceName /></p>
+            <p><MathOperator name="dim" />(<MathSpaceName />) = 0</p>
+            <small>
+              基底が必ず1本以上のベクトルを含むとは限りません。0次元空間では、基底の本数が0本なので次元も0です。
+            </small>
+          </div>
+          <p className="basis-card-note">
+            ターゲットの座標は成分を持たない空の係数列になりますが、通常の列ベクトル入力には押し込まず、ここでは「係数を1つも必要としない」と説明します。
+          </p>
+        </section>
+      </aside>
+    </>
+  );
+}
+
 function BasisSpaceLoading() {
   return (
     <section className="three-dimensional-loading" aria-live="polite">
@@ -1533,7 +1771,7 @@ function MathPolynomial({ coefficients }: { readonly coefficients: readonly numb
   );
 }
 
-function GenericPolynomial({ dimension }: { readonly dimension: VectorDimension }) {
+function GenericPolynomial({ dimension }: { readonly dimension: VectorSpaceDimension }) {
   return (
     <span className="basis-polynomial" aria-label={`b0からb${dimension - 1}までを係数とする多項式`}>
       {Array.from({ length: dimension }, (_, degree) => (
@@ -1590,6 +1828,10 @@ function MathSpaceName() {
   return <MathScalarName name="V" />;
 }
 
+function MathOperator({ name }: { readonly name: string }) {
+  return <span className="math-operator">{name}</span>;
+}
+
 function MathScalarName({ name }: { readonly name: string }) {
   return (
     <span className="math-scalar">
@@ -1631,7 +1873,7 @@ function VectorCollection({ vectors }: { readonly vectors: readonly VectorValue[
   );
 }
 
-function MathRealCoordinateSpace({ dimension }: { readonly dimension: VectorDimension }) {
+function MathRealCoordinateSpace({ dimension }: { readonly dimension: VectorSpaceDimension }) {
   return (
     <span className="basis-coordinate-space" aria-label={`${dimension}次元実数ベクトル空間`}>
       <span aria-hidden="true">ℝ</span><sup aria-hidden="true">{dimension}</sup>
@@ -1731,6 +1973,16 @@ function createBasisAutoFitViewport(
     ...(includeTarget && scene.target
       ? [{ id: '__basis_coordinate_target__', name: 'v', coordinates: scene.target }]
       : []),
+  ]);
+}
+
+function createBasisAutoFitLineViewport(
+  scene: BasisDimensionScene,
+  includeTarget = true,
+): LineViewport {
+  return createAutoFitLineViewport([
+    ...scene.vectors.map((vector) => vector.coordinates[0] ?? 0),
+    ...(includeTarget && scene.target ? [scene.target[0] ?? 0] : []),
   ]);
 }
 

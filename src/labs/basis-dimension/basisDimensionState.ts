@@ -1,12 +1,12 @@
-import type { VectorDimension, VectorValue } from '../../domain';
+import type { VectorSpaceDimension, VectorValue } from '../../domain';
 import { MAX_ABSOLUTE_COORDINATE } from '../../sharing';
 import {
   parallelSnapDistanceForViewWidth,
   snapDraggedVectorToParallel,
 } from '../../state';
 
-export interface BasisDimensionScene {
-  readonly dimension: VectorDimension;
+export interface BasisDimensionScene<Dimension extends VectorSpaceDimension = VectorSpaceDimension> {
+  readonly dimension: Dimension;
   readonly vectors: readonly VectorValue[];
   readonly candidateVectorIds: readonly string[];
   readonly target: readonly number[] | null;
@@ -18,7 +18,25 @@ export interface BasisPlaneVectorDragResult {
   readonly coordinates: readonly [number, number];
 }
 
-export const DEFAULT_BASIS_SCENES: Readonly<Record<VectorDimension, BasisDimensionScene>> = {
+export const DEFAULT_BASIS_SCENES: Readonly<{
+  [Dimension in VectorSpaceDimension]: BasisDimensionScene<Dimension>;
+}> = {
+  0: {
+    dimension: 0,
+    vectors: [],
+    candidateVectorIds: [],
+    target: null,
+  },
+  1: {
+    dimension: 1,
+    vectors: [
+      { id: 'a1', name: 'a1', coordinates: [2] },
+      { id: 'a2', name: 'a2', coordinates: [-3] },
+      { id: 'a3', name: 'a3', coordinates: [0] },
+    ],
+    candidateVectorIds: ['a1'],
+    target: null,
+  },
   2: {
     dimension: 2,
     vectors: [
@@ -42,7 +60,9 @@ export const DEFAULT_BASIS_SCENES: Readonly<Record<VectorDimension, BasisDimensi
   },
 };
 
-export function createDefaultBasisScene(dimension: VectorDimension): BasisDimensionScene {
+export function createDefaultBasisScene<Dimension extends VectorSpaceDimension>(
+  dimension: Dimension,
+): BasisDimensionScene<Dimension> {
   const source = DEFAULT_BASIS_SCENES[dimension];
   return {
     ...source,
@@ -52,7 +72,7 @@ export function createDefaultBasisScene(dimension: VectorDimension): BasisDimens
     })),
     candidateVectorIds: [...source.candidateVectorIds],
     target: source.target ? [...source.target] : null,
-  };
+  } as BasisDimensionScene<Dimension>;
 }
 
 export function toggleBasisCandidate(

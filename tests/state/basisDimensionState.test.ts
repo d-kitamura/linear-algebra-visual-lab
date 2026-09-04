@@ -11,17 +11,55 @@ import {
 } from '../../src/labs/basis-dimension/basisDimensionState';
 
 describe('基底・次元Labの画面状態', () => {
-  it('2Dと3Dの初期状態を独立したコピーとして作る', () => {
+  it('0Dから3Dまでの初期状態を独立したコピーとして作る', () => {
+    const zero = createDefaultBasisScene(0);
+    const line = createDefaultBasisScene(1);
     const first = createDefaultBasisScene(2);
     const second = createDefaultBasisScene(2);
     const space = createDefaultBasisScene(3);
 
+    expect(zero.vectors).toEqual([]);
+    expect(zero.candidateVectorIds).toEqual([]);
+    expect(line.vectors.map((vector) => vector.coordinates)).toEqual([[2], [-3], [0]]);
+    expect(line.candidateVectorIds).toEqual(['a1']);
     expect(first.candidateVectorIds).toEqual(['a1', 'a2']);
     expect(space.candidateVectorIds).toEqual(['a1', 'a2', 'a3']);
     expect(first.target).toBeNull();
     expect(space.target).toBeNull();
     expect(first).not.toBe(second);
     expect(first.vectors).not.toBe(second.vectors);
+  });
+
+  it('1Dの非零候補と空候補を基底の2条件で区別する', () => {
+    const scene = createDefaultBasisScene(1);
+
+    expect(analyzeBasisCandidate(scene, ['a1'])).toMatchObject({
+      candidateRank: 1,
+      maximumIndependentCount: 1,
+      isLinearlyIndependent: true,
+      spansTargetSpace: true,
+      isBasis: true,
+    });
+    expect(analyzeBasisCandidate(scene, [])).toMatchObject({
+      candidateRank: 0,
+      isLinearlyIndependent: true,
+      spansTargetSpace: false,
+      isBasis: false,
+    });
+  });
+
+  it('0Dでは空の組が一次独立かつ零ベクトル空間を生成する基底になる', () => {
+    const scene = createDefaultBasisScene(0);
+
+    expect(analyzeBasisCandidate(scene, [])).toMatchObject({
+      targetDimension: 0,
+      candidateVectorCount: 0,
+      candidateRank: 0,
+      isLinearlyIndependent: true,
+      spansTargetSpace: true,
+      isBasis: true,
+      maximumIndependentCount: 0,
+    });
   });
 
   it('座標ターゲットを次元と安全上限を保って更新する', () => {

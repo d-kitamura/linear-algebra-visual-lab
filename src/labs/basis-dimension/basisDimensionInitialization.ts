@@ -12,7 +12,7 @@ import {
 } from './basisDimensionState';
 
 export interface BasisDimensionInitialState {
-  readonly scene: BasisDimensionScene;
+  readonly scene: BasisDimensionScene<VectorDimension>;
   readonly representation: BasisRepresentation;
   readonly linearCombinationVisible: boolean;
   readonly comparisonBasisIds: readonly string[] | null;

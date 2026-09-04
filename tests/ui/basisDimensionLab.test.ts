@@ -8,7 +8,11 @@ const source = readFileSync(
 const css = readFileSync(new URL('../../src/app/App.css', import.meta.url), 'utf8');
 
 describe('8.4 基底・次元エクスプローラ', () => {
-  it('2Dと3Dで同じ基底候補解析を使う', () => {
+  it('0Dから3Dまでを切り替え、1Dから3Dで同じ基底候補解析を使う', () => {
+    expect(source).toContain("{ dimension: 0 as const, label: '0次元'");
+    expect(source).toContain("{ dimension: 1 as const, label: '1次元'");
+    expect(source).toContain('<ZeroDimensionalBasisWorkspace />');
+    expect(source).toContain('<VectorLine1D');
     expect(source).toContain('analyzeBasisCandidate(scene, scene.candidateVectorIds)');
     expect(source).toContain('<VectorPlane2D');
     expect(source).toContain('<VectorSpace3D');
@@ -135,7 +139,7 @@ describe('8.4 基底・次元エクスプローラ', () => {
   });
 
   it('ターゲットを一次結合モードだけで配置・表示する', () => {
-    expect(source).toContain('Record<VectorDimension, boolean>');
+    expect(source).toContain('Record<BasisLabDimension, boolean>');
     expect(source).toContain('initial2DState.linearCombinationVisible');
     expect(source).toContain("tab.id !== 'combination' || linearCombinationVisible");
     expect(source).toMatch(/nextVisible\s*\? 'combination'/u);
@@ -145,6 +149,31 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain('一次結合を調べる');
     expect(source).toContain('onClearTarget={handleClearTarget}');
     expect(source).toContain('グラフをクリックまたはタップするか、成分を入力してターゲット');
+  });
+
+  it('1Dの定数多項式・ターゲット座標・比較基底を既存タブへ接続する', () => {
+    expect(source).toContain("axisLabel={polynomialMode ? 'b₀' : 'x'}");
+    expect(source).toContain('<MathPolynomialSpace degree={activeDimension - 1} />');
+    expect(source).toContain('<GenericPolynomial dimension={scene.dimension} />');
+    expect(source).toContain('onTargetPlacement={handleLineTargetChange}');
+    expect(source).toContain('onTargetChange={handleLineTargetChange}');
+    expect(source).toContain('saveComparisonBasis');
+  });
+
+  it('0Dを空の基底の2条件として説明し、通常の編集UIへ押し込まない', () => {
+    expect(source).toContain('<MathBasisName /> = ()');
+    expect(source).toContain('空の組は基底です');
+    expect(source).toContain('一次従属にする非自明な係数の選び方がないため');
+    expect(source).toContain('ベクトルを1本も足さない空和を零ベクトルと定めるため');
+    expect(source).toContain('<MathOperator name="dim" />(<MathSpaceName />) = 0');
+    expect(source).toContain('通常の列ベクトル入力には押し込まず');
+  });
+
+  it('0D・1D共有は10.7まで停止し、既存2D・3D共有を維持する', () => {
+    expect(source).toContain('exportDisabled={hasInvalidCoordinateDraft || activeDimension <= 1}');
+    expect(source).toContain('activeDimension === 0 || activeDimension === 1');
+    expect(source).toContain('0D・1Dの共有URLは、3つのLabの共有形式を更新する10.7で有効になります');
+    expect(source).toContain('const shareScene: BasisDimensionScene<VectorDimension>');
   });
 
   it('新しいグラフ見出しと多項式の数式表記を使う', () => {
