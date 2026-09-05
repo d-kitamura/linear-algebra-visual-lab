@@ -24,7 +24,7 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(decisions).toContain('状態: **利用者確認済み**（2026-09-03、作業単位10.1）');
     expect(roadmap).toContain('## 11. フェーズ10「0・1次元空間の基礎拡張」の詳細作業単位案');
     expect(roadmap).toContain('中〜大規模の基礎改修として扱う');
-    expect(projectStatus).toContain('D-082〜D-085・10.1〜10.4は利用者確認済み');
+    expect(projectStatus).toContain('D-082〜D-086・10.1〜10.5は利用者確認済み');
   });
 
   it('D-083として数学APIを0〜3次元へ一般化し描画型と分離する', () => {
@@ -58,7 +58,7 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
 
   it('D-086として基底・次元Labへ0D・1Dを接続する', () => {
     expect(decisions).toContain('### D-086 基底・次元Labの0D・1D教材状態');
-    expect(decisions).toContain('状態: **実装済み・利用者確認待ち**（2026-09-04、作業単位10.5）');
+    expect(decisions).toContain('状態: **利用者確認済み**（2026-09-05、作業単位10.5。実装日2026-09-04）');
     expect(projectStatus).toContain('10.5として基底・次元Labを0D・1D・2D・3D切替へ拡張');
     expect(specification).toContain('#### FR-LOWDIM-04: 基底・次元Labの0D・1D接続');
     expect(specification).toContain('### AC-63: 基底・次元Labの0D・1D操作');
@@ -112,6 +112,6 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(roadmap).toContain('基底変換行列の「どの基底の座標から、どの基底の座標へ変換するか」');
     expect(roadmap).toContain('仮の記号で先行実装しない');
     expect(projectStatus).toContain('表現行列と写像定義用行列の文字');
-    expect(specification).toContain('| 文書バージョン | 0.96 |');
+    expect(specification).toContain('| 文書バージョン | 0.97 |');
   });
 });
