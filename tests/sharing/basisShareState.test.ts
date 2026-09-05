@@ -9,7 +9,7 @@ import {
 } from '../../src/sharing';
 
 const example: BasisDimensionShareState = {
-  v: 1,
+  v: 2,
   lab: 'basis-dimension',
   dim: 3,
   vectors: [
@@ -27,7 +27,7 @@ const example: BasisDimensionShareState = {
 
 describe('基底・次元Lab共有状態v1', () => {
   it('Lab固有状態を決定的に往復する', () => {
-    expect(BASIS_DIMENSION_SHARE_STATE_VERSION).toBe(1);
+    expect(BASIS_DIMENSION_SHARE_STATE_VERSION).toBe(2);
     const encoded = encodeShareState(example);
     expect(decodeShareState(encoded)).toEqual({ ok: true, state: example });
     expect(encodeShareState(example)).toBe(encoded);
@@ -62,7 +62,7 @@ describe('基底・次元Lab共有状態v1', () => {
       .toThrowError(expect.objectContaining({ code: 'INVALID_STATE' }));
     expect(() => validateBasisDimensionShareState({ ...example, representation: 'graph' }))
       .toThrowError(expect.objectContaining({ code: 'INVALID_STATE' }));
-    expect(() => validateBasisDimensionShareState({ ...example, v: 2 }))
+    expect(() => validateBasisDimensionShareState({ ...example, v: 99 }))
       .toThrowError(expect.objectContaining({ code: 'UNSUPPORTED_VERSION' }));
   });
 });

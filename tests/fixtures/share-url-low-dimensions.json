@@ -1,0 +1,205 @@
+[
+  {
+    "id": "line-unique",
+    "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2Ijo0LCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjEsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzJdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiXSwidmlzdWFsaXphdGlvbiI6eyJzaG93U3BhbiI6dHJ1ZSwiY2FtZXJhIjpudWxsfSwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6dHJ1ZSwidGFyZ2V0IjpbM119fQ",
+    "expectedState": {
+      "v": 4,
+      "lab": "vector-space",
+      "dim": 1,
+      "vectors": [
+        {
+          "id": "a1",
+          "name": "a1",
+          "coordinates": [
+            2
+          ]
+        }
+      ],
+      "spanSelection": [
+        "a1"
+      ],
+      "visualization": {
+        "showSpan": true,
+        "camera": null
+      },
+      "linearCombination": {
+        "visible": true,
+        "target": [
+          3
+        ]
+      }
+    }
+  },
+  {
+    "id": "zero-span",
+    "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2Ijo0LCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjB9",
+    "expectedState": {
+      "v": 4,
+      "lab": "vector-space",
+      "dim": 0,
+      "vectors": [],
+      "spanSelection": [],
+      "visualization": {
+        "showSpan": true,
+        "camera": null
+      },
+      "linearCombination": {
+        "visible": false,
+        "target": null
+      }
+    }
+  },
+  {
+    "id": "zero-basis",
+    "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJiYXNpcy1kaW1lbnNpb24iLCJkaW0iOjB9",
+    "expectedState": {
+      "v": 2,
+      "lab": "basis-dimension",
+      "dim": 0,
+      "vectors": [],
+      "candidateVectorIds": [],
+      "representation": "coordinate",
+      "linearCombination": {
+        "visible": false,
+        "target": null
+      },
+      "comparisonBasisIds": null,
+      "camera": null
+    }
+  },
+  {
+    "id": "constant-polynomial-basis",
+    "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJiYXNpcy1kaW1lbnNpb24iLCJkaW0iOjEsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzJdfSx7ImlkIjoiYTIiLCJuYW1lIjoiYTIiLCJjb29yZGluYXRlcyI6Wy0zXX1dLCJjYW5kaWRhdGVWZWN0b3JJZHMiOlsiYTEiXSwicmVwcmVzZW50YXRpb24iOiJwb2x5bm9taWFsIiwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6dHJ1ZSwidGFyZ2V0IjpbNl19LCJjb21wYXJpc29uQmFzaXNJZHMiOlsiYTIiXSwiY2FtZXJhIjpudWxsfQ",
+    "expectedState": {
+      "v": 2,
+      "lab": "basis-dimension",
+      "dim": 1,
+      "vectors": [
+        {
+          "id": "a1",
+          "name": "a1",
+          "coordinates": [
+            2
+          ]
+        },
+        {
+          "id": "a2",
+          "name": "a2",
+          "coordinates": [
+            -3
+          ]
+        }
+      ],
+      "candidateVectorIds": [
+        "a1"
+      ],
+      "representation": "polynomial",
+      "linearCombination": {
+        "visible": true,
+        "target": [
+          6
+        ]
+      },
+      "comparisonBasisIds": [
+        "a2"
+      ],
+      "camera": null
+    }
+  },
+  {
+    "id": "low-map-2-to-1",
+    "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjoyLCJ0YXJnZXREaW1lbnNpb24iOjEsIm1hdHJpeCI6W1sxLDFdXSwiaW5wdXRWZWN0b3IiOlsyLDFdLCJzZWNvbmRhcnlJbnB1dFZlY3RvciI6WzEsLTFdLCJzY2FsYXIiOjIsInZpc3VhbGl6YXRpb24iOnsic2hvd1RyYW5zZm9ybWVkR3JpZCI6ZmFsc2UsImRvbWFpbkNhbWVyYSI6bnVsbCwiY29kb21haW5DYW1lcmEiOm51bGx9fQ",
+    "expectedState": {
+      "v": 2,
+      "lab": "linear-map",
+      "sourceDimension": 2,
+      "targetDimension": 1,
+      "matrix": [
+        [
+          1,
+          1
+        ]
+      ],
+      "inputVector": [
+        2,
+        1
+      ],
+      "secondaryInputVector": [
+        1,
+        -1
+      ],
+      "scalar": 2,
+      "visualization": {
+        "showTransformedGrid": false,
+        "domainCamera": null,
+        "codomainCamera": null
+      }
+    }
+  },
+  {
+    "id": "low-map-0-to-2",
+    "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjowLCJ0YXJnZXREaW1lbnNpb24iOjIsInNjYWxhciI6MiwidmlzdWFsaXphdGlvbiI6eyJzaG93VHJhbnNmb3JtZWRHcmlkIjpmYWxzZSwiZG9tYWluQ2FtZXJhIjpudWxsLCJjb2RvbWFpbkNhbWVyYSI6bnVsbH19",
+    "expectedState": {
+      "v": 2,
+      "lab": "linear-map",
+      "sourceDimension": 0,
+      "targetDimension": 2,
+      "matrix": [
+        [],
+        []
+      ],
+      "inputVector": [],
+      "secondaryInputVector": [],
+      "scalar": 2,
+      "visualization": {
+        "showTransformedGrid": false,
+        "domainCamera": null,
+        "codomainCamera": null
+      }
+    }
+  },
+  {
+    "id": "low-map-2-to-0",
+    "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjoyLCJ0YXJnZXREaW1lbnNpb24iOjAsInNjYWxhciI6MiwidmlzdWFsaXphdGlvbiI6eyJzaG93VHJhbnNmb3JtZWRHcmlkIjpmYWxzZSwiZG9tYWluQ2FtZXJhIjpudWxsLCJjb2RvbWFpbkNhbWVyYSI6bnVsbH0sImlucHV0VmVjdG9yIjpbMiwxXSwic2Vjb25kYXJ5SW5wdXRWZWN0b3IiOlsxLC0xXX0",
+    "expectedState": {
+      "v": 2,
+      "lab": "linear-map",
+      "sourceDimension": 2,
+      "targetDimension": 0,
+      "matrix": [],
+      "inputVector": [
+        2,
+        1
+      ],
+      "secondaryInputVector": [
+        1,
+        -1
+      ],
+      "scalar": 2,
+      "visualization": {
+        "showTransformedGrid": false,
+        "domainCamera": null,
+        "codomainCamera": null
+      }
+    }
+  },
+  {
+    "id": "low-map-0-to-0",
+    "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjowLCJ0YXJnZXREaW1lbnNpb24iOjAsInNjYWxhciI6MiwidmlzdWFsaXphdGlvbiI6eyJzaG93VHJhbnNmb3JtZWRHcmlkIjpmYWxzZSwiZG9tYWluQ2FtZXJhIjpudWxsLCJjb2RvbWFpbkNhbWVyYSI6bnVsbH19",
+    "expectedState": {
+      "v": 2,
+      "lab": "linear-map",
+      "sourceDimension": 0,
+      "targetDimension": 0,
+      "matrix": [],
+      "inputVector": [],
+      "secondaryInputVector": [],
+      "scalar": 2,
+      "visualization": {
+        "showTransformedGrid": false,
+        "domainCamera": null,
+        "codomainCamera": null
+      }
+    }
+  }
+]

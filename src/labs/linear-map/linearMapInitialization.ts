@@ -64,13 +64,8 @@ export function createLinearMapShareState(
   initial: LinearMapInitialState,
 ): LinearMapShareState {
   const { scene } = initial;
-  // 0D/1Dは10.7で共有版を更新する。現行v1へ偽装して出力しない。
-  if ((scene.sourceDimension !== 2 && scene.sourceDimension !== 3)
-    || (scene.targetDimension !== 2 && scene.targetDimension !== 3)) {
-    throw new RangeError('0D・1Dの共有URLは10.7で有効になります。');
-  }
   return {
-    v: 1,
+    v: 2,
     lab: 'linear-map',
     sourceDimension: scene.sourceDimension,
     targetDimension: scene.targetDimension,

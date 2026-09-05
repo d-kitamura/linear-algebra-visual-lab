@@ -33,7 +33,7 @@ function scenario(
   const inputVector = sourceDimension === 2 ? [2, 1] : [2, 1, 1];
   const secondaryInputVector = sourceDimension === 2 ? [1, -1] : [1, -1, 2];
   const state: LinearMapShareState = {
-    v: 1,
+    v: 2,
     lab: 'linear-map',
     sourceDimension,
     targetDimension,

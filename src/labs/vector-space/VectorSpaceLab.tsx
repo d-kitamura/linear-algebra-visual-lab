@@ -62,7 +62,8 @@ import {
 import { LabActionControls } from '../../app/LabActionControls';
 import {
   addOneDimensionalVector,
-  createInitialOneDimensionalVectorSpaceState,
+  oneDimensionalStateFromShare,
+  oneDimensionalStateToShare,
   removeOneDimensionalVector,
   type OneDimensionalVectorSpaceState,
 } from './oneDimensionalState';
@@ -133,7 +134,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   const initial2DState = initialization.initialStates[2];
   const initial3DState = initialization.initialStates[3];
   const [initialOneDimensionalState] = useState(
-    createInitialOneDimensionalVectorSpaceState,
+    () => oneDimensionalStateFromShare(initialization.initialStates[1]),
   );
   const [activeDimension, setActiveDimension] = useState<VectorSpaceLabDimension>(
     initialization.activeDimension,
@@ -164,7 +165,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
     () => createTargetCoordinateDrafts(initial2DState.linearCombination.target, 2),
   );
   const [oneDimensionalTargetDrafts, setOneDimensionalTargetDrafts] =
-    useState<TargetCoordinateDrafts>(['']);
+    useState<TargetCoordinateDrafts>(() => createTargetCoordinateDrafts(initialization.initialStates[1].linearCombination.target, 1));
   const [
     threeDimensionalTargetCoordinateDrafts,
     setThreeDimensionalTargetCoordinateDrafts,
@@ -185,7 +186,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
     initial2DState.linearCombination.visible ? 'combination' : 'edit',
   );
   const [activeOneDimensionalInspectorTab, setActiveOneDimensionalInspectorTab] =
-    useState<InspectorTabId>('edit');
+    useState<InspectorTabId>(initialOneDimensionalState.linearCombinationVisible ? 'combination' : 'edit');
   const [
     activeThreeDimensionalInspectorTab,
     setActiveThreeDimensionalInspectorTab,
@@ -266,8 +267,9 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
       : activeDimension === 3
         ? threeDimensionalCoordinateInputIssues
         : [];
-  const shareIsDeferredForDimension = activeDimension === 0 || activeDimension === 1;
-  const activeShareState = activeDimension === 3 ? threeDimensionalState : state;
+  const activeShareState = activeDimension === 0 ? initialization.initialStates[0]
+    : activeDimension === 1 ? oneDimensionalStateToShare(oneDimensionalState)
+    : activeDimension === 3 ? threeDimensionalState : state;
   const analysis = useMemo(
     () => analyzeVectorSet({ dimension: state.dim, vectors: state.vectors }),
     [state],
@@ -897,11 +899,11 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
       setOneDimensionalCoordinateDrafts(createCoordinateDrafts(
         initialOneDimensionalState.vectors,
       ));
-      setOneDimensionalTargetDrafts(['']);
+      setOneDimensionalTargetDrafts(createTargetCoordinateDrafts(initialization.initialStates[1].linearCombination.target, 1));
       setOneDimensionalViewMode('auto');
       setOneDimensionalManualViewport(null);
       setOneDimensionalDragViewport(null);
-      setActiveOneDimensionalInspectorTab('edit');
+      setActiveOneDimensionalInspectorTab(initialOneDimensionalState.linearCombinationVisible ? 'combination' : 'edit');
       setExportErrorMessage(null);
       shareDialogRef.current?.close();
       return;
@@ -952,7 +954,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
   }
 
   function handleOpenShareDialog(): void {
-    if (hasInvalidCoordinateDraft || shareIsDeferredForDimension) {
+    if (hasInvalidCoordinateDraft) {
       return;
     }
 
@@ -1335,14 +1337,14 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
               )}
             </p>
             <LabActionControls
-              exportDisabled={hasInvalidCoordinateDraft || shareIsDeferredForDimension}
-              exportDescriptionId={hasInvalidCoordinateDraft || shareIsDeferredForDimension
+              exportDisabled={hasInvalidCoordinateDraft}
+              exportDescriptionId={hasInvalidCoordinateDraft
                 ? 'share-export-disabled-help'
                 : undefined}
               onExport={handleOpenShareDialog}
               onReset={handleReset}
             />
-            {hasInvalidCoordinateDraft || shareIsDeferredForDimension ? (
+            {hasInvalidCoordinateDraft ? (
               <div
                 className="lab-action-help"
               >
@@ -1351,9 +1353,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
                   role="status"
                   aria-live="polite"
                 >
-                  {shareIsDeferredForDimension
-                    ? '0D・1Dの共有URLは共有スキーマを更新する10.7で有効になります。Resetは現在の次元の初期状態へ戻ります。'
-                    : `未確定の成分が${activeCoordinateInputIssues.length}か所あります。訂正するまで、表示と判定には各欄の直前の有効値を使い、エクスポートを停止します。`}
+                  {`未確定の成分が${activeCoordinateInputIssues.length}か所あります。訂正するまで、表示と判定には各欄の直前の有効値を使い、エクスポートを停止します。`}
                 </p>
                 {hasInvalidCoordinateDraft ? (
                   <button type="button" onClick={handleFocusFirstCoordinateIssue}>

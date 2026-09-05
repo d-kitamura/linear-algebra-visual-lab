@@ -53,7 +53,7 @@ describe('共通アプリシェルとLab境界', () => {
     expect(linearMapLabSource).toContain('<LabActionControls');
     expect(linearMapLabSource).toContain('onExport={handleOpenShareDialog}');
     expect(basisLabSource).toContain(
-      'exportDisabled={hasInvalidCoordinateDraft || activeDimension <= 1}',
+      'exportDisabled={hasInvalidCoordinateDraft}',
     );
     expect(basisLabSource).toContain('onExport={handleOpenShareDialog}');
     expect(appSource).toContain("return result.status === 'success' ? result.state.lab : 'vector-space'");

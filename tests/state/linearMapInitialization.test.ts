@@ -6,7 +6,7 @@ import {
 } from '../../src/labs/linear-map/linearMapInitialization';
 
 const shared: LinearMapShareState = {
-  v: 1,
+  v: 2,
   lab: 'linear-map',
   sourceDimension: 3,
   targetDimension: 2,
@@ -41,7 +41,7 @@ describe('線形写像Labの共有InitialState', () => {
   it('stateなしと他Labのstateは既定状態を使う', () => {
     expect(createLinearMapInitialization('https://example.jp/lab/').source).toBe('default');
     const vectorSpaceUrl = buildShareUrl('https://example.jp/lab/', {
-      v: 3,
+      v: 4,
       lab: 'vector-space',
       dim: 2,
       vectors: [],

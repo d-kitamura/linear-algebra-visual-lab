@@ -114,7 +114,6 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   const [activeShapeId, setActiveShapeId] = useState<LinearMapShapeId>(initialization.activeShapeId);
   const scene = scenes[activeShapeId];
   const isFixedMap = scene.sourceDimension === 0 || scene.targetDimension === 0;
-  const shareUnavailable = scene.sourceDimension <= 1 || scene.targetDimension <= 1;
   const [matrixDrafts, setMatrixDrafts] = useState<MatrixDrafts>(() =>
     createMatrixDrafts(initialScene.matrix));
   const [inputDrafts, setInputDrafts] = useState<VectorDrafts>(() =>
@@ -407,7 +406,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   }
 
   function handleOpenShareDialog(): void {
-    if (invalidDraftCount > 0 || shareUnavailable) {
+    if (invalidDraftCount > 0) {
       return;
     }
 
@@ -568,16 +567,12 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
               薄い青色の核 <MathNamedSubspace name="Ker" /> と薄いピンク色の像 <MathNamedSubspace name="Im" /> を比較できます。
             </p>
             <LabActionControls
-              exportDisabled={invalidDraftCount > 0 || shareUnavailable}
-              exportDescriptionId={invalidDraftCount > 0 || shareUnavailable ? 'linear-map-share-disabled-help' : undefined}
+              exportDisabled={invalidDraftCount > 0}
+              exportDescriptionId={invalidDraftCount > 0 ? 'linear-map-share-disabled-help' : undefined}
               onExport={handleOpenShareDialog}
               onReset={handleReset}
             />
-            {shareUnavailable ? (
-              <p className="lab-action-help" id="linear-map-share-disabled-help" role="status">
-                0D・1Dの共有URLは、3つのLabの共有形式を更新する10.7で有効になります。
-              </p>
-            ) : invalidDraftCount > 0 ? (
+            {invalidDraftCount > 0 ? (
               <p className="lab-action-help" id="linear-map-share-disabled-help" role="status">
                 未確定の成分が{invalidDraftCount}か所あります。訂正すると共有URLを作成できます。
               </p>

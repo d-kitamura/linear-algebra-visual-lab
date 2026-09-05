@@ -141,7 +141,7 @@ function createScenarioState(
   camera: SharedCameraState,
 ): ShareState {
   return validateShareState({
-    v: 3,
+    v: 4,
     lab: 'vector-space',
     dim: 3,
     vectors,

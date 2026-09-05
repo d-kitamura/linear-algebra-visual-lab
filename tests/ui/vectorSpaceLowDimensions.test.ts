@@ -33,10 +33,10 @@ describe('ベクトル空間Labの0D・1D接続', () => {
     expect(source).toContain('非零の生成元が1本だけなら任意のターゲットの係数は一意です');
   });
 
-  it('0D・1DのResetを個別に扱い共有は10.7まで停止する', () => {
+  it('0D・1DのResetと共有を現在次元の状態へ接続する', () => {
     expect(source).toContain('if (activeDimension === 0)');
     expect(source).toContain('if (activeDimension === 1)');
     expect(source).toContain('setOneDimensionalState(initialOneDimensionalState)');
-    expect(source).toContain('shareIsDeferredForDimension');
+    expect(source).toContain('oneDimensionalStateToShare(oneDimensionalState)');
   });
 });

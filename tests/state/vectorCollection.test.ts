@@ -9,7 +9,7 @@ import {
 import { addDefaultVector, removeVector } from '../../src/state';
 
 const initialState: ShareState = {
-  v: 3,
+  v: 4,
   lab: 'vector-space',
   dim: 2,
   vectors: [

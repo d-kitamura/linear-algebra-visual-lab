@@ -10,7 +10,7 @@ import {
 } from '../../src/sharing';
 
 const exampleState: ShareState = {
-  v: 3,
+  v: 4,
   lab: 'vector-space',
   dim: 2,
   vectors: [

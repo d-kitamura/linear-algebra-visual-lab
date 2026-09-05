@@ -1,10 +1,10 @@
-import type { VectorDimension, VectorValue } from '../domain';
+import type { VectorDimension, VectorSpaceDimension, VectorValue } from '../domain';
 
 export const LEGACY_SHARE_STATE_VERSION = 1 as const;
 export const PREVIOUS_SHARE_STATE_VERSION = 2 as const;
-export const SHARE_STATE_VERSION = 3 as const;
-export const BASIS_DIMENSION_SHARE_STATE_VERSION = 1 as const;
-export const LINEAR_MAP_SHARE_STATE_VERSION = 1 as const;
+export const SHARE_STATE_VERSION = 4 as const;
+export const BASIS_DIMENSION_SHARE_STATE_VERSION = 2 as const;
+export const LINEAR_MAP_SHARE_STATE_VERSION = 2 as const;
 export const MAX_SHARE_VECTORS = 8;
 export const MAX_SHARE_VECTOR_ID_LENGTH = 32;
 export const MAX_SHARE_VECTOR_NAME_LENGTH = 40;
@@ -66,7 +66,7 @@ export interface ShareStateV2 {
 }
 
 export interface ShareStateV3 {
-  readonly v: typeof SHARE_STATE_VERSION;
+  readonly v: 3;
   readonly lab: typeof SHARE_LAB;
   readonly dim: VectorDimension;
   readonly vectors: readonly VectorValue[];
@@ -75,12 +75,16 @@ export interface ShareStateV3 {
   readonly linearCombination: SharedLinearCombinationState;
 }
 
-export type ShareState = ShareStateV3;
+export interface ShareStateV4 extends Omit<ShareStateV3, 'v' | 'dim'> {
+  readonly v: typeof SHARE_STATE_VERSION;
+  readonly dim: VectorSpaceDimension;
+}
+export type ShareState = ShareStateV4;
 
 export type BasisRepresentation = 'coordinate' | 'polynomial';
 
 export interface BasisDimensionShareStateV1 {
-  readonly v: typeof BASIS_DIMENSION_SHARE_STATE_VERSION;
+  readonly v: 1;
   readonly lab: typeof BASIS_DIMENSION_SHARE_LAB;
   readonly dim: VectorDimension;
   readonly vectors: readonly VectorValue[];
@@ -91,10 +95,14 @@ export interface BasisDimensionShareStateV1 {
   readonly camera: SharedCameraState | null;
 }
 
-export type BasisDimensionShareState = BasisDimensionShareStateV1;
+export interface BasisDimensionShareStateV2 extends Omit<BasisDimensionShareStateV1, 'v' | 'dim'> {
+  readonly v: typeof BASIS_DIMENSION_SHARE_STATE_VERSION;
+  readonly dim: VectorSpaceDimension;
+}
+export type BasisDimensionShareState = BasisDimensionShareStateV2;
 
 export interface LinearMapShareStateV1 {
-  readonly v: typeof LINEAR_MAP_SHARE_STATE_VERSION;
+  readonly v: 1;
   readonly lab: typeof LINEAR_MAP_SHARE_LAB;
   readonly sourceDimension: VectorDimension;
   readonly targetDimension: VectorDimension;
@@ -109,7 +117,12 @@ export interface LinearMapShareStateV1 {
   };
 }
 
-export type LinearMapShareState = LinearMapShareStateV1;
+export interface LinearMapShareStateV2 extends Omit<LinearMapShareStateV1, 'v' | 'sourceDimension' | 'targetDimension'> {
+  readonly v: typeof LINEAR_MAP_SHARE_STATE_VERSION;
+  readonly sourceDimension: VectorSpaceDimension;
+  readonly targetDimension: VectorSpaceDimension;
+}
+export type LinearMapShareState = LinearMapShareStateV2;
 export type SharedState = ShareState | BasisDimensionShareState | LinearMapShareState;
 
 export type ShareStateErrorCode =
@@ -141,14 +154,14 @@ export type ShareStateDecodeResult =
   | { readonly ok: false; readonly error: InvalidShareStateError };
 
 interface ValidatedCommonFields {
-  readonly dim: VectorDimension;
+  readonly dim: VectorSpaceDimension;
   readonly vectors: readonly VectorValue[];
   readonly spanSelection: readonly string[];
   readonly visualization: LegacySharedVisualizationState;
 }
 
 export function validateShareState(input: unknown): ShareState {
-  const state = requireRecord(input, '$');
+  const state = expandFixedState(requireRecord(input, '$'));
 
   if (state.v === LEGACY_SHARE_STATE_VERSION) {
     const common = validateCommonFields(
@@ -181,7 +194,7 @@ export function validateShareState(input: unknown): ShareState {
     };
   }
 
-  if (state.v === SHARE_STATE_VERSION) {
+  if (state.v === 3 || state.v === SHARE_STATE_VERSION) {
     const common = validateCommonFields(
       state,
       ['v', 'lab', 'dim', 'vectors', 'spanSelection', 'visualization', 'linearCombination'],
@@ -192,9 +205,9 @@ export function validateShareState(input: unknown): ShareState {
       ? null
       : validateCameraState(visualization.camera, '$.visualization.camera');
 
-    if (common.dim === 2 && camera !== null) {
+    if (common.dim !== 3 && camera !== null) {
       throw invalidState(
-        '2D共有状態に3Dカメラを指定できません。',
+        '3D以外の共有状態に3Dカメラを指定できません。',
         '$.visualization.camera',
       );
     }
@@ -216,7 +229,7 @@ export function validateShareState(input: unknown): ShareState {
 }
 
 export function validateSharedState(input: unknown): SharedState {
-  const state = requireRecord(input, '$');
+  const state = expandFixedState(requireRecord(input, '$'));
   if (state.lab === BASIS_DIMENSION_SHARE_LAB) {
     return validateBasisDimensionShareState(state);
   }
@@ -227,7 +240,7 @@ export function validateSharedState(input: unknown): SharedState {
 }
 
 export function validateBasisDimensionShareState(input: unknown): BasisDimensionShareState {
-  const state = requireRecord(input, '$');
+  const state = expandFixedState(requireRecord(input, '$'));
   requireExactKeys(state, [
     'v',
     'lab',
@@ -240,7 +253,7 @@ export function validateBasisDimensionShareState(input: unknown): BasisDimension
     'camera',
   ], '$');
 
-  if (state.v !== BASIS_DIMENSION_SHARE_STATE_VERSION) {
+  if (state.v !== 1 && state.v !== BASIS_DIMENSION_SHARE_STATE_VERSION) {
     throw new InvalidShareStateError(
       'UNSUPPORTED_VERSION',
       `基底・次元Labの共有状態バージョン ${String(state.v)} には対応していません。`,
@@ -254,6 +267,7 @@ export function validateBasisDimensionShareState(input: unknown): BasisDimension
     throw invalidState('representation は coordinate または polynomial である必要があります。', '$.representation');
   }
 
+  if (state.v === 1) requireVectorDimension(state.dim, '$.dim');
   const proxy = validateShareState({
     v: SHARE_STATE_VERSION,
     lab: SHARE_LAB,
@@ -273,6 +287,9 @@ export function validateBasisDimensionShareState(input: unknown): BasisDimension
     comparisonBasisIds = comparisonProxy.spanSelection;
   }
 
+  if (proxy.dim === 0 && (state.representation !== 'coordinate' || comparisonBasisIds !== null)) {
+    throw invalidState('0Dには多項式表示・比較用基底を指定できません。', '$');
+  }
   return {
     v: BASIS_DIMENSION_SHARE_STATE_VERSION,
     lab: BASIS_DIMENSION_SHARE_LAB,
@@ -287,7 +304,7 @@ export function validateBasisDimensionShareState(input: unknown): BasisDimension
 }
 
 export function validateLinearMapShareState(input: unknown): LinearMapShareState {
-  const state = requireRecord(input, '$');
+  const state = expandFixedState(requireRecord(input, '$'));
   requireExactKeys(state, [
     'v',
     'lab',
@@ -300,7 +317,7 @@ export function validateLinearMapShareState(input: unknown): LinearMapShareState
     'visualization',
   ], '$');
 
-  if (state.v !== LINEAR_MAP_SHARE_STATE_VERSION) {
+  if (state.v !== 1 && state.v !== LINEAR_MAP_SHARE_STATE_VERSION) {
     throw new InvalidShareStateError(
       'UNSUPPORTED_VERSION',
       `線形写像Labの共有状態バージョン ${String(state.v)} には対応していません。`,
@@ -310,8 +327,8 @@ export function validateLinearMapShareState(input: unknown): LinearMapShareState
   if (state.lab !== LINEAR_MAP_SHARE_LAB) {
     throw invalidState('共有状態の Lab が正しくありません。', '$.lab');
   }
-  const sourceDimension = requireVectorDimension(state.sourceDimension, '$.sourceDimension');
-  const targetDimension = requireVectorDimension(state.targetDimension, '$.targetDimension');
+  const sourceDimension = state.v === 1 ? requireVectorDimension(state.sourceDimension, '$.sourceDimension') : requireSpaceDimension(state.sourceDimension, '$.sourceDimension');
+  const targetDimension = state.v === 1 ? requireVectorDimension(state.targetDimension, '$.targetDimension') : requireSpaceDimension(state.targetDimension, '$.targetDimension');
   const matrix = requireShareMatrix(state.matrix, targetDimension, sourceDimension, '$.matrix');
   const inputVector = requireCoordinates(state.inputVector, sourceDimension, '$.inputVector');
   const secondaryInputVector = requireCoordinates(
@@ -372,10 +389,9 @@ function validateCommonFields(
     throw invalidState('共有状態の Lab が正しくありません。', '$.lab');
   }
 
-  if (state.dim !== 2 && state.dim !== 3) {
-    throw invalidState('共有状態の次元は 2 または 3 である必要があります。', '$.dim');
-  }
-  const dimension = state.dim;
+  const dimension = state.v === SHARE_STATE_VERSION
+    ? requireSpaceDimension(state.dim, '$.dim')
+    : requireVectorDimension(state.dim, '$.dim');
 
   if (!Array.isArray(state.vectors)) {
     throw invalidState('vectors は配列である必要があります。', '$.vectors');
@@ -389,6 +405,9 @@ function validateCommonFields(
     );
   }
 
+  if (dimension === 0 && state.vectors.length !== 0) {
+    throw invalidState('0Dは固定の空集合を使います。', '$.vectors');
+  }
   const vectorIds = new Set<string>();
   const vectors = state.vectors.map((inputVector, index) => {
     const path = `$.vectors[${index}]`;
@@ -445,6 +464,9 @@ function validateCommonFields(
     throw invalidState('showSpan は真偽値である必要があります。', '$.visualization.showSpan');
   }
 
+  if (dimension === 0 && visualization.showSpan !== true) {
+    throw invalidState('0Dの空間表示は固定です。', '$.visualization.showSpan');
+  }
   return {
     dim: dimension,
     vectors,
@@ -455,7 +477,7 @@ function validateCommonFields(
 
 function validateLinearCombination(
   value: unknown,
-  dimension: VectorDimension,
+  dimension: VectorSpaceDimension,
 ): SharedLinearCombinationState {
   const linearCombination = requireRecord(value, '$.linearCombination');
   requireExactKeys(linearCombination, ['visible', 'target'], '$.linearCombination');
@@ -475,6 +497,9 @@ function validateLinearCombination(
         '$.linearCombination.target',
       );
 
+  if (dimension === 0 && (linearCombination.visible || target !== null)) {
+    throw invalidState('0Dに一次結合の編集状態は指定できません。', '$.linearCombination');
+  }
   return { visible: linearCombination.visible, target };
 }
 
@@ -525,12 +550,12 @@ function validateCameraState(value: unknown, path: string): SharedCameraState {
 
 function requireDimensionCamera(
   value: unknown,
-  dimension: VectorDimension,
+  dimension: VectorSpaceDimension,
   path: string,
 ): SharedCameraState | null {
-  if (dimension === 2) {
+  if (dimension !== 3) {
     if (value !== null) {
-      throw invalidState('2D表示に3Dカメラを指定できません。', path);
+      throw invalidState('3D以外の表示に3Dカメラを指定できません。', path);
     }
     return null;
   }
@@ -549,8 +574,8 @@ function requireVectorDimension(value: unknown, path: string): VectorDimension {
 
 function requireShareMatrix(
   value: unknown,
-  rows: VectorDimension,
-  columns: VectorDimension,
+  rows: VectorSpaceDimension,
+  columns: VectorSpaceDimension,
   path: string,
 ): readonly (readonly number[])[] {
   if (!Array.isArray(value) || value.length !== rows) {
@@ -619,7 +644,7 @@ function normalizeNegativeZero(value: number): number {
 
 export function encodeShareState(state: SharedState): string {
   const validatedState = validateSharedState(state);
-  const json = JSON.stringify(validatedState);
+  const json = JSON.stringify(compactFixedState(validatedState));
   const encoded = bytesToBase64Url(new TextEncoder().encode(json));
 
   if (encoded.length > MAX_ENCODED_SHARE_STATE_LENGTH) {
@@ -726,7 +751,7 @@ function requireVectorName(value: unknown, path: string): string {
 
 function requireCoordinates(
   value: unknown,
-  dimension: VectorDimension,
+  dimension: VectorSpaceDimension,
   path: string,
 ): number[] {
   if (!Array.isArray(value) || value.length !== dimension) {
@@ -827,4 +852,44 @@ function parseJson(json: string): unknown {
 
 function invalidState(message: string, path?: string): InvalidShareStateError {
   return new InvalidShareStateError('INVALID_STATE', message, path);
+}
+
+/** 固定0D教材値はURLから省き、内部の正規形へ復元するときだけ補う。 */
+function compactFixedState(state: SharedState): object {
+  if (state.lab !== 'linear-map') {
+    return state.dim === 0 ? { v: state.v, lab: state.lab, dim: 0 } : state;
+  }
+  if (state.sourceDimension !== 0 && state.targetDimension !== 0) return state;
+  const { matrix: _matrix, inputVector, secondaryInputVector, ...rest } = state;
+  return state.sourceDimension === 0 ? rest : { ...rest, inputVector, secondaryInputVector };
+}
+
+function expandFixedState(state: Record<string, unknown>): Record<string, unknown> {
+  if (state.dim === 0 && ((state.lab === SHARE_LAB && state.v === SHARE_STATE_VERSION)
+    || (state.lab === BASIS_DIMENSION_SHARE_LAB && state.v === BASIS_DIMENSION_SHARE_STATE_VERSION))
+    && !('vectors' in state)) {
+    requireExactKeys(state, ['v', 'lab', 'dim'], '$');
+    return state.lab === SHARE_LAB
+      ? { ...state, vectors: [], spanSelection: [], visualization: { showSpan: true, camera: null },
+          linearCombination: { visible: false, target: null } }
+      : { ...state, vectors: [], candidateVectorIds: [], representation: 'coordinate',
+          linearCombination: { visible: false, target: null }, comparisonBasisIds: null, camera: null };
+  }
+  if (state.lab === LINEAR_MAP_SHARE_LAB && state.v === LINEAR_MAP_SHARE_STATE_VERSION
+    && (state.sourceDimension === 0 || state.targetDimension === 0) && !('matrix' in state)) {
+    const source = requireSpaceDimension(state.sourceDimension, '$.sourceDimension');
+    const target = requireSpaceDimension(state.targetDimension, '$.targetDimension');
+    requireExactKeys(state, ['v', 'lab', 'sourceDimension', 'targetDimension', 'scalar', 'visualization',
+      ...(source === 0 ? [] : ['inputVector', 'secondaryInputVector'])], '$');
+    return { ...state, matrix: Array.from({ length: target }, () => []),
+      ...(source === 0 ? { inputVector: [], secondaryInputVector: [] } : {}) };
+  }
+  return state;
+}
+
+function requireSpaceDimension(value: unknown, path: string): VectorSpaceDimension {
+  if (value !== 0 && value !== 1 && value !== 2 && value !== 3) {
+    throw invalidState('次元は0〜3の整数である必要があります。', path);
+  }
+  return value;
 }

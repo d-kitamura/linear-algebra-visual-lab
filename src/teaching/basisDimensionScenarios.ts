@@ -88,7 +88,7 @@ function createState({
   readonly representation?: BasisDimensionShareState['representation'];
 }): BasisDimensionShareState {
   return {
-    v: 1,
+    v: 2,
     lab: 'basis-dimension',
     dim,
     vectors,

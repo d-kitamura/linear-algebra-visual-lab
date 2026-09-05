@@ -9,6 +9,7 @@ import {
 } from '../../src/labs/linear-map/linearMapInitialization';
 import {
   buildShareUrl,
+  validateSharedState,
   createShareQrCodeDataUrl,
   readShareStateFromUrl,
   type SharedState,
@@ -32,17 +33,17 @@ const fixtures = [
   {
     lab: 'vector-space',
     url: vectorSpaceFixture.url,
-    state: vectorSpaceFixture.expectedState as SharedState,
+    state: validateSharedState(vectorSpaceFixture.expectedState),
   },
   {
     lab: 'basis-dimension',
     url: basisDimensionFixture.url,
-    state: basisDimensionFixture.expectedState as SharedState,
+    state: validateSharedState(basisDimensionFixture.expectedState),
   },
   {
     lab: 'linear-map',
     url: linearMapFixture.url,
-    state: linearMapFixture.expectedState as SharedState,
+    state: validateSharedState(linearMapFixture.expectedState),
   },
 ] as const;
 
@@ -86,7 +87,7 @@ describe('フェーズ9.7 複数Lab統合回帰', () => {
       }
 
       expect(resetState).toEqual(fixture.state);
-      expect(buildShareUrl(PRODUCTION_BASE_URL, resetState)).toBe(fixture.url);
+      expect(readShareStateFromUrl(buildShareUrl(PRODUCTION_BASE_URL, resetState))).toEqual({ status: 'success', state: fixture.state });
     });
   }
 

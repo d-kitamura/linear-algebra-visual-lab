@@ -6,7 +6,7 @@ import {
 } from '../../src/labs/basis-dimension/basisDimensionInitialization';
 
 const shared: BasisDimensionShareState = {
-  v: 1,
+  v: 2,
   lab: 'basis-dimension',
   dim: 2,
   vectors: [
@@ -35,7 +35,7 @@ describe('基底・次元Labの共有InitialState', () => {
   it('stateなしと他Labのstateは既定状態を使う', () => {
     expect(createBasisDimensionInitialization('https://example.jp/lab/').source).toBe('default');
     const vectorSpaceUrl = buildShareUrl('https://example.jp/lab/', {
-      v: 3,
+      v: 4,
       lab: 'vector-space',
       dim: 2,
       vectors: [],

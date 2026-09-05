@@ -5,14 +5,14 @@ import {
   type BasisRepresentation,
   type SharedCameraState,
 } from '../../sharing';
-import type { VectorDimension } from '../../domain';
+import type { VectorSpaceDimension } from '../../domain';
 import {
   createDefaultBasisScene,
   type BasisDimensionScene,
 } from './basisDimensionState';
 
 export interface BasisDimensionInitialState {
-  readonly scene: BasisDimensionScene<VectorDimension>;
+  readonly scene: BasisDimensionScene<VectorSpaceDimension>;
   readonly representation: BasisRepresentation;
   readonly linearCombinationVisible: boolean;
   readonly comparisonBasisIds: readonly string[] | null;
@@ -20,8 +20,8 @@ export interface BasisDimensionInitialState {
 }
 
 export interface BasisDimensionInitialization {
-  readonly initialStates: Readonly<Record<VectorDimension, BasisDimensionInitialState>>;
-  readonly activeDimension: VectorDimension;
+  readonly initialStates: Readonly<Record<VectorSpaceDimension, BasisDimensionInitialState>>;
+  readonly activeDimension: VectorSpaceDimension;
   readonly source: 'default' | 'shared' | 'fallback';
   readonly errorMessage: string | null;
 }
@@ -60,7 +60,7 @@ export function createBasisDimensionShareState(
   initial: BasisDimensionInitialState,
 ): BasisDimensionShareState {
   return {
-    v: 1,
+    v: 2,
     lab: 'basis-dimension',
     dim: initial.scene.dimension,
     vectors: initial.scene.vectors,
@@ -84,14 +84,16 @@ function createInitialization(): BasisDimensionInitialization {
   };
 }
 
-function createDefaultInitialStates(): Readonly<Record<VectorDimension, BasisDimensionInitialState>> {
+function createDefaultInitialStates(): Readonly<Record<VectorSpaceDimension, BasisDimensionInitialState>> {
   return {
+    0: createDefaultInitialState(0),
+    1: createDefaultInitialState(1),
     2: createDefaultInitialState(2),
     3: createDefaultInitialState(3),
   };
 }
 
-function createDefaultInitialState(dimension: VectorDimension): BasisDimensionInitialState {
+function createDefaultInitialState(dimension: VectorSpaceDimension): BasisDimensionInitialState {
   return {
     scene: createDefaultBasisScene(dimension),
     representation: 'coordinate',

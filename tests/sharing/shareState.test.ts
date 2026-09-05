@@ -15,7 +15,7 @@ import {
 } from '../../src/sharing';
 
 const exampleState: ShareState = {
-  v: 3,
+  v: 4,
   lab: 'vector-space',
   dim: 2,
   vectors: [
@@ -73,7 +73,7 @@ describe('share-state round trip', () => {
 
   it('supports a 3D state and an empty span selection', () => {
     const state: ShareState = {
-      v: 3,
+      v: 4,
       lab: 'vector-space',
       dim: 3,
       vectors: [{ id: 'v1', name: 'v₁', coordinates: [1, 0, -2.5] }],
@@ -293,7 +293,7 @@ describe('share-state schema validation', () => {
     }), 'INVALID_STATE');
   });
 
-  it('migrates a strict v1 state to the current v3 defaults', () => {
+  it('migrates a strict v1 state to the current v4 defaults', () => {
     const legacyState: ShareStateV1 = {
       v: 1,
       lab: 'vector-space',
@@ -308,14 +308,14 @@ describe('share-state schema validation', () => {
       ok: true,
       state: {
         ...legacyState,
-        v: 3,
+        v: 4,
         visualization: { ...legacyState.visualization, camera: null },
         linearCombination: { visible: false, target: null },
       },
     });
   });
 
-  it('migrates a strict v2 state to v3 with the default camera marker', () => {
+  it('migrates a strict v2 state to v4 with the default camera marker', () => {
     const previousState: ShareStateV2 = {
       v: 2,
       lab: 'vector-space',
@@ -330,7 +330,7 @@ describe('share-state schema validation', () => {
       ok: true,
       state: {
         ...previousState,
-        v: 3,
+        v: 4,
         visualization: { showSpan: true, camera: null },
       },
     });
@@ -368,7 +368,7 @@ describe('safe share-state decoding', () => {
   });
 
   it('rejects an unsupported schema version', () => {
-    expectDecodeError(encodeRawValue({ ...exampleState, v: 4 }), 'UNSUPPORTED_VERSION');
+    expectDecodeError(encodeRawValue({ ...exampleState, v: 99 }), 'UNSUPPORTED_VERSION');
   });
 
   it('rejects a wrong visualization value type', () => {

@@ -132,7 +132,7 @@ function createScenarioState(
   target: readonly number[] | null = null,
 ): ShareState {
   return {
-    v: 3,
+    v: 4,
     lab: 'vector-space',
     dim: 2,
     vectors,

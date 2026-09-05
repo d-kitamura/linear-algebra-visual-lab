@@ -30,10 +30,8 @@ describe('10.6 全16次元組の画面統合回帰', () => {
       }
       if (shape.sourceDimension === 1) expect(markup).toContain('linear-map-domain-line-title');
       if (shape.targetDimension === 1) expect(markup).toContain('linear-map-codomain-line-title');
-      if (shape.sourceDimension <= 1 || shape.targetDimension <= 1) {
-        expect(markup).toContain('10.7で有効になります');
-        expect(markup).toMatch(/<button[^>]+disabled=""[^>]*>共有URLをエクスポート/);
-      } else expect(markup).not.toContain('10.7で有効になります');
+      expect(markup).not.toContain('10.7で有効になります');
+      expect(markup).not.toMatch(/<button[^>]+disabled=""[^>]*>共有URLをエクスポート/);
     });
   }
 });

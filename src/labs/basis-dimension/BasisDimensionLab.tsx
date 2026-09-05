@@ -16,7 +16,6 @@ import {
   polynomialCoefficientLabel,
   type BasisCandidateAnalysis,
   type BasisCoordinateAnalysis,
-  type VectorDimension,
   type VectorSpaceDimension,
   type VectorValue,
 } from '../../domain';
@@ -52,7 +51,6 @@ import {
 import { LabActionControls } from '../../app/LabActionControls';
 import {
   createCoordinateDrafts,
-  createDefaultBasisScene,
   moveBasisCandidate,
   toggleBasisCandidate,
   updateBasisTarget,
@@ -116,8 +114,9 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   const [initialization] = useState(() => createBasisDimensionInitialization(window.location.href));
   const initial2DState = initialization.initialStates[2];
   const initial3DState = initialization.initialStates[3];
-  const initial0DScene = createDefaultBasisScene(0);
-  const initial1DScene = createDefaultBasisScene(1);
+  const initial0DScene = initialization.initialStates[0].scene;
+  const initial1DState = initialization.initialStates[1];
+  const initial1DScene = initial1DState.scene;
   const [activeDimension, setActiveDimension] = useState<BasisLabDimension>(
     initialization.activeDimension,
   );
@@ -125,7 +124,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     Record<BasisLabDimension, BasisRepresentation>
   >({
     0: 'coordinate',
-    1: 'coordinate',
+    1: initial1DState.representation,
     2: initial2DState.representation,
     3: initial3DState.representation,
   });
@@ -133,7 +132,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     Record<BasisLabDimension, boolean>
   >({
     0: false,
-    1: false,
+    1: initial1DState.linearCombinationVisible,
     2: initial2DState.linearCombinationVisible,
     3: initial3DState.linearCombinationVisible,
   });
@@ -161,7 +160,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     Record<BasisLabDimension, readonly string[] | null>
   >({
     0: null,
-    1: null,
+    1: initial1DState.comparisonBasisIds,
     2: initial2DState.comparisonBasisIds,
     3: initial3DState.comparisonBasisIds,
   });
@@ -169,7 +168,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     Record<BasisLabDimension, BasisInspectorTabId>
   >({
     0: 'basis',
-    1: 'vectors',
+    1: initial1DState.linearCombinationVisible ? 'combination' : 'vectors',
     2: initial2DState.linearCombinationVisible ? 'combination' : 'vectors',
     3: initial3DState.linearCombinationVisible ? 'combination' : 'vectors',
   });
@@ -184,7 +183,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   const [parallelSnapTargetId, setParallelSnapTargetId] = useState<string | null>(null);
   const [targetSnapKind, setTargetSnapKind] = useState<TargetSnapKind>(null);
   const [lineViewport, setLineViewport] = useState<LineViewport>(() => (
-    createBasisAutoFitLineViewport(initial1DScene, false)
+    createBasisAutoFitLineViewport(initial1DScene, initial1DState.linearCombinationVisible)
   ));
   const [camera, setCamera] = useState<SharedCameraState>(initial3DState.camera);
   const [spaceResetKey, setSpaceResetKey] = useState(0);
@@ -478,32 +477,6 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   }
 
   function handleReset(): void {
-    if (activeDimension === 0 || activeDimension === 1) {
-      const resetScene = createDefaultBasisScene(activeDimension);
-      setScenes((current) => ({ ...current, [activeDimension]: resetScene }));
-      setCoordinateDrafts((current) => ({
-        ...current,
-        [activeDimension]: createCoordinateDrafts(resetScene.vectors),
-      }));
-      setTargetDrafts((current) => ({
-        ...current,
-        [activeDimension]: createBasisTargetDrafts(resetScene),
-      }));
-      setComparisonBasisIds((current) => ({ ...current, [activeDimension]: null }));
-      setActiveInspectorTabs((current) => ({
-        ...current,
-        [activeDimension]: activeDimension === 0 ? 'basis' : 'vectors',
-      }));
-      setRepresentations((current) => ({ ...current, [activeDimension]: 'coordinate' }));
-      setLinearCombinationVisibility((current) => ({ ...current, [activeDimension]: false }));
-      if (activeDimension === 1) {
-        setLineViewport(createBasisAutoFitLineViewport(resetScene, false));
-      }
-      setExportErrorMessage(null);
-      setTargetSnapKind(null);
-      return;
-    }
-
     const initialState = initialization.initialStates[activeDimension];
     const resetScene = initialState.scene;
     setScenes((current) => ({ ...current, [activeDimension]: resetScene }));
@@ -531,14 +504,16 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
       ...current,
       [activeDimension]: initialState.linearCombinationVisible,
     }));
-    if (activeDimension === 2) {
+    if (activeDimension === 1) {
+      setLineViewport(createBasisAutoFitLineViewport(resetScene, initialState.linearCombinationVisible));
+    } else if (activeDimension === 2) {
       setPlaneViewport(createBasisAutoFitViewport(
         resetScene,
         initialState.linearCombinationVisible,
       ));
       setParallelSnapTargetId(null);
       setTargetSnapKind(null);
-    } else {
+    } else if (activeDimension === 3) {
       setCamera(initialState.camera);
       setSpaceResetKey((current) => current + 1);
     }
@@ -553,14 +528,12 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   }
 
   function handleOpenShareDialog(): void {
-    if (hasInvalidCoordinateDraft || activeDimension <= 1) {
+    if (hasInvalidCoordinateDraft) {
       return;
     }
 
     try {
-      const shareScene: BasisDimensionScene<VectorDimension> = activeDimension === 2
-        ? { ...scenes[2], dimension: 2 }
-        : { ...scenes[3], dimension: 3 };
+      const shareScene = scenes[activeDimension];
       const nextShareUrl = buildShareUrl(window.location.href, createBasisDimensionShareState({
         scene: shareScene,
         representation: representations[activeDimension],
@@ -743,10 +716,8 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
               )}
             </p>
             <LabActionControls
-              exportDisabled={hasInvalidCoordinateDraft || activeDimension <= 1}
-              exportDescriptionId={activeDimension <= 1
-                ? 'basis-low-dimensional-share-help'
-                : hasInvalidCoordinateDraft
+              exportDisabled={hasInvalidCoordinateDraft}
+              exportDescriptionId={hasInvalidCoordinateDraft
                 ? 'basis-share-disabled-help'
                 : undefined}
               onExport={handleOpenShareDialog}
@@ -755,11 +726,6 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
             {hasInvalidCoordinateDraft ? (
               <p className="lab-action-help" id="basis-share-disabled-help" role="status">
                 未確定の成分が{invalidDraftCount}か所あります。訂正すると共有URLを作成できます。
-              </p>
-            ) : null}
-            {activeDimension <= 1 ? (
-              <p className="lab-action-help" id="basis-low-dimensional-share-help" role="status">
-                0D・1Dの共有URLは、3つのLabの共有形式を更新する10.7で有効になります。
               </p>
             ) : null}
           </div>

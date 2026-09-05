@@ -1,3 +1,4 @@
+import { DEFAULT_0D_SHARE_STATE, DEFAULT_1D_SHARE_STATE } from '../../src/state/defaultState';
 import { describe, expect, it } from 'vitest';
 import { buildShareUrl, type ShareState, type ShareStateV1 } from '../../src/sharing';
 import {
@@ -11,7 +12,7 @@ describe('アプリ初期状態', () => {
     const initialization = createAppInitialization('https://example.jp/lab/');
 
     expect(initialization).toEqual({
-      initialStates: { 2: DEFAULT_2D_SHARE_STATE, 3: DEFAULT_3D_SHARE_STATE },
+      initialStates: { 0: DEFAULT_0D_SHARE_STATE, 1: DEFAULT_1D_SHARE_STATE, 2: DEFAULT_2D_SHARE_STATE, 3: DEFAULT_3D_SHARE_STATE },
       activeDimension: 2,
       source: 'default',
       errorMessage: null,
@@ -31,6 +32,8 @@ describe('アプリ初期状態', () => {
     );
 
     expect(initialization.initialStates).toEqual({
+      0: DEFAULT_0D_SHARE_STATE,
+      1: DEFAULT_1D_SHARE_STATE,
       2: shared,
       3: DEFAULT_3D_SHARE_STATE,
     });
@@ -43,6 +46,8 @@ describe('アプリ初期状態', () => {
     const initialization = createAppInitialization('https://example.jp/lab/?state=broken');
 
     expect(initialization.initialStates).toEqual({
+      0: DEFAULT_0D_SHARE_STATE,
+      1: DEFAULT_1D_SHARE_STATE,
       2: DEFAULT_2D_SHARE_STATE,
       3: DEFAULT_3D_SHARE_STATE,
     });
@@ -73,6 +78,8 @@ describe('アプリ初期状態', () => {
     );
 
     expect(initialization.initialStates).toEqual({
+      0: DEFAULT_0D_SHARE_STATE,
+      1: DEFAULT_1D_SHARE_STATE,
       2: DEFAULT_2D_SHARE_STATE,
       3: shared3d,
     });
@@ -81,7 +88,7 @@ describe('アプリ初期状態', () => {
     expect(initialization.errorMessage).toBeNull();
   });
 
-  it('v1共有URLをv3へ移行してInitialStateにする', () => {
+  it('v1共有URLをv4へ移行してInitialStateにする', () => {
     const legacy: ShareStateV1 = {
       v: 1,
       lab: 'vector-space',
@@ -95,7 +102,7 @@ describe('アプリ初期状態', () => {
 
     expect(initialization.initialStates[2]).toEqual({
       ...legacy,
-      v: 3,
+      v: 4,
       visualization: { ...legacy.visualization, camera: null },
       linearCombination: { visible: false, target: null },
     });

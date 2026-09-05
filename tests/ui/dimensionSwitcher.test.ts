@@ -43,11 +43,11 @@ describe('0D/1D/2D/3D次元切替', () => {
     expect(appSource).toContain('hidden={activeDimension !== 3}');
   });
 
-  it('2D/3Dのエクスポートには現在の次元だけを渡し、0D/1Dは10.7まで停止する', () => {
+  it('0〜3Dのエクスポートには現在の次元だけを渡す', () => {
     expect(appSource).toContain(
-      'const activeShareState = activeDimension === 3 ? threeDimensionalState : state',
+      'const activeShareState = activeDimension === 0 ? initialization.initialStates[0]',
     );
-    expect(appSource).toContain('const shareIsDeferredForDimension = activeDimension === 0 || activeDimension === 1');
+    expect(appSource).toContain('oneDimensionalStateToShare(oneDimensionalState)');
     expect(appSource).toContain(
       'buildShareUrl(window.location.href, activeShareState)',
     );

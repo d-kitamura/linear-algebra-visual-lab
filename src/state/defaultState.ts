@@ -5,7 +5,7 @@ import {
 } from '../sharing';
 
 const initialTwoDimensionalState: ShareState = {
-  v: 3,
+  v: 4,
   lab: 'vector-space',
   dim: 2,
   vectors: [
@@ -20,7 +20,7 @@ const initialTwoDimensionalState: ShareState = {
 export const DEFAULT_2D_SHARE_STATE = validateShareState(initialTwoDimensionalState);
 
 const initialThreeDimensionalState: ShareState = {
-  v: 3,
+  v: 4,
   lab: 'vector-space',
   dim: 3,
   vectors: [
@@ -34,3 +34,12 @@ const initialThreeDimensionalState: ShareState = {
 };
 
 export const DEFAULT_3D_SHARE_STATE = validateShareState(initialThreeDimensionalState);
+
+
+export const DEFAULT_0D_SHARE_STATE = validateShareState({ v: 4, lab: 'vector-space', dim: 0 });
+export const DEFAULT_1D_SHARE_STATE = validateShareState({
+  v: 4, lab: 'vector-space', dim: 1,
+  vectors: [{ id: 'a1', name: 'a1', coordinates: [2] }],
+  spanSelection: ['a1'], visualization: { showSpan: true, camera: null },
+  linearCombination: { visible: false, target: null },
+});

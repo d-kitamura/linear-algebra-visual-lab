@@ -169,11 +169,11 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain('通常の列ベクトル入力には押し込まず');
   });
 
-  it('0D・1D共有は10.7まで停止し、既存2D・3D共有を維持する', () => {
-    expect(source).toContain('exportDisabled={hasInvalidCoordinateDraft || activeDimension <= 1}');
-    expect(source).toContain('activeDimension === 0 || activeDimension === 1');
-    expect(source).toContain('0D・1Dの共有URLは、3つのLabの共有形式を更新する10.7で有効になります');
-    expect(source).toContain('const shareScene: BasisDimensionScene<VectorDimension>');
+  it('0D〜3D共有を現在次元の状態から生成する', () => {
+    expect(source).toContain('exportDisabled={hasInvalidCoordinateDraft}');
+    expect(source).toContain('const initialState = initialization.initialStates[activeDimension]');
+    expect(source).not.toContain('10.7で有効になります');
+    expect(source).toContain('const shareScene = scenes[activeDimension]');
   });
 
   it('新しいグラフ見出しと多項式の数式表記を使う', () => {

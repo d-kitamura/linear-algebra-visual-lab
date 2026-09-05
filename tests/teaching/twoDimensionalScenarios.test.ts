@@ -42,7 +42,8 @@ describe('teaching scenarios', () => {
 
     expect(documentedUrls).toHaveLength(scenarios.length);
     scenarios.forEach((scenario, index) => {
-      expect(documentedUrls[index]).toBe(buildShareUrl(PRODUCTION_BASE_URL, scenario.state));
+      // 既存の配布済みURLは版を変えず維持し、復元後の教材状態を比較する。
+      expect(documentedUrls[index]).toContain(PRODUCTION_BASE_URL);
       expect(readShareStateFromUrl(documentedUrls[index])).toEqual({
         status: 'success',
         state: scenario.state,

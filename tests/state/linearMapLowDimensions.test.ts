@@ -31,11 +31,7 @@ describe('10.6 線形写像の0〜3次元教材状態', () => {
         expect(() => updateLinearMapMatrixEntry(scene, 0, 0, 1)).toThrow(RangeError);
       }
       const initial = createLinearMapInitialization('https://example.jp/');
-      if (shape.sourceDimension <= 1 || shape.targetDimension <= 1) {
-        expect(() => createLinearMapShareState(initial.initialStates[shape.id])).toThrow('10.7');
-      } else {
-        expect(createLinearMapShareState(initial.initialStates[shape.id]).v).toBe(1);
-      }
+      expect(createLinearMapShareState(initial.initialStates[shape.id]).v).toBe(2);
     });
   }
 

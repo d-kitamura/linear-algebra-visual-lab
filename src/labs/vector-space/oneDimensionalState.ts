@@ -1,5 +1,5 @@
 import type { VectorValue } from '../../domain';
-import { MAX_SHARE_VECTORS } from '../../sharing';
+import { MAX_SHARE_VECTORS, type ShareState } from '../../sharing';
 
 export interface OneDimensionalVectorSpaceState {
   readonly vectors: readonly VectorValue[];
@@ -24,7 +24,7 @@ export function createInitialOneDimensionalVectorSpaceState(): OneDimensionalVec
   };
 }
 
-/** 1D状態は10.7の共有版へ入れるまで、既存2D/3D共有型から明示的に分離する。 */
+/** 数直線UIの状態は共有v4との変換を通し、描画用の単一成分を保つ。 */
 export function addOneDimensionalVector(
   state: OneDimensionalVectorSpaceState,
 ): OneDimensionalVectorAddResult {
@@ -64,4 +64,20 @@ export function removeOneDimensionalVector(
 function vectorIndex(id: string): number {
   const match = /^a([1-8])$/.exec(id);
   return match ? Number(match[1]) : -1;
+}
+
+
+export function oneDimensionalStateFromShare(state: ShareState): OneDimensionalVectorSpaceState {
+  if (state.dim !== 1) throw new RangeError('1Dの共有状態が必要です。');
+  return { vectors: state.vectors, spanSelection: state.spanSelection,
+    showSpan: state.visualization.showSpan, linearCombinationVisible: state.linearCombination.visible,
+    target: state.linearCombination.target?.[0] ?? null };
+}
+
+export function oneDimensionalStateToShare(state: OneDimensionalVectorSpaceState): ShareState {
+  return { v: 4, lab: 'vector-space', dim: 1,
+    vectors: state.vectors, spanSelection: state.spanSelection,
+    visualization: { showSpan: state.showSpan, camera: null },
+    linearCombination: { visible: state.linearCombinationVisible,
+      target: state.target === null ? null : [state.target] } };
 }

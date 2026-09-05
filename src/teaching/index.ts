@@ -8,6 +8,7 @@ export {
 } from './threeDimensionalScenarios';
 export { BASIS_DIMENSION_TEACHING_SCENARIOS } from './basisDimensionScenarios';
 export { LINEAR_MAP_TEACHING_SCENARIOS } from './linearMapScenarios';
+export { LOW_DIMENSIONAL_TEACHING_SCENARIOS } from './lowDimensionalScenarios';
 export type {
   BasisDimensionTeachingScenario,
   LinearCombinationTeachingScenario,

@@ -9,7 +9,7 @@ import {
 } from '../../src/sharing';
 
 const example: LinearMapShareState = {
-  v: 1,
+  v: 2,
   lab: 'linear-map',
   sourceDimension: 3,
   targetDimension: 3,
@@ -30,7 +30,7 @@ const example: LinearMapShareState = {
 
 describe('線形写像Lab共有状態v1', () => {
   it('行列、入力、線形性入力、2つのカメラを決定的に往復する', () => {
-    expect(LINEAR_MAP_SHARE_STATE_VERSION).toBe(1);
+    expect(LINEAR_MAP_SHARE_STATE_VERSION).toBe(2);
     const encoded = encodeShareState(example);
 
     expect(decodeShareState(encoded)).toEqual({ ok: true, state: example });
@@ -85,7 +85,7 @@ describe('線形写像Lab共有状態v1', () => {
       .toThrowError(expect.objectContaining({ code: 'COORDINATE_LIMIT_EXCEEDED' }));
     expect(() => validateLinearMapShareState({ ...example, activeTab: 'linearity' }))
       .toThrowError(expect.objectContaining({ code: 'INVALID_STATE' }));
-    expect(() => validateLinearMapShareState({ ...example, v: 2 }))
+    expect(() => validateLinearMapShareState({ ...example, v: 99 }))
       .toThrowError(expect.objectContaining({ code: 'UNSUPPORTED_VERSION' }));
   });
 });

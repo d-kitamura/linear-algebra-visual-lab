@@ -1,4 +1,4 @@
-import type { VectorDimension, VectorValue } from '../domain';
+import type { VectorSpaceDimension, VectorValue } from '../domain';
 import { MAX_SHARE_VECTORS, type ShareState } from '../sharing';
 
 export interface AddDefaultVectorResult {
@@ -37,7 +37,7 @@ export function removeVector(state: ShareState, vectorId: string): ShareState {
 
 function createNextDefaultVector(
   vectors: readonly VectorValue[],
-  dimension: VectorDimension,
+  dimension: VectorSpaceDimension,
 ): VectorValue {
   const existingIds = new Set(vectors.map((vector) => vector.id));
   const existingNames = new Set(vectors.map((vector) => vector.name));

@@ -1,0 +1,94 @@
+# 0D・1Dの共有教材例（10.7）
+
+最終更新: 2026-09-06
+
+正本は `src/teaching/lowDimensionalScenarios.ts`。既存28例を維持し、以下13例を追加する（合計41例）。各リンクを開いた後のResetは配布した状態へ戻る。URL・QRは現在のLabと次元だけを保存し、1D/2Dの手動表示範囲は復元しない。
+
+## 1Dの基底1本と唯一の係数
+
+生成元とターゲットを動かし、数直線全体を生成する条件と一次結合の解を比べます。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2Ijo0LCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjEsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzJdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiXSwidmlzdWFsaXphdGlvbiI6eyJzaG93U3BhbiI6dHJ1ZSwiY2FtZXJhIjpudWxsfSwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6dHJ1ZSwidGFyZ2V0IjpbM119fQ)
+
+## 1Dの2本の生成元と無数の係数
+
+生成元とターゲットを動かし、数直線全体を生成する条件と一次結合の解を比べます。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2Ijo0LCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjEsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzJdfSx7ImlkIjoiYTIiLCJuYW1lIjoiYTIiLCJjb29yZGluYXRlcyI6Wy0zXX1dLCJzcGFuU2VsZWN0aW9uIjpbImExIiwiYTIiXSwidmlzdWFsaXphdGlvbiI6eyJzaG93U3BhbiI6dHJ1ZSwiY2FtZXJhIjpudWxsfSwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6dHJ1ZSwidGFyZ2V0IjpbM119fQ)
+
+## 零生成元では非零ターゲットを表せない
+
+生成元とターゲットを動かし、数直線全体を生成する条件と一次結合の解を比べます。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2Ijo0LCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjEsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzBdfV0sInNwYW5TZWxlY3Rpb24iOlsiYTEiXSwidmlzdWFsaXphdGlvbiI6eyJzaG93U3BhbiI6dHJ1ZSwiY2FtZXJhIjpudWxsfSwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6dHJ1ZSwidGFyZ2V0IjpbMV19fQ)
+
+## 0Dと空集合のspan
+
+空集合のspanは零ベクトル空間です。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2Ijo0LCJsYWIiOiJ2ZWN0b3Itc3BhY2UiLCJkaW0iOjB9)
+
+## 0Dの空の基底
+
+空の組は一次独立で、零ベクトル空間を生成します。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJiYXNpcy1kaW1lbnNpb24iLCJkaW0iOjB9)
+
+## 定数多項式と異なる基底の座標
+
+同じ定数多項式6でも、基底2では係数3、基底−3では係数−2です。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJiYXNpcy1kaW1lbnNpb24iLCJkaW0iOjEsInZlY3RvcnMiOlt7ImlkIjoiYTEiLCJuYW1lIjoiYTEiLCJjb29yZGluYXRlcyI6WzJdfSx7ImlkIjoiYTIiLCJuYW1lIjoiYTIiLCJjb29yZGluYXRlcyI6Wy0zXX1dLCJjYW5kaWRhdGVWZWN0b3JJZHMiOlsiYTEiXSwicmVwcmVzZW50YXRpb24iOiJwb2x5bm9taWFsIiwibGluZWFyQ29tYmluYXRpb24iOnsidmlzaWJsZSI6dHJ1ZSwidGFyZ2V0IjpbNl19LCJjb21wYXJpc29uQmFzaXNJZHMiOlsiYTIiXSwiY2FtZXJhIjpudWxsfQ)
+
+## 数直線の2倍写像
+
+入力が2倍され、核は原点、像は数直線全体です。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjoxLCJ0YXJnZXREaW1lbnNpb24iOjEsIm1hdHJpeCI6W1syXV0sImlucHV0VmVjdG9yIjpbMl0sInNlY29uZGFyeUlucHV0VmVjdG9yIjpbMV0sInNjYWxhciI6MiwidmlzdWFsaXphdGlvbiI6eyJzaG93VHJhbnNmb3JtZWRHcmlkIjpmYWxzZSwiZG9tYWluQ2FtZXJhIjpudWxsLCJjb2RvbWFpbkNhbWVyYSI6bnVsbH19)
+
+## 直線から平面への埋め込み
+
+単射ですが全射ではなく、像は平面内の直線です。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjoxLCJ0YXJnZXREaW1lbnNpb24iOjIsIm1hdHJpeCI6W1sxXSxbMV1dLCJpbnB1dFZlY3RvciI6WzJdLCJzZWNvbmRhcnlJbnB1dFZlY3RvciI6WzFdLCJzY2FsYXIiOjIsInZpc3VhbGl6YXRpb24iOnsic2hvd1RyYW5zZm9ybWVkR3JpZCI6ZmFsc2UsImRvbWFpbkNhbWVyYSI6bnVsbCwiY29kb21haW5DYW1lcmEiOm51bGx9fQ)
+
+## 平面から数直線への線形汎関数
+
+入力の2成分の和を取り、核は直線、像は数直線全体です。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjoyLCJ0YXJnZXREaW1lbnNpb24iOjEsIm1hdHJpeCI6W1sxLDFdXSwiaW5wdXRWZWN0b3IiOlsyLDFdLCJzZWNvbmRhcnlJbnB1dFZlY3RvciI6WzEsLTFdLCJzY2FsYXIiOjIsInZpc3VhbGl6YXRpb24iOnsic2hvd1RyYW5zZm9ybWVkR3JpZCI6ZmFsc2UsImRvbWFpbkNhbWVyYSI6bnVsbCwiY29kb21haW5DYW1lcmEiOm51bGx9fQ)
+
+## 零空間から平面への写像
+
+唯一の写像は単射ですが、平面全体を覆わないため全射ではありません。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjowLCJ0YXJnZXREaW1lbnNpb24iOjIsInNjYWxhciI6MiwidmlzdWFsaXphdGlvbiI6eyJzaG93VHJhbnNmb3JtZWRHcmlkIjpmYWxzZSwiZG9tYWluQ2FtZXJhIjpudWxsLCJjb2RvbWFpbkNhbWVyYSI6bnVsbH19)
+
+## 平面から零空間への写像
+
+すべての入力が零ベクトルに写り、全射ですが単射ではありません。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjoyLCJ0YXJnZXREaW1lbnNpb24iOjAsInNjYWxhciI6MiwidmlzdWFsaXphdGlvbiI6eyJzaG93VHJhbnNmb3JtZWRHcmlkIjpmYWxzZSwiZG9tYWluQ2FtZXJhIjpudWxsLCJjb2RvbWFpbkNhbWVyYSI6bnVsbH0sImlucHV0VmVjdG9yIjpbMiwxXSwic2Vjb25kYXJ5SW5wdXRWZWN0b3IiOlsxLC0xXX0)
+
+## 零空間どうしの写像
+
+唯一の写像は単射かつ全射です。次元定理は0=0+0です。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjowLCJ0YXJnZXREaW1lbnNpb24iOjAsInNjYWxhciI6MiwidmlzdWFsaXphdGlvbiI6eyJzaG93VHJhbnNmb3JtZWRHcmlkIjpmYWxzZSwiZG9tYWluQ2FtZXJhIjpudWxsLCJjb2RvbWFpbkNhbWVyYSI6bnVsbH19)
+
+## 数直線の零写像
+
+rankは0、nullityは1です。
+
+[教材を開く](https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoyLCJsYWIiOiJsaW5lYXItbWFwIiwic291cmNlRGltZW5zaW9uIjoxLCJ0YXJnZXREaW1lbnNpb24iOjEsIm1hdHJpeCI6W1swXV0sImlucHV0VmVjdG9yIjpbMl0sInNlY29uZGFyeUlucHV0VmVjdG9yIjpbMV0sInNjYWxhciI6MiwidmlzdWFsaXphdGlvbiI6eyJzaG93VHJhbnNmb3JtZWRHcmlkIjpmYWxzZSwiZG9tYWluQ2FtZXJhIjpudWxsLCJjb2RvbWFpbkNhbWVyYSI6bnVsbH19)
+
+## 確認の進め方
+
+1. 1Dで生成元1本・2本・零生成元を比較し、係数が一意・無数・存在しない場合を数値でも確認する。
+2. 定数多項式ではターゲットと比較用基底を保持したまま候補を変え、係数の違いを確認する。
+3. 0Dでは空集合・空の基底と唯一の零ベクトルを区別する。通常の成分編集は行わない。
+4. 線形写像では核・像の次元と単射・全射を予想してから、次元定理タブの数値・文章と照合する。
+5. 編集後に共有URLまたはQRを別の端末で開き、Lab・次元・ターゲットを確認する。復元先で編集しResetすると、共有時の値へ戻ることも確認する。
+6. キーボードでは次元タブを左右矢印・Home・Endで切り替える。線形写像はネイティブの次元選択、共有オーバーレイはTabとEscapeで操作できる。画面が見えなくても図の読み上げ説明と数値カードで成分・rank・基底条件・核・像を追える。
+
+スマートフォンでは390px幅の配置とQR表示を自動・実画面検証し、実端末のカメラ読取・タッチ操作は授業前にも確認する。

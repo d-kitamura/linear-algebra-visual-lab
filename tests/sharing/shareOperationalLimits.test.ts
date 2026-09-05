@@ -18,7 +18,7 @@ import {
 
 const PRODUCTION_BASE_URL = 'https://d-kitamura.github.io/linear-algebra-visual-lab/';
 const reachableBoundaryState: ShareState = {
-  v: 3,
+  v: 4,
   lab: 'vector-space',
   dim: 3,
   vectors: Array.from({ length: 8 }, (_, index) => ({

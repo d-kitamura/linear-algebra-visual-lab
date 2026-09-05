@@ -1,9 +1,11 @@
 import { readShareStateFromUrl, type ShareState } from '../sharing';
-import { DEFAULT_2D_SHARE_STATE, DEFAULT_3D_SHARE_STATE } from './defaultState';
+import { DEFAULT_0D_SHARE_STATE, DEFAULT_1D_SHARE_STATE, DEFAULT_2D_SHARE_STATE, DEFAULT_3D_SHARE_STATE } from './defaultState';
 
-export type AppDimension = 2 | 3;
+export type AppDimension = 0 | 1 | 2 | 3;
 
 export interface InitialStatesByDimension {
+  readonly 0: ShareState;
+  readonly 1: ShareState;
   readonly 2: ShareState;
   readonly 3: ShareState;
 }
@@ -57,6 +59,8 @@ export function createAppInitialization(href: string): AppInitialization {
 
 function createInitialStates(sharedState?: ShareState): InitialStatesByDimension {
   return {
+    0: sharedState?.dim === 0 ? sharedState : DEFAULT_0D_SHARE_STATE,
+    1: sharedState?.dim === 1 ? sharedState : DEFAULT_1D_SHARE_STATE,
     2: sharedState?.dim === 2 ? sharedState : DEFAULT_2D_SHARE_STATE,
     3: sharedState?.dim === 3 ? sharedState : DEFAULT_3D_SHARE_STATE,
   };
