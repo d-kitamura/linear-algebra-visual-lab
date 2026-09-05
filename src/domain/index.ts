@@ -32,6 +32,8 @@ export {
 } from './basisDimension';
 
 export type {
+  BasisAnalysisOptions,
+  BasisTargetSpace,
   BasisCandidateAnalysis,
   BasisCandidateValidationCode,
   BasisFailureReason,

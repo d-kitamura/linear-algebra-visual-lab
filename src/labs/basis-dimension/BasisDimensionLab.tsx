@@ -90,6 +90,10 @@ const DIMENSION_TABS = [
 
 const POLYNOMIAL_AXIS_LABELS_3D = ['b₀', 'b₁', 'b₂'] as const;
 
+// 判定・座標・比較基底はすべて画面に示すR^n（多項式ならR[x]_(n-1)）を対象とする。
+// 全ベクトルのrankが落ちても対象空間自体の次元は変わらない（D-087）。
+const BASIS_ANALYSIS_OPTIONS = { targetSpace: 'ambient' } as const;
+
 const BASIS_INSPECTOR_TABS = [
   { id: 'vectors', label: '全ベクトルの集合', shortLabel: '成分' },
   { id: 'polynomial', label: '多項式と係数ベクトル', shortLabel: '多項式' },
@@ -203,7 +207,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
     && (tab.id !== 'combination' || linearCombinationVisible)
   ));
   const analysis = useMemo(
-    () => analyzeBasisCandidate(scene, scene.candidateVectorIds),
+    () => analyzeBasisCandidate(scene, scene.candidateVectorIds, BASIS_ANALYSIS_OPTIONS),
     [scene],
   );
   const candidateVectors = useMemo(
@@ -212,13 +216,15 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   );
   const coordinateAnalysis = useMemo(
     () => scene.target
-      ? analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target)
+      ? analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target, BASIS_ANALYSIS_OPTIONS)
       : null,
     [scene],
   );
   const comparisonAnalysis = useMemo(() => {
     const ids = comparisonBasisIds[activeDimension];
-    return ids && scene.target ? analyzeBasisCoordinates(scene, ids, scene.target) : null;
+    return ids && scene.target
+      ? analyzeBasisCoordinates(scene, ids, scene.target, BASIS_ANALYSIS_OPTIONS)
+      : null;
   }, [activeDimension, comparisonBasisIds, scene]);
   const invalidDraftCount = useMemo(() => {
     const vectorIssueCount = Object.values(coordinateDrafts[activeDimension])
@@ -463,6 +469,8 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
   }
 
   function saveComparisonBasis(): void {
+    // 非基底による一意な表現は、比較用の基底として記録しない。
+    if (coordinateAnalysis?.status !== 'coordinate-vector') return;
     setComparisonBasisIds((current) => ({
       ...current,
       [activeDimension]: [...scene.candidateVectorIds],
@@ -1237,7 +1245,7 @@ function VectorSourceEditor({
       <p className="basis-card-note">
         {polynomialMode
           ? '係数は定数項から昇べき順です。係数を変えると、多項式と候補の判定を同時に再計算します。'
-          : '成分を変えると、対象空間と候補の判定を同時に再計算します。'}
+          : '成分を変えると、候補が生成する空間と基底の判定を同時に再計算します。'}
       </p>
     </section>
   );
@@ -1358,7 +1366,7 @@ function BasisAnalysisCard({
         <ConditionResult
           success={analysis.spansTargetSpace}
           title={<>条件2：対象空間 <MathSpaceName /> を生成する</>}
-          detail={`候補のrank ${analysis.candidateRank} と対象のrank ${analysis.sourceRank}を比較します。`}
+          detail={`候補のrank ${analysis.candidateRank} と対象空間の次元 ${analysis.targetDimension}を比較します。`}
         />
       </div>
 
@@ -1374,10 +1382,21 @@ function BasisAnalysisCard({
       ) : null}
 
       <div className="basis-example">
-        <p><strong>基底の一例</strong></p>
-        <p><MathBasisName />₀ = <VectorTuple ids={analysis.basisExampleVectorIds} vectors={scene.vectors} /></p>
+        <p><strong>{analysis.basisExampleVectorIds !== null ? '基底の一例' : '基底を選べるか'}</strong></p>
+        {analysis.basisExampleVectorIds !== null ? (
+          <>
+            <p><MathBasisName />₀ = <VectorTuple ids={analysis.basisExampleVectorIds} vectors={scene.vectors} /></p>
+            <small>
+              これは入力順から得た一例です。この例以外にも基底の取り方があり得る可能性があります。
+            </small>
+          </>
+        ) : (
+          <p className="basis-example-unavailable">
+            <MathSetName />から対象空間 <MathSpaceName /> の基底を選ぶことはできません。
+            全ベクトルを使っても対象空間の次元{analysis.targetDimension}に届かないためです。
+          </p>
+        )}
         <small>
-          これは入力順から得た一例です。この例以外にも基底の取り方があり得る可能性があります。
           <MathSetName />から選べる一次独立なベクトルの最大個数は{analysis.maximumIndependentCount}本です。
         </small>
       </div>

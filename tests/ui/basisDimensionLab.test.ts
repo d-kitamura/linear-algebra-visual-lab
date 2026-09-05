@@ -13,7 +13,7 @@ describe('8.4 基底・次元エクスプローラ', () => {
     expect(source).toContain("{ dimension: 1 as const, label: '1次元'");
     expect(source).toContain('<ZeroDimensionalBasisWorkspace />');
     expect(source).toContain('<VectorLine1D');
-    expect(source).toContain('analyzeBasisCandidate(scene, scene.candidateVectorIds)');
+    expect(source).toContain('analyzeBasisCandidate(scene, scene.candidateVectorIds, BASIS_ANALYSIS_OPTIONS)');
     expect(source).toContain('<VectorPlane2D');
     expect(source).toContain('<VectorSpace3D');
     expect(source).toContain('spanRank={analysis.candidateRank}');
@@ -84,7 +84,7 @@ describe('8.4 基底・次元エクスプローラ', () => {
   });
 
   it('8.5で同じターゲットを2D・3Dの基底座標解析へ接続する', () => {
-    expect(source).toContain('? analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target)');
+    expect(source).toContain('? analyzeBasisCoordinates(scene, scene.candidateVectorIds, scene.target, BASIS_ANALYSIS_OPTIONS)');
     expect(source).toContain('linearCombinationVisible={linearCombinationVisible}');
     expect(source).toContain('target={scene.target as readonly [number, number] | null}');
     expect(source).toContain('linearCombinationTarget={scene.target as readonly [number, number, number] | null}');

@@ -1,12 +1,13 @@
 import {
   analyzeBasisCandidate,
+  type BasisAnalysisOptions,
   type BasisCandidateAnalysis,
 } from './basisDimension';
 import {
   analyzeLinearCombination,
   type LinearCombinationAnalysis,
 } from './linearCombination';
-import type { RankOptions, VectorSet, VectorValue } from './vectorSet';
+import type { VectorSet, VectorValue } from './vectorSet';
 
 export type BasisCoordinateStatus =
   | 'coordinate-vector'
@@ -29,7 +30,7 @@ export function analyzeBasisCoordinates(
   vectorSet: VectorSet,
   candidateVectorIds: readonly string[],
   target: readonly number[],
-  options: RankOptions = {},
+  options: BasisAnalysisOptions = {},
 ): BasisCoordinateAnalysis {
   const basisAnalysis = analyzeBasisCandidate(vectorSet, candidateVectorIds, options);
   const candidateVectors = resolveCandidateVectors(vectorSet.vectors, candidateVectorIds);

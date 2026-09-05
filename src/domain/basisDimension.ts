@@ -8,6 +8,13 @@ import {
 
 export type BasisFailureReason = 'linearly-dependent' | 'does-not-span-target';
 
+export type BasisTargetSpace = 'source-span' | 'ambient';
+
+export interface BasisAnalysisOptions extends RankOptions {
+  /** 既定は従来のspan(S)。空間全体の基底を調べるLabはambientを明示する。 */
+  readonly targetSpace?: BasisTargetSpace;
+}
+
 export type BasisCandidateValidationCode =
   | 'INVALID_CANDIDATE_COLLECTION'
   | 'INVALID_CANDIDATE_ID'
@@ -25,11 +32,12 @@ export class InvalidBasisCandidateError extends Error {
 }
 
 /**
- * 全ベクトルの集合 S が生成する対象空間 V = span(S) に対し、
- * candidateVectorIds の順序付きの組が基底かどうかを表す。
+ * 明示した対象空間に対し、candidateVectorIdsの順序付きの組が基底かを表す。
+ * 全ベクトルのrank（選べる最大一次独立本数）と、対象空間の次元は区別する。
  */
 export interface BasisCandidateAnalysis {
   readonly ambientDimension: VectorSpaceDimension;
+  readonly targetSpace: BasisTargetSpace;
   readonly sourceVectorCount: number;
   readonly sourceRank: number;
   readonly targetDimension: number;
@@ -41,7 +49,8 @@ export interface BasisCandidateAnalysis {
   readonly spansTargetSpace: boolean;
   readonly isBasis: boolean;
   readonly failureReasons: readonly BasisFailureReason[];
-  readonly basisExampleVectorIds: readonly string[];
+  /** nullはSから対象空間の基底を選べない場合。[]は0次元の有効な空の基底。 */
+  readonly basisExampleVectorIds: readonly string[] | null;
 }
 
 /**
@@ -78,12 +87,13 @@ export function extractBasisExample(
 
 /**
  * S の部分列として指定した順序付きの組について、一次独立性と
- * V = span(S) の生成条件を別々に評価する。
+ * 対象空間の生成条件を別々に評価する。source-spanはV=span(S)、
+ * ambientは周囲の空間全体。像・核の基底抽出の意味は変更しない。
  */
 export function analyzeBasisCandidate(
   vectorSet: VectorSet,
   candidateVectorIds: readonly string[],
-  options: RankOptions = {},
+  options: BasisAnalysisOptions = {},
 ): BasisCandidateAnalysis {
   const sourceAnalysis = analyzeVectorSet(vectorSet, options);
   const candidateVectors = resolveCandidateVectors(vectorSet, candidateVectorIds);
@@ -91,7 +101,11 @@ export function analyzeBasisCandidate(
     { dimension: vectorSet.dimension, vectors: candidateVectors },
     options,
   );
-  const spansTargetSpace = candidateAnalysis.rank === sourceAnalysis.rank;
+  const targetSpace = options.targetSpace ?? 'source-span';
+  const targetDimension = targetSpace === 'ambient'
+    ? vectorSet.dimension
+    : sourceAnalysis.spanDimension;
+  const spansTargetSpace = candidateAnalysis.rank === targetDimension;
   const isBasis = candidateAnalysis.isLinearlyIndependent && spansTargetSpace;
   const failureReasons: BasisFailureReason[] = [];
 
@@ -104,9 +118,10 @@ export function analyzeBasisCandidate(
 
   return {
     ambientDimension: vectorSet.dimension,
+    targetSpace,
     sourceVectorCount: vectorSet.vectors.length,
     sourceRank: sourceAnalysis.rank,
-    targetDimension: sourceAnalysis.spanDimension,
+    targetDimension,
     maximumIndependentCount: sourceAnalysis.rank,
     candidateVectorIds: [...candidateVectorIds],
     candidateVectorCount: candidateVectors.length,
@@ -115,7 +130,9 @@ export function analyzeBasisCandidate(
     spansTargetSpace,
     isBasis,
     failureReasons,
-    basisExampleVectorIds: extractBasisExample(vectorSet, options),
+    basisExampleVectorIds: sourceAnalysis.rank === targetDimension
+      ? extractBasisExample(vectorSet, options)
+      : null,
   };
 }
 

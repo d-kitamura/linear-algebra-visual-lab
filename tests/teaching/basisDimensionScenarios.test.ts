@@ -28,11 +28,13 @@ describe('基底・次元Labの代表例', () => {
       const analysis = analyzeBasisCandidate(
         { dimension: scenario.state.dim, vectors: scenario.state.vectors },
         scenario.state.candidateVectorIds,
+        { targetSpace: 'ambient' },
       );
       const coordinates = analyzeBasisCoordinates(
         { dimension: scenario.state.dim, vectors: scenario.state.vectors },
         scenario.state.candidateVectorIds,
         scenario.state.linearCombination.target!,
+        { targetSpace: 'ambient' },
       );
       expect(analysis).toMatchObject({
         sourceRank: scenario.expected.sourceRank,
