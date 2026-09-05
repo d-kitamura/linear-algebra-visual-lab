@@ -3,13 +3,15 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type CSSProperties,
 } from 'react';
 import type { VectorValue } from '../domain';
 import {
   lineSnapDistanceForViewWidth,
   snapLineCoordinateToOrigin,
 } from '../state';
-import { formatVectorSpokenName, splitVectorName } from '../ui';
+import { formatVectorSpokenName } from '../ui';
+import { SvgVectorLabel } from './SvgVectorLabel';
 import {
   createAdaptiveTicks,
   createArrowHeadPoints,
@@ -50,6 +52,9 @@ export interface VectorLine1DProps {
   readonly idPrefix?: string;
   readonly axisLabel?: string;
   readonly showViewportControls?: boolean;
+  readonly showHelpText?: boolean;
+  readonly spanColor?: string;
+  readonly alwaysOpaqueVectorIds?: readonly string[];
 }
 
 interface SvgPointerPoint {
@@ -85,6 +90,9 @@ export function VectorLine1D({
   idPrefix = 'vector-line',
   axisLabel = 'x',
   showViewportControls = true,
+  showHelpText = true,
+  spanColor,
+  alwaysOpaqueVectorIds = [],
 }: VectorLine1DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportRef = useRef(viewport);
@@ -453,6 +461,7 @@ export function VectorLine1D({
       <svg
         ref={svgRef}
         className="vector-line"
+        style={spanColor ? { '--line-span-color': spanColor } as CSSProperties : undefined}
         viewBox={`0 0 ${viewport.width} ${viewport.height}`}
         role="img"
         aria-labelledby={`${idPrefix}-title ${idPrefix}-description`}
@@ -533,13 +542,15 @@ export function VectorLine1D({
             const endX = toLineSvgX(coordinate, viewport);
             const color = colors[index % Math.max(1, colors.length)] ?? '#d55535';
             const arrowHead = createArrowHeadPoints([originX, axisY], [endX, axisY], 16, 7);
-            const name = splitVectorName(vector.name);
             const labelAbove = index % 2 === 0;
+            // 長いT(e_i)もプロット端で切れないよう、必要なら矢先の内側に置く。
+            const labelWidth = Math.max(24, vector.name.length * 17);
+            const labelOnRight = coordinate >= 0 ? endX + labelWidth + 13 < plotRight : endX - labelWidth - 13 < plotLeft;
 
             return (
               <g
                 key={vector.id}
-                className={`line-vector-arrow ${selectedIds.has(vector.id) ? 'is-span-selected' : ''}`}
+                className={`line-vector-arrow ${selectedIds.has(vector.id) ? 'is-span-selected' : ''} ${alwaysOpaqueVectorIds.includes(vector.id) ? 'is-always-opaque' : ''}`}
               >
                 <title>{`${formatVectorSpokenName(vector.name)}は成分${coordinate}の1次元数ベクトル`}</title>
                 <line x1={originX} y1={axisY} x2={endX} y2={axisY} stroke={color} />
@@ -566,15 +577,12 @@ export function VectorLine1D({
                 />
                 <text
                   className="vector-label line-vector-label"
-                  x={endX + (coordinate >= 0 ? 13 : -13)}
+                  x={endX + (labelOnRight ? 13 : -13)}
                   y={axisY + (labelAbove ? -18 : 35)}
                   fill={color}
-                  textAnchor={coordinate >= 0 ? 'start' : 'end'}
+                  textAnchor={labelOnRight ? 'start' : 'end'}
                 >
-                  <tspan className="svg-vector-base">{name.base}</tspan>
-                  {name.subscript ? (
-                    <tspan className="svg-vector-subscript" baselineShift="sub" fontSize="65%">{name.subscript}</tspan>
-                  ) : null}
+                  <SvgVectorLabel name={vector.name} />
                 </text>
               </g>
             );
@@ -599,9 +607,9 @@ export function VectorLine1D({
           <circle className="origin-point" cx={originX} cy={axisY} r="4" clipPath={`url(#${clipId})`} aria-hidden="true" />
         ) : null}
       </svg>
-      <p className="viewport-help">
+      {showHelpText ? <p className="viewport-help">
         矢先をドラッグすると成分を変更できます。矢先以外のドラッグで移動、ホイールまたはピンチで拡大縮小できます。
-      </p>
+      </p> : null}
     </div>
   );
 }

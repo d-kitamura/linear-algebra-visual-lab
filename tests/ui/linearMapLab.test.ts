@@ -140,7 +140,7 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
   });
 
   it('hides lower 3D help in both map figures and starts the 2D grid image off', () => {
-    expect(labSource.match(/showHelpText=\{false\}/gu)).toHaveLength(2);
+    expect(labSource.match(/showHelpText=\{false\}/gu)).toHaveLength(4);
     expect(labSource).toContain('終域に格子の像を表示');
     expect(labSource).toContain('checked={scene.showTransformedGrid}');
   });
@@ -187,8 +187,9 @@ describe('9.3 2Dから2Dへの線形写像Lab', () => {
   });
 
   it('offers keyboard tab navigation and a numeric non-graph alternative', () => {
-    expect(labSource).toContain('handleShapeTabKeyDown');
-    expect(labSource).toContain('tabIndex={activeShapeId === shape.id ? 0 : -1}');
+    expect(labSource).toContain('<label>定義域の次元');
+    expect(labSource).toContain('<label>終域の次元');
+    expect(labSource).toContain('LINEAR_MAP_DIMENSIONS.map');
     expect(labSource).toContain('className="visually-hidden" aria-live="polite"');
     expect(labSource).toContain('図を使わなくても');
   });

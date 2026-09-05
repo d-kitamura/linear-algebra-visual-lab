@@ -1,12 +1,14 @@
 export interface ZeroSpace0DProps {
   readonly idPrefix?: string;
   readonly spaceLabel?: string;
+  readonly spaceName?: 'U' | 'V';
 }
 
 /** 0Dを縮退した座標面ではなく、零ベクトルだけからなる一点の空間として示す。 */
 export function ZeroSpace0D({
   idPrefix = 'zero-space',
   spaceLabel = '零ベクトル空間',
+  spaceName = 'V',
 }: ZeroSpace0DProps) {
   return (
     <figure
@@ -23,12 +25,12 @@ export function ZeroSpace0D({
         </text>
         <g className="zero-space-formula" transform="translate(320 190)">
           <text textAnchor="middle">
-            <tspan className="zero-space-scalar">V</tspan>
+            <tspan className="zero-space-scalar">{spaceName}</tspan>
             <tspan> = {'{'}</tspan>
             <tspan className="svg-vector-base">0</tspan>
             <tspan>{'}'}</tspan>
             <tspan>，dim(</tspan>
-            <tspan className="zero-space-scalar">V</tspan>
+            <tspan className="zero-space-scalar">{spaceName}</tspan>
             <tspan>) = 0</tspan>
           </text>
         </g>

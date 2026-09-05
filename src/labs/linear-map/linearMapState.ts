@@ -1,22 +1,24 @@
 import {
   MAX_ABSOLUTE_LINEAR_MAP_INPUT,
   type LinearMapDefinition,
-  type VectorDimension,
+  type VectorSpaceDimension,
 } from '../../domain';
 
 export type Matrix2 = readonly [readonly [number, number], readonly [number, number]];
 export type Vector2 = readonly [number, number];
-export type LinearMapShapeId = '2-to-2' | '2-to-3' | '3-to-2' | '3-to-3';
+export type LinearMapShapeId = `${VectorSpaceDimension}-to-${VectorSpaceDimension}`;
 export type LinearMapPresetId =
   | 'identity' | 'rotation' | 'reflection' | 'shear' | 'scaling' | 'projection-x' | 'rank-one' | 'zero-2'
   | 'embedding-2-to-3' | 'rank-one-2-to-3'
   | 'projection-3-to-2' | 'rank-one-3-to-2'
-  | 'identity-3' | 'plane-projection-3' | 'line-projection-3' | 'zero-3';
+  | 'identity-3' | 'plane-projection-3' | 'line-projection-3' | 'zero-3'
+  | 'scaling-1' | 'zero-1' | 'embedding-1-to-2' | 'embedding-1-to-3'
+  | 'functional-2-to-1' | 'functional-3-to-1';
 
 export interface LinearMapShape {
   readonly id: LinearMapShapeId;
-  readonly sourceDimension: VectorDimension;
-  readonly targetDimension: VectorDimension;
+  readonly sourceDimension: VectorSpaceDimension;
+  readonly targetDimension: VectorSpaceDimension;
   readonly label: string;
   readonly description: string;
 }
@@ -25,15 +27,15 @@ export interface LinearMapPreset {
   readonly id: LinearMapPresetId;
   readonly label: string;
   readonly description: string;
-  readonly sourceDimension: VectorDimension;
-  readonly targetDimension: VectorDimension;
+  readonly sourceDimension: VectorSpaceDimension;
+  readonly targetDimension: VectorSpaceDimension;
   readonly matrix: readonly (readonly number[])[];
   readonly defaultInput: readonly number[];
 }
 
 export interface LinearMapScene {
-  readonly sourceDimension: VectorDimension;
-  readonly targetDimension: VectorDimension;
+  readonly sourceDimension: VectorSpaceDimension;
+  readonly targetDimension: VectorSpaceDimension;
   readonly matrix: readonly (readonly number[])[];
   readonly inputVector: readonly number[];
   readonly secondaryInputVector: readonly number[];
@@ -41,17 +43,25 @@ export interface LinearMapScene {
   readonly showTransformedGrid: boolean;
 }
 
-/** 9.3との互換用の名称。9.4以降は2D/3D共通sceneとして扱う。 */
+/** 9.3との互換用の名称。10.6以降は0〜3次元共通sceneとして扱う。 */
 export type LinearMapPlaneScene = LinearMapScene;
 
-export const LINEAR_MAP_SHAPES: readonly LinearMapShape[] = [
-  { id: '2-to-2', sourceDimension: 2, targetDimension: 2, label: '2D → 2D', description: '2次元から2次元' },
-  { id: '2-to-3', sourceDimension: 2, targetDimension: 3, label: '2D → 3D', description: '2次元から3次元' },
-  { id: '3-to-2', sourceDimension: 3, targetDimension: 2, label: '3D → 2D', description: '3次元から2次元' },
-  { id: '3-to-3', sourceDimension: 3, targetDimension: 3, label: '3D → 3D', description: '3次元から3次元' },
-] as const;
+export const LINEAR_MAP_DIMENSIONS = [0, 1, 2, 3] as const;
+export const LINEAR_MAP_SHAPES: readonly LinearMapShape[] = LINEAR_MAP_DIMENSIONS.flatMap(
+  (sourceDimension) => LINEAR_MAP_DIMENSIONS.map((targetDimension) => ({
+    id: linearMapShapeId(sourceDimension, targetDimension), sourceDimension, targetDimension,
+    label: `${sourceDimension}D → ${targetDimension}D`,
+    description: `${sourceDimension}次元から${targetDimension}次元`,
+  })),
+);
 
 export const LINEAR_MAP_PRESETS: readonly LinearMapPreset[] = [
+  preset('scaling-1', '拡大・縮小', '数直線上の入力を2倍します。負の係数では向きも反転します。', 1, 1, [[2]], [2]),
+  preset('zero-1', '零写像', '数直線上のすべての入力を原点へ移します。', 1, 1, [[0]], [2]),
+  preset('embedding-1-to-2', '直線への埋め込み', '数直線を2次元空間内の直線へ移します。', 1, 2, [[1], [1]], [2]),
+  preset('embedding-1-to-3', '直線への埋め込み', '数直線を3次元空間内の直線へ移します。', 1, 3, [[1], [1], [1]], [2]),
+  preset('functional-2-to-1', '成分の和', '2成分の和を数直線上へ移します。', 2, 1, [[1, 1]], [2, 1]),
+  preset('functional-3-to-1', '成分の和', '3成分の和を数直線上へ移します。', 3, 1, [[1, 1, 1]], [2, 1, 1]),
   preset('identity', '恒等写像', 'すべてのベクトルをそのまま移します。', 2, 2, [[1, 0], [0, 1]], [2, 1]),
   preset('rotation', '90°回転', '原点を中心に反時計回りへ90°回転します。', 2, 2, [[0, -1], [1, 0]], [2, 1]),
   preset('reflection', '鏡映', 'x軸について折り返します。', 2, 2, [[1, 0], [0, -1]], [2, 1]),
@@ -70,7 +80,12 @@ export const LINEAR_MAP_PRESETS: readonly LinearMapPreset[] = [
   preset('zero-3', '零写像', 'すべての入力を原点へ移します。', 3, 3, [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [2, 1, 1]),
 ] as const;
 
-const DEFAULT_PRESET_BY_SHAPE: Readonly<Record<LinearMapShapeId, LinearMapPresetId>> = {
+const DEFAULT_PRESET_BY_SHAPE: Readonly<Partial<Record<LinearMapShapeId, LinearMapPresetId>>> = {
+  '1-to-1': 'scaling-1',
+  '1-to-2': 'embedding-1-to-2',
+  '1-to-3': 'embedding-1-to-3',
+  '2-to-1': 'functional-2-to-1',
+  '3-to-1': 'functional-3-to-1',
   '2-to-2': 'shear',
   '2-to-3': 'embedding-2-to-3',
   '3-to-2': 'projection-3-to-2',
@@ -80,18 +95,29 @@ const DEFAULT_PRESET_BY_SHAPE: Readonly<Record<LinearMapShapeId, LinearMapPreset
 export const DEFAULT_LINEAR_MAP_SCENE = createSceneFromPresetRecord(presetById('shear'), false);
 
 export function linearMapShapeId(
-  sourceDimension: VectorDimension,
-  targetDimension: VectorDimension,
+  sourceDimension: VectorSpaceDimension,
+  targetDimension: VectorSpaceDimension,
 ): LinearMapShapeId {
   return `${sourceDimension}-to-${targetDimension}` as LinearMapShapeId;
 }
 
 export function createDefaultLinearMapScene(
-  sourceDimension: VectorDimension = 2,
-  targetDimension: VectorDimension = 2,
+  sourceDimension: VectorSpaceDimension = 2,
+  targetDimension: VectorSpaceDimension = 2,
 ): LinearMapScene {
   const shapeId = linearMapShapeId(sourceDimension, targetDimension);
-  return createSceneFromPresetRecord(presetById(DEFAULT_PRESET_BY_SHAPE[shapeId]), false);
+  if (sourceDimension === 0 || targetDimension === 0) {
+    // 0×nでは列数を行配列から復元できないので、次元をsceneに別途保持する。
+    return {
+      sourceDimension, targetDimension,
+      matrix: Array.from({ length: targetDimension }, () => Array(sourceDimension).fill(0)),
+      inputVector: Array.from({ length: sourceDimension }, (_, index) => index === 0 ? 2 : 1),
+      secondaryInputVector: defaultSecondaryInput(sourceDimension), scalar: 2, showTransformedGrid: false,
+    };
+  }
+  const presetId = DEFAULT_PRESET_BY_SHAPE[shapeId];
+  if (!presetId) throw new RangeError('未対応の次元組です。');
+  return createSceneFromPresetRecord(presetById(presetId), false);
 }
 
 export function createDefaultLinearMapScenes(): Record<LinearMapShapeId, LinearMapScene> {
@@ -206,8 +232,8 @@ function preset(
   id: LinearMapPresetId,
   label: string,
   description: string,
-  sourceDimension: VectorDimension,
-  targetDimension: VectorDimension,
+  sourceDimension: VectorSpaceDimension,
+  targetDimension: VectorSpaceDimension,
   matrix: readonly (readonly number[])[],
   defaultInput: readonly number[],
 ): LinearMapPreset {
@@ -226,8 +252,8 @@ function createSceneFromPresetRecord(selected: LinearMapPreset, showTransformedG
   };
 }
 
-function defaultSecondaryInput(dimension: VectorDimension): number[] {
-  return dimension === 2 ? [1, -1] : [1, -1, 2];
+function defaultSecondaryInput(dimension: VectorSpaceDimension): number[] {
+  return [1, -1, 2].slice(0, dimension);
 }
 
 function presetById(presetId: LinearMapPresetId): LinearMapPreset {

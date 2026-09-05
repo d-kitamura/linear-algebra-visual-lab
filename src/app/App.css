@@ -1134,7 +1134,7 @@
 }
 
 .line-span-1 line {
-  stroke: var(--span-neutral-strong);
+  stroke: var(--line-span-color, var(--span-neutral-strong));
   stroke-width: 18;
   stroke-linecap: round;
   stroke-dasharray: 24 12;
@@ -1142,15 +1142,15 @@
 }
 
 .line-span-origin circle {
-  fill: color-mix(in srgb, var(--span-neutral-soft) 75%, #fffdf7);
-  stroke: var(--span-neutral-strong);
+  fill: color-mix(in srgb, var(--line-span-color, var(--span-neutral-soft)) 75%, #fffdf7);
+  stroke: var(--line-span-color, var(--span-neutral-strong));
   stroke-width: 4;
   stroke-dasharray: 6 4;
 }
 
 .line-span-origin path {
   fill: none;
-  stroke: var(--span-neutral-strong);
+  stroke: var(--line-span-color, var(--span-neutral-strong));
   stroke-width: 3;
   stroke-linecap: round;
 }
@@ -1191,8 +1191,14 @@
   opacity: 0.92;
 }
 
-.line-vector-arrows.is-showing-span .line-vector-arrow:not(.is-span-selected) {
+.line-vector-arrows.is-showing-span .line-vector-arrow:not(.is-span-selected):not(.is-always-opaque) {
   opacity: 0.38;
+}
+
+.line-vector-arrow.is-always-opaque line,
+.line-vector-arrow.is-always-opaque polygon,
+.line-vector-arrow.is-always-opaque .vector-tip {
+  opacity: 1;
 }
 
 .line-vector-drag-handle,
@@ -4025,6 +4031,56 @@
   border: 1px solid var(--line);
   border-radius: 16px;
   background: color-mix(in srgb, var(--paper) 92%, transparent);
+}
+
+.linear-map-dimension-selectors {
+  display: grid;
+  gap: 6px;
+}
+
+.linear-map-dimension-selectors label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.linear-map-dimension-selectors select {
+  min-height: 38px;
+  padding: 4px 20px 4px 10px;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.linear-map-fit-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.linear-map-fit-controls > button:not(.basis-fit-button) {
+  min-width: 28px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.linear-map-empty-matrix {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.linear-map-fixed-explanation {
+  margin-bottom: 18px;
+  line-height: 1.8;
 }
 
 .linear-map-shape-tablist {

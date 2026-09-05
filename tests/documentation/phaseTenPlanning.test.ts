@@ -64,6 +64,15 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(specification).toContain('### AC-63: 基底・次元Labの0D・1D操作');
   });
 
+  it('D-087を確認済みとしD-088の線形写像接続と共有境界を記録する', () => {
+    expect(decisions).toContain('状態: **利用者確認済み**（2026-09-05、作業単位10.5a。');
+    expect(decisions).toContain('### D-088 線形写像Labの0D・1D接続と16次元組');
+    expect(projectStatus).toContain('## 作業単位10.6実装記録（D-088）');
+    expect(specification).toContain('#### FR-LOWDIM-05: 線形写像Labの0D・1D接続');
+    expect(specification).toContain('### AC-64: 線形写像Labの0D・1D操作');
+    expect(specification).toContain('共有版更新を行う10.7まで共有を理由付きで無効化する');
+  });
+
   it('1Dを通常操作、0Dを制約付き境界教材として分ける', () => {
     expect(roadmap).toContain('1Dは全3Labで通常操作できる第一級の表示');
     expect(roadmap).toContain('0Dは一点表示と定義上必要な固定状態');
@@ -112,6 +121,6 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(roadmap).toContain('基底変換行列の「どの基底の座標から、どの基底の座標へ変換するか」');
     expect(roadmap).toContain('仮の記号で先行実装しない');
     expect(projectStatus).toContain('表現行列と写像定義用行列の文字');
-    expect(specification).toContain('| 文書バージョン | 0.98 |');
+    expect(specification).toContain('| 文書バージョン | 0.99 |');
   });
 });

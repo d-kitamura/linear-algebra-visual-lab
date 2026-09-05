@@ -27,7 +27,10 @@ describe('0D・1D common visualization', () => {
     expect(lineSource).toContain('createAdaptiveTicks(viewport.min, viewport.max)');
     expect(lineSource).toContain('line-span-${spanDimension}');
     expect(lineSource).toContain('<LineTargetVector');
-    expect(lineSource).toContain('className="svg-vector-subscript"');
+    expect(lineSource).toContain('<SvgVectorLabel name={vector.name} />');
+    const labelSource = readFileSync(new URL('../../src/visualization/SvgVectorLabel.tsx', import.meta.url), 'utf8');
+    expect(labelSource).toContain('className="svg-vector-subscript"');
+    expect(labelSource).toContain('className="svg-map-symbol"');
     expect(lineSource).toContain('1次元数ベクトルの数直線表示');
   });
 

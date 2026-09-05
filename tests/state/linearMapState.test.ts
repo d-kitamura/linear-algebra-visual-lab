@@ -123,7 +123,7 @@ describe('linear-map 2D scene state', () => {
   it('provides independent defaults for all four 2D and 3D dimension pairs', () => {
     const scenes = createDefaultLinearMapScenes();
 
-    expect(LINEAR_MAP_SHAPES.map((shape) => shape.id)).toEqual([
+    expect(LINEAR_MAP_SHAPES.filter((shape) => shape.sourceDimension >= 2 && shape.targetDimension >= 2).map((shape) => shape.id)).toEqual([
       '2-to-2', '2-to-3', '3-to-2', '3-to-3',
     ]);
     expect(scenes['2-to-3']).toMatchObject({

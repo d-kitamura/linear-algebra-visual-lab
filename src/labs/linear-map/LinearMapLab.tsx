@@ -16,6 +16,7 @@ import {
   type LinearMapAnalysis,
   type LinearMapLinearityAnalysis,
   type VectorValue,
+  type VectorSpaceDimension,
 } from '../../domain';
 import {
   ShareUrlBuildError,
@@ -32,6 +33,9 @@ import {
   snapTargetToSelectedSpan,
 } from '../../state';
 import { formatMathNumber } from '../../ui';
+import { VectorLine1D } from '../../visualization/VectorLine1D';
+import { ZeroSpace0D } from '../../visualization/ZeroSpace0D';
+import { createAutoFitLineViewport, zoomLineViewportAtCenter, type LineViewport } from '../../visualization/lineGeometry';
 import {
   VectorPlane2D,
   createAutoFitViewport,
@@ -41,6 +45,8 @@ import {
 import {
   LINEAR_MAP_PRESETS,
   LINEAR_MAP_SHAPES,
+  LINEAR_MAP_DIMENSIONS,
+  linearMapShapeId,
   createLinearMapDefinition,
   createLinearMapSceneFromPreset,
   findMatchingLinearMapPreset,
@@ -107,6 +113,8 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   const [scenes, setScenes] = useState(() => scenesFromInitialStates(initialization.initialStates));
   const [activeShapeId, setActiveShapeId] = useState<LinearMapShapeId>(initialization.activeShapeId);
   const scene = scenes[activeShapeId];
+  const isFixedMap = scene.sourceDimension === 0 || scene.targetDimension === 0;
+  const shareUnavailable = scene.sourceDimension <= 1 || scene.targetDimension <= 1;
   const [matrixDrafts, setMatrixDrafts] = useState<MatrixDrafts>(() =>
     createMatrixDrafts(initialScene.matrix));
   const [inputDrafts, setInputDrafts] = useState<VectorDrafts>(() =>
@@ -118,6 +126,9 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   const [domainManualViewport, setDomainManualViewport] = useState<PlaneViewport | null>(null);
   const [codomainManualViewport, setCodomainManualViewport] = useState<PlaneViewport | null>(null);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
+  const [domainLineManualViewport, setDomainLineManualViewport] = useState<LineViewport | null>(null);
+  const [codomainLineManualViewport, setCodomainLineManualViewport] = useState<LineViewport | null>(null);
+  const [lineDragViewport, setLineDragViewport] = useState<LineViewport | null>(null);
   const [domainCameras, setDomainCameras] = useState(() => camerasFromInitialStates(
     initialization.initialStates,
     'domainCamera',
@@ -218,15 +229,20 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     [analysis.imageBasis],
   );
   const domainAutoViewport = useMemo(
-    () => createAutoFitViewport([...domainVectors, ...kernelBasisVectors]),
-    [domainVectors, kernelBasisVectors],
+    () => createAutoFitViewport(scene.sourceDimension === 2 ? [...domainVectors, ...kernelBasisVectors] : []),
+    [domainVectors, kernelBasisVectors, scene.sourceDimension],
   );
   const codomainAutoViewport = useMemo(
-    () => createAutoFitViewport(codomainVectors),
-    [codomainVectors],
+    () => createAutoFitViewport(scene.targetDimension === 2 ? codomainVectors : []),
+    [codomainVectors, scene.targetDimension],
   );
   const domainViewport = dragViewport ?? domainManualViewport ?? domainAutoViewport;
   const codomainViewport = codomainManualViewport ?? codomainAutoViewport;
+  const domainLineViewport = lineDragViewport ?? domainLineManualViewport
+    ?? createAutoFitLineViewport(scene.inputVector);
+  // 3Dのドラッグプレビューも1Dの像へ反映する。終域の矢先は編集不可。
+  const codomainLineViewport = codomainLineManualViewport
+    ?? createAutoFitLineViewport(codomainPlaneVectors.flatMap((vector) => vector.coordinates));
   const transformedGridSegments = useMemo(
     () => scene.sourceDimension === 2
       && scene.targetDimension === 2
@@ -260,6 +276,9 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     setDomainManualViewport(null);
     setCodomainManualViewport(null);
     setDragViewport(null);
+    setDomainLineManualViewport(null);
+    setCodomainLineManualViewport(null);
+    setLineDragViewport(null);
     setInputCoordinatePreview(null);
   }
 
@@ -363,6 +382,9 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     setDomainManualViewport(null);
     setCodomainManualViewport(null);
     setDragViewport(null);
+    setDomainLineManualViewport(null);
+    setCodomainLineManualViewport(null);
+    setLineDragViewport(null);
   }
 
   function handleDomainCameraChange(camera: SharedCameraState): void {
@@ -385,7 +407,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
   }
 
   function handleOpenShareDialog(): void {
-    if (invalidDraftCount > 0) {
+    if (invalidDraftCount > 0 || shareUnavailable) {
       return;
     }
 
@@ -502,43 +524,26 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     document.getElementById(`linear-map-inspector-tab-${nextTab.id}`)?.focus();
   }
 
-  function handleShapeTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>): void {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-      return;
-    }
-    event.preventDefault();
-    const currentIndex = LINEAR_MAP_SHAPES.findIndex((shape) => shape.id === activeShapeId);
-    const nextIndex = event.key === 'Home'
-      ? 0
-      : event.key === 'End'
-        ? LINEAR_MAP_SHAPES.length - 1
-        : event.key === 'ArrowRight'
-          ? (currentIndex + 1) % LINEAR_MAP_SHAPES.length
-          : (currentIndex - 1 + LINEAR_MAP_SHAPES.length) % LINEAR_MAP_SHAPES.length;
-    const nextShape = LINEAR_MAP_SHAPES[nextIndex];
-    handleShapeChange(nextShape.id);
-    document.getElementById(`linear-map-shape-tab-${nextShape.id}`)?.focus();
-  }
-
   return (
     <div className="linear-map-lab" data-lab-id="linear-map" aria-hidden={!active}>
       <a className="skip-link" href="#linear-map-workspace">線形写像の操作領域へ移動</a>
       <main className="lab-page">
         <nav className="linear-map-shape-switcher" aria-label="線形写像の定義域と終域の次元">
-          <div className="linear-map-shape-tablist" role="tablist" aria-label="入出力次元の切替">
-            {LINEAR_MAP_SHAPES.map((shape) => (
-              <button
-                key={shape.id}
-                id={`linear-map-shape-tab-${shape.id}`}
-                type="button"
-                role="tab"
-                aria-selected={activeShapeId === shape.id}
-                aria-controls="linear-map-workspace"
-                tabIndex={activeShapeId === shape.id ? 0 : -1}
-                onClick={() => handleShapeChange(shape.id)}
-                onKeyDown={handleShapeTabKeyDown}
-              >{shape.label}</button>
-            ))}
+          <div className="linear-map-dimension-selectors">
+            <label>定義域の次元
+              <select value={scene.sourceDimension} onChange={(event) => handleShapeChange(
+                linearMapShapeId(Number(event.target.value) as VectorSpaceDimension, scene.targetDimension),
+              )}>
+                {LINEAR_MAP_DIMENSIONS.map((dimension) => <option key={dimension} value={dimension}>{dimension}次元</option>)}
+              </select>
+            </label>
+            <label>終域の次元
+              <select value={scene.targetDimension} onChange={(event) => handleShapeChange(
+                linearMapShapeId(scene.sourceDimension, Number(event.target.value) as VectorSpaceDimension),
+              )}>
+                {LINEAR_MAP_DIMENSIONS.map((dimension) => <option key={dimension} value={dimension}>{dimension}次元</option>)}
+              </select>
+            </label>
           </div>
           <p>定義域と終域の次元ごとに教材状態を保持します。</p>
         </nav>
@@ -552,21 +557,27 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
         <section className="lab-intro" aria-labelledby="linear-map-title">
           <div>
             <p className="eyebrow">線形写像 / {scene.sourceDimension}D → {scene.targetDimension}D</p>
-            <h1 id="linear-map-title">入力を動かして、像の動きを見る。</h1>
+            <h1 id="linear-map-title">{scene.sourceDimension === 0 ? '零ベクトルから、写像を確かめる。' : '入力を動かして、像の動きを見る。'}</h1>
           </div>
           <div className="lab-intro-side">
             <p className="lab-intro-copy">
+              {isFixedMap ? <>0次元を含むこの次元組では、線形写像は一つだけに決まります。核と像、単射・全射を確かめます。</> : <>
               定義域の入力 <MathVectorName name="u" /> と行列 <MathMatrixName /> を変えると、
               終域の像 <MathMapValue argument="u" /> がリアルタイムに決まります。
+              </>}
               薄い青色の核 <MathNamedSubspace name="Ker" /> と薄いピンク色の像 <MathNamedSubspace name="Im" /> を比較できます。
             </p>
             <LabActionControls
-              exportDisabled={invalidDraftCount > 0}
-              exportDescriptionId={invalidDraftCount > 0 ? 'linear-map-share-disabled-help' : undefined}
+              exportDisabled={invalidDraftCount > 0 || shareUnavailable}
+              exportDescriptionId={invalidDraftCount > 0 || shareUnavailable ? 'linear-map-share-disabled-help' : undefined}
               onExport={handleOpenShareDialog}
               onReset={handleReset}
             />
-            {invalidDraftCount > 0 ? (
+            {shareUnavailable ? (
+              <p className="lab-action-help" id="linear-map-share-disabled-help" role="status">
+                0D・1Dの共有URLは、3つのLabの共有形式を更新する10.7で有効になります。
+              </p>
+            ) : invalidDraftCount > 0 ? (
               <p className="lab-action-help" id="linear-map-share-disabled-help" role="status">
                 未確定の成分が{invalidDraftCount}か所あります。訂正すると共有URLを作成できます。
               </p>
@@ -597,18 +608,33 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
         <p className="visually-hidden" aria-live="polite">
           現在は{scene.sourceDimension}次元から{scene.targetDimension}次元への線形写像です。
           rankは{analysis.rank}、核の次元は{analysis.kernelDimension}、像の次元は{analysis.imageDimension}です。
-          入力ベクトルuの成分は{scene.inputVector.join('、')}、像T(u)の成分は{analysis.imageVector.join('、')}です。
+          入力ベクトルuは{scene.sourceDimension === 0 ? '零ベクトル（成分なし）' : scene.inputVector.join('、')}、像T(u)は{scene.targetDimension === 0 ? '零ベクトル（成分なし）' : analysis.imageVector.join('、')}です。
           図を使わなくても、行列と入力タブの数値入力と、行列の列・核・像タブの数値説明から同じ結果を確認できます。
         </p>
 
         <div
           className="linear-map-workspace"
           id="linear-map-workspace"
-          role="tabpanel"
-          aria-labelledby={`linear-map-shape-tab-${activeShapeId}`}
+          role="region"
+          aria-label="現在の次元組の線形写像"
         >
           <div className="linear-map-diagram-grid">
-            {scene.sourceDimension === 2 ? (
+            {scene.sourceDimension === 0 ? (
+              <ZeroMapPlot name="U" />
+            ) : scene.sourceDimension === 1 ? (
+              <section className="plot-card linear-map-plot-card" aria-labelledby="linear-map-domain-title">
+                <PlotHeading id="linear-map-domain-title" kind="Domain" name="U" dimension={1}
+                  onFit={() => setDomainLineManualViewport(null)}
+                  onZoom={(factor) => setDomainLineManualViewport(zoomLineViewportAtCenter(domainLineViewport, factor))} />
+                <VectorLine1D idPrefix="linear-map-domain-line" vectors={domainVectors} colors={DOMAIN_VECTOR_COLORS}
+                  viewport={domainLineViewport} onViewportChange={setDomainLineManualViewport}
+                  onVectorDragStart={() => setLineDragViewport(domainLineViewport)}
+                  onVectorChange={(_, coordinates) => commitInputCoordinates(coordinates)}
+                  onVectorDragEnd={() => setLineDragViewport(null)}
+                  spanDimension={analysis.kernelDimension as 0 | 1} showSpan spanLabel="Ker(T)" spanColor={KERNEL_SPAN_COLOR}
+                  alwaysOpaqueVectorIds={DOMAIN_ALWAYS_OPAQUE_VECTOR_IDS} showViewportControls={false} showHelpText={false} />
+              </section>
+            ) : scene.sourceDimension === 2 ? (
               <section className="plot-card linear-map-plot-card" aria-labelledby="linear-map-domain-title">
                 <PlotHeading id="linear-map-domain-title" kind="Domain" name="U" dimension={2} onFit={() => setDomainManualViewport(null)} />
                 <VectorPlane2D
@@ -661,7 +687,19 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
               </Suspense>
             )}
 
-            {scene.targetDimension === 2 ? (
+            {scene.targetDimension === 0 ? (
+              <ZeroMapPlot name="V" />
+            ) : scene.targetDimension === 1 ? (
+              <section className="plot-card linear-map-plot-card" aria-labelledby="linear-map-codomain-title">
+                <PlotHeading id="linear-map-codomain-title" kind="Codomain" name="V" dimension={1}
+                  onFit={() => setCodomainLineManualViewport(null)}
+                  onZoom={(factor) => setCodomainLineManualViewport(zoomLineViewportAtCenter(codomainLineViewport, factor))} />
+                <VectorLine1D idPrefix="linear-map-codomain-line" vectors={codomainPlaneVectors} colors={codomainColors}
+                  viewport={codomainLineViewport} onViewportChange={setCodomainLineManualViewport}
+                  spanDimension={analysis.imageDimension as 0 | 1} showSpan spanLabel="Im(T)" spanColor={IMAGE_SPAN_COLOR}
+                  alwaysOpaqueVectorIds={CODOMAIN_ALWAYS_OPAQUE_VECTOR_IDS} showViewportControls={false} showHelpText={false} />
+              </section>
+            ) : scene.targetDimension === 2 ? (
               <section className="plot-card linear-map-plot-card" aria-labelledby="linear-map-codomain-title">
                 <PlotHeading id="linear-map-codomain-title" kind="Codomain" name="V" dimension={2} onFit={() => setCodomainManualViewport(null)} />
                 <VectorPlane2D
@@ -741,6 +779,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
             >
               <p className="panel-kicker">Edit transformation</p>
               <h2 id="linear-map-control-title">行列と入力</h2>
+              {isFixedMap ? <FixedMapExplanation sourceDimension={scene.sourceDimension} targetDimension={scene.targetDimension} /> : <>
               <label className="linear-map-preset-field">
                 <span>代表例</span>
                 <select
@@ -760,10 +799,12 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
               <p className="linear-map-preset-description">
                 {selectedPreset?.description ?? '行列の成分を直接編集した写像です。'}
               </p>
+              </>}
               <div className="linear-map-editor-row">
                 <div className="linear-map-editor-block">
                   <strong><MathMatrixName /> =</strong>
-                  <MatrixInput drafts={matrixDrafts} onChange={handleMatrixDraftChange} />
+                  {isFixedMap ? <MathMatrix values={scene.matrix} columns={scene.sourceDimension} />
+                    : <MatrixInput drafts={matrixDrafts} onChange={handleMatrixDraftChange} />}
                 </div>
                 <div className="linear-map-editor-block">
                   <strong><MathVectorName name="u" /> =</strong>
@@ -799,6 +840,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
             >
               <p className="panel-kicker">Read kernel and image</p>
               <h2 id="linear-map-reading-title">行列の列・核・像</h2>
+              {isFixedMap ? <FixedMapExplanation sourceDimension={scene.sourceDimension} targetDimension={scene.targetDimension} /> : <>
               <div className="linear-map-equation">
                 <MathMatrixName /> = [
                 {Array.from({ length: scene.sourceDimension }, (_, index) => (
@@ -818,6 +860,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
                   </p>
                 ))}
               </div>
+              </>}
               <SubspaceSummary analysis={analysis} imageIsZero={imageIsZero} />
               <div className="linear-map-current-value">
                 <p>
@@ -933,12 +976,14 @@ function PlotHeading({
   name,
   dimension,
   onFit,
+  onZoom,
 }: {
   readonly id: string;
   readonly kind: 'Domain' | 'Codomain';
   readonly name: 'U' | 'V';
-  readonly dimension: 2 | 3;
+  readonly dimension: VectorSpaceDimension;
   readonly onFit: () => void;
+  readonly onZoom?: (factor: number) => void;
 }) {
   return (
     <div className="card-heading">
@@ -946,9 +991,40 @@ function PlotHeading({
         <p className="panel-kicker">{kind}</p>
         <h2 id={id}>{kind === 'Domain' ? '定義域' : '終域'} <MathRealSpace name={name} dimension={dimension} /></h2>
       </div>
-      <button className="basis-fit-button" type="button" onClick={onFit}>全体を表示</button>
+      <div className="linear-map-fit-controls">
+        {onZoom ? <>
+          <button type="button" aria-label="縮小して広い範囲を表示" onClick={() => onZoom(1.25)}>−</button>
+          <button type="button" aria-label="拡大して狭い範囲を表示" onClick={() => onZoom(0.8)}>＋</button>
+        </> : null}
+        <button className="basis-fit-button" type="button" onClick={onFit}>全体を表示</button>
+      </div>
     </div>
   );
+}
+
+function ZeroMapPlot({ name }: { readonly name: 'U' | 'V' }) {
+  const label = name === 'U' ? '定義域' : '終域';
+  return <section className="plot-card linear-map-plot-card" aria-label={`${label}の0次元空間`}>
+    <p className="panel-kicker">{name === 'U' ? 'Domain' : 'Codomain'}</p>
+    <h2>{label} <MathRealSpace name={name} dimension={0} /></h2>
+    <ZeroSpace0D idPrefix={`linear-map-zero-${name}`} spaceLabel={`${label}の零ベクトル空間`} spaceName={name} />
+  </section>;
+}
+
+function FixedMapExplanation({ sourceDimension, targetDimension }: {
+  readonly sourceDimension: VectorSpaceDimension;
+  readonly targetDimension: VectorSpaceDimension;
+}) {
+  return <div className="linear-map-fixed-explanation">
+    <strong>この次元組の線形写像は一つだけです</strong>
+    <p>{sourceDimension === 0
+      ? <>定義域には <MathVectorName name="0" /> だけがあり、線形写像は必ず <MathScalar name="T" />(<MathVectorName name="0" />) = <MathVectorName name="0" /> を満たします。</>
+      : <>終域には <MathVectorName name="0" /> だけがあるため、どの入力 <MathVectorName name="u" /> も <MathMapValue argument="u" /> = <MathVectorName name="0" /> へ写ります。入力を動かして確かめられます。</>}
+    </p>
+    <p>行列は{targetDimension}行{sourceDimension}列の空行列で、編集する成分はありません。
+      {sourceDimension === 0 ? '定義域の標準基底は空の組で、並べる標準基底の像もありません。' : '標準基底の各ベクトルも、終域の零ベクトルへ写ります。'}
+    </p>
+  </div>;
 }
 
 function MatrixInput({
@@ -985,6 +1061,7 @@ function VectorInput({ name, drafts, onChange }: {
   readonly drafts: VectorDrafts;
   readonly onChange: (index: number, text: string) => void;
 }) {
+  if (drafts.length === 0) return <MathVectorName name="0" />;
   return (
     <span className="linear-map-vector-input" aria-label={`入力ベクトル${name}の成分`}>
       {drafts.map((draft, index) => (
@@ -1028,8 +1105,10 @@ function LinearityCard({
       <p className="panel-kicker">Check linearity</p>
       <h2 id="linear-map-linearity-title">写像の線形性の確認</h2>
       <p className="linear-map-concept-intro">
+        {analysis.firstInput.length === 0 ? '定義域では入力uとwはともに零ベクトルです。スカラーを変えても、和とスカラー倍の等式が保たれます。' : <>
         もう1本の入力 <MathVectorName name="w" /> とスカラー <MathScalar name="c" /> を変えて、
         写像の前後で和とスカラー倍が保たれることを比べます。
+        </>}
       </p>
       <div className="linear-map-linearity-inputs">
         <div className="linear-map-linearity-input is-derived">
@@ -1127,13 +1206,13 @@ function DimensionTheoremCard({ analysis, active }: {
         <span><span className="math-roman">null</span>(<span className="math-scalar-base">T</span>)</span>
         <strong>{analysis.nullity}</strong>
       </div>
-      <div
+      {analysis.sourceDimension === 0 ? <p>定義域は零ベクトル空間です。次元0なので、方向を表す区画はありません。</p> : <div
         className="linear-map-dimension-bar"
         aria-label={`定義域${analysis.sourceDimension}次元のうち、rankが${analysis.rank}、退化次数が${analysis.nullity}`}
       >
         {Array.from({ length: analysis.rank }, (_, index) => <span className="is-rank" key={`rank-${index}`} />)}
         {Array.from({ length: analysis.nullity }, (_, index) => <span className="is-nullity" key={`nullity-${index}`} />)}
-      </div>
+      </div>}
       <div className="linear-map-dimension-legend">
         <p className="is-rank">
           <strong><span className="math-roman">rank</span>(<span className="math-scalar-base">T</span>) = {analysis.rank}</strong>
@@ -1209,13 +1288,13 @@ function SubspaceSummary({ analysis, imageIsZero }: {
 }
 
 function MathMapSignature({ sourceDimension, targetDimension }: {
-  readonly sourceDimension: 2 | 3;
-  readonly targetDimension: 2 | 3;
+  readonly sourceDimension: VectorSpaceDimension;
+  readonly targetDimension: VectorSpaceDimension;
 }) {
   return <span className="linear-map-math"><span className="math-scalar-base">T</span>: ℝ<sup>{sourceDimension}</sup> → ℝ<sup>{targetDimension}</sup></span>;
 }
 
-function MathRealSpace({ name, dimension }: { readonly name: 'U' | 'V'; readonly dimension: 2 | 3 }) {
+function MathRealSpace({ name, dimension }: { readonly name: 'U' | 'V'; readonly dimension: VectorSpaceDimension }) {
   return <span className="linear-map-math"><span className="math-scalar-base">{name}</span> = ℝ<sup>{dimension}</sup></span>;
 }
 
@@ -1265,6 +1344,9 @@ function MathMapExpression({ expression }: { readonly expression: 'u+w' | 'cu' }
 }
 
 function MathMatrix({ values, columns }: { readonly values: readonly (readonly number[])[]; readonly columns: number }) {
+  if (values.length === 0 || columns === 0) {
+    return <span className="linear-map-empty-matrix">{values.length}行{columns}列の空行列（成分なし）</span>;
+  }
   return (
     <span
       className="linear-map-display-matrix"
@@ -1279,6 +1361,7 @@ function MathMatrix({ values, columns }: { readonly values: readonly (readonly n
 }
 
 function MathColumnVector({ values }: { readonly values: readonly number[] }) {
+  if (values.length === 0) return <span aria-label="零ベクトル（0次元、成分なし）"><MathVectorName name="0" /></span>;
   return (
     <span className="display-column-vector linear-map-column-vector" aria-label={`列ベクトル ${values.join('、')}`}>
       {values.map((value, index) => <span key={index} aria-hidden="true">{formatMathNumber(value).text}</span>)}
@@ -1295,8 +1378,8 @@ function standardBasis(dimension: number, columnIndex: number): number[] {
 }
 
 function describeSubspace(dimension: number, ambientDimension: number): string {
-  if (dimension === 0) return '原点だけ';
-  if (dimension === 1) return '原点を通る直線';
+  if (dimension === 0) return ambientDimension === 0 ? '零ベクトル空間全体（原点だけ）' : '原点だけ';
+  if (dimension === 1) return ambientDimension === 1 ? '1次元数直線全体' : '原点を通る直線';
   if (dimension === 2) return ambientDimension === 2 ? '2次元空間全体' : '原点を通る平面';
   return '3次元空間全体';
 }
