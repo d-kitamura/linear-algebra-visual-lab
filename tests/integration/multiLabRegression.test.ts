@@ -22,6 +22,7 @@ import {
   THREE_DIMENSIONAL_LINEAR_COMBINATION_SCENARIOS,
   THREE_DIMENSIONAL_TEACHING_SCENARIOS,
   TWO_DIMENSIONAL_TEACHING_SCENARIOS,
+  LOW_DIMENSIONAL_TEACHING_SCENARIOS,
 } from '../../src/teaching';
 import vectorSpaceFixture from '../fixtures/share-url-v3.json';
 import basisDimensionFixture from '../fixtures/share-url-basis-dimension-v1.json';
@@ -47,7 +48,35 @@ const fixtures = [
   },
 ] as const;
 
-describe('フェーズ9.7 複数Lab統合回帰', () => {
+describe('フェーズ9.7・10.8 複数Lab統合回帰', () => {
+  it('低次元の13共有例は対象Lab・次元だけを置換し、他のInitialStateを維持する', () => {
+    const defaults = {
+      vector: createAppInitialization(PRODUCTION_BASE_URL),
+      basis: createBasisDimensionInitialization(PRODUCTION_BASE_URL),
+      map: createLinearMapInitialization(PRODUCTION_BASE_URL),
+    };
+    for (const example of LOW_DIMENSIONAL_TEACHING_SCENARIOS) {
+      const state = example.state;
+      const url = buildShareUrl(PRODUCTION_BASE_URL, state);
+      const initial = {
+        vector: createAppInitialization(url),
+        basis: createBasisDimensionInitialization(url),
+        map: createLinearMapInitialization(url),
+      };
+      for (const key of ['vector', 'basis', 'map'] as const) {
+        const isTargetLab = state.lab === ({ vector: 'vector-space', basis: 'basis-dimension', map: 'linear-map' } as const)[key];
+        expect(initial[key].source).toBe(isTargetLab ? 'shared' : 'default');
+        const selectedKey = state.lab === 'linear-map'
+          ? `${state.sourceDimension}-to-${state.targetDimension}` : String(state.dim);
+        for (const [dimension, value] of Object.entries(initial[key].initialStates)) {
+          if (!isTargetLab || dimension !== selectedKey) {
+            expect(value).toEqual(Object.entries(defaults[key].initialStates).find(([id]) => id === dimension)?.[1]);
+          }
+        }
+      }
+    }
+  });
+
   for (const fixture of fixtures) {
     it(`${fixture.lab}の固定URLは対象Labだけを共有InitialStateにする`, () => {
       expect(readShareStateFromUrl(fixture.url)).toEqual({
@@ -116,5 +145,8 @@ describe('フェーズ9.7 複数Lab統合回帰', () => {
     expect(LINEAR_MAP_TEACHING_SCENARIOS).toHaveLength(8);
     expect(allScenarios).toHaveLength(28);
     expect(new Set(allScenarios.map((scenario) => scenario.id))).toHaveProperty('size', 28);
+    const includingLowDimensions = [...allScenarios, ...LOW_DIMENSIONAL_TEACHING_SCENARIOS];
+    expect(includingLowDimensions).toHaveLength(41);
+    expect(new Set(includingLowDimensions.map((scenario) => scenario.id)).size).toBe(41);
   });
 });

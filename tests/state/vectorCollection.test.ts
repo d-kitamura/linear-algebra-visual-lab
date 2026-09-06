@@ -7,6 +7,7 @@ import {
   type ShareState,
 } from '../../src/sharing';
 import { addDefaultVector, removeVector } from '../../src/state';
+import { DEFAULT_0D_SHARE_STATE, DEFAULT_1D_SHARE_STATE } from '../../src/state/defaultState';
 
 const initialState: ShareState = {
   v: 4,
@@ -22,6 +23,17 @@ const initialState: ShareState = {
 };
 
 describe('vector collection editing', () => {
+  it('keeps the fixed 0D teaching state unchanged and supports 1D coordinates', () => {
+    expect(addDefaultVector(DEFAULT_0D_SHARE_STATE)).toEqual({
+      state: DEFAULT_0D_SHARE_STATE,
+      addedVector: null,
+    });
+    expect(addDefaultVector(DEFAULT_0D_SHARE_STATE).state).toBe(DEFAULT_0D_SHARE_STATE);
+    const line = addDefaultVector(DEFAULT_1D_SHARE_STATE);
+    expect(line.addedVector?.coordinates).toEqual([1]);
+    expect(decodeShareState(encodeShareState(line.state))).toEqual({ ok: true, state: line.state });
+  });
+
   it('adds a selected default vector with a stable ID, name, and coordinates', () => {
     const result = addDefaultVector(initialState);
 

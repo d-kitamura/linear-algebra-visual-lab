@@ -7,7 +7,8 @@ export interface AddDefaultVectorResult {
 }
 
 export function addDefaultVector(state: ShareState): AddDefaultVectorResult {
-  if (state.vectors.length >= MAX_SHARE_VECTORS) {
+  // 数学APIの0Dベクトルとは別に、教材の0D状態は空の生成集合に固定する。
+  if (state.dim === 0 || state.vectors.length >= MAX_SHARE_VECTORS) {
     return { state, addedVector: null };
   }
 

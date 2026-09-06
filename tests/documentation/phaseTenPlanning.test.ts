@@ -79,9 +79,9 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(section).toContain('- [x] 数直線や一点表示を見られなくても');
     expect(section).toContain('LOW_DIMENSIONAL_SCENARIOS.md');
     expect(section).toContain('- [x] 0D・1Dの共有URL・QR');
-    expect(section).toContain('- [ ] 別タブでの復元と、編集後の共有時Reset');
-    expect(section).toContain('- [ ] キーボードのみ');
-    expect(section).toContain('- [ ] 390px幅');
+    expect(section).toContain('- [x] 別タブでの復元と、編集後の共有時Reset');
+    expect(section).toContain('- [x] キーボードのみ');
+    expect(section).toContain('- [x] 390px幅');
     expect(decisions).toContain('### D-089 0D・1Dの共有状態、教材例、読み上げ要約');
     expect(projectStatus).toContain('## 作業単位10.7実装記録（D-089）');
     expect(specification).toContain('#### FR-LOWDIM-06:');
@@ -90,6 +90,19 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(compatibility).toContain('`vector-space` v4');
     expect(compatibility).toContain('`basis-dimension` v2');
     expect(compatibility).toContain('`linear-map` v2');
+  });
+
+  it('10.8の棚卸しとフェーズ11引継ぎを記録し実機確認・Gitは利用者担当とする', () => {
+    const inventory = readProjectFile('docs/INVENTORY_PHASE10.md');
+    expect(inventory).toContain('41例');
+    expect(inventory).toContain('addDefaultVector');
+    expect(inventory).toContain('フェーズ11へ再利用する責務');
+    expect(inventory).toContain('今回Codexはブラウザ操作、実端末、コミット・プッシュ、Actions・公開版を確認していない');
+    expect(decisions).toContain('### D-091 フェーズ10の統合棚卸しとフェーズ11への引継ぎ');
+    expect(projectStatus).toContain('## 作業単位10.8統合棚卸し（D-091）');
+    expect(specification).toContain('#### FR-LOWDIM-07:');
+    expect(specification).toContain('### AC-66:');
+    expect(roadmap).toContain('- [ ] **確認ゲート:** 学生が0D・1D・2D・3Dの違いを');
   });
 
   it('1Dを通常操作、0Dを制約付き境界教材として分ける', () => {
@@ -140,6 +153,6 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(roadmap).toContain('基底変換行列の「どの基底の座標から、どの基底の座標へ変換するか」');
     expect(roadmap).toContain('仮の記号で先行実装しない');
     expect(projectStatus).toContain('表現行列と写像定義用行列の文字');
-    expect(specification).toContain('| 文書バージョン | 1.00 |');
+    expect(specification).toContain('| 文書バージョン | 1.01 |');
   });
 });

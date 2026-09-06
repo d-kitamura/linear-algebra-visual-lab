@@ -1,7 +1,7 @@
 /** 数学ロジックが扱う有限次元。描画対応次元とは分離して段階的に広げる。 */
 export type VectorSpaceDimension = 0 | 1 | 2 | 3;
 
-/** 10.2時点で既存画面が直接描画できる次元。0D/1D描画は10.3以降で追加する。 */
+/** 座標面・3D空間の描画専用型。0D一点・1D数直線は別の共通描画を使う。 */
 export type VectorDimension = 2 | 3;
 
 export interface VectorValue {
