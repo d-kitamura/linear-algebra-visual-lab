@@ -77,6 +77,39 @@ describe('10.7 低次元の共有・教材例・画面復元', () => {
     });
   }
 
+  it('詳細タブや図に依存しない読み上げ要約が低次元の数学結果を示す', () => {
+    for (const example of LOW_DIMENSIONAL_TEACHING_SCENARIOS) {
+      const state = example.state;
+      vi.stubGlobal('window', { location: { href: buildShareUrl(baseUrl, state) } });
+      const Component = state.lab === 'vector-space' ? VectorSpaceLab : state.lab === 'basis-dimension' ? BasisDimensionLab : LinearMapLab;
+      const markup = renderToStaticMarkup(createElement(Component, { active: false }));
+      const summaryId = state.lab === 'linear-map' ? 'linear-map-summary' : state.lab === 'basis-dimension' ? 'basis-summary' : 'line-space-summary';
+      if (state.lab === 'vector-space' && state.dim === 0) {
+        expect(markup).toContain('成分はなく、空間の次元は0です。');
+        expect(markup).toContain('空の組は一次独立で、この空間全体を生成し、rankは0です。');
+        continue;
+      }
+      const summary = markup.match(new RegExp(`data-testid="${summaryId}"[^>]*>([\\s\\S]*?)</p>`))?.[1].replace(/<[^>]*>/g, '');
+      expect(summary).toBeDefined();
+      if (state.lab === 'linear-map') {
+        const result = analyzeLinearMap(state, state.inputVector);
+        expect(summary).toContain(`rankは${result.rank}`);
+        expect(summary).toContain(`核の次元は${result.kernelDimension}`);
+        expect(summary).toContain(`像の次元は${result.imageDimension}`);
+        expect(summary).toContain(result.isInjective ? '単射です。' : '単射ではありません。');
+        expect(summary).toContain(result.isSurjective ? '全射です。' : '全射ではありません。');
+      } else if (state.lab === 'basis-dimension') {
+        expect(summary).toContain(`対象空間の次元は${state.dim}`);
+        expect(summary).toContain('条件1、一次独立です。');
+        expect(summary).toContain('条件2、対象空間全体を生成します。');
+        expect(summary).toContain(state.dim === 0 ? '空の組' : '昇べきの順の多項式係数');
+      } else {
+        expect(summary).toContain(`全ベクトルのrankは${example.expectedRank}`);
+        expect(summary).toContain(example.id === 'line-no-solution' ? '一次結合では表現できません' : example.id === 'line-infinite' ? '一次結合係数は無数' : '一次結合係数が一意');
+      }
+    }
+  });
+
   it('全16写像の空行列・入力・カメラを共有とResetの初期状態へ往復する', () => {
     const initial = createLinearMapInitialization(baseUrl);
     for (const [id, value] of Object.entries(initial.initialStates)) {

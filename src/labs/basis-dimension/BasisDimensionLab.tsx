@@ -679,6 +679,26 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
           </p>
         </nav>
 
+        {/* 詳細タブの選択に依存せず、図なしでも対象空間と判定を続けて読めるようにする。 */}
+        <p className="visually-hidden" aria-live="polite" aria-atomic="true" data-testid="basis-summary">
+          対象空間の次元は{analysis.targetDimension}です。
+          {polynomialMode ? '以下の成分は昇べきの順の多項式係数です。' : ''}
+          全ベクトルの成分：{scene.vectors.map((vector) => `${vector.name}は${vector.coordinates.join('、')}`).join('。') || 'ベクトルなし'}。
+          基底候補は{candidateVectors.map((vector) => vector.name).join('、') || '空の組'}です。
+          候補が生成する空間の次元とrankは{analysis.candidateRank}です。
+          条件1、{analysis.isLinearlyIndependent ? '一次独立です。' : '一次従属です。'}
+          条件2、{analysis.spansTargetSpace ? '対象空間全体を生成します。' : '対象空間全体を生成しません。'}
+          {analysis.isBasis ? 'この候補は基底です。' : 'この候補は基底ではありません。'}
+          {linearCombinationVisible && scene.target && coordinateAnalysis ? (
+            <>ターゲットvの成分は{scene.target.join('、')}です。
+              {coordinateAnalysis.status === 'coordinate-vector' ? '基底に関する座標が一意に定まります。'
+                : coordinateAnalysis.status === 'not-representable' ? 'この候補の一次結合では表現できません。'
+                : coordinateAnalysis.status === 'non-unique' ? '一次結合係数は無数にあります。'
+                : '一次結合係数は一意ですが、対象空間の基底ではないため座標とは呼びません。'}
+            </>
+          ) : null}
+        </p>
+
         <section className="lab-intro" aria-labelledby="basis-dimension-title">
           <div>
             <p className="eyebrow">

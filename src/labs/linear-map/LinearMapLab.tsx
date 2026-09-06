@@ -600,11 +600,15 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
           </div>
         ) : null}
 
-        <p className="visually-hidden" aria-live="polite">
+        <p className="visually-hidden" aria-live="polite" aria-atomic="true" data-testid="linear-map-summary">
           現在は{scene.sourceDimension}次元から{scene.targetDimension}次元への線形写像です。
           rankは{analysis.rank}、核の次元は{analysis.kernelDimension}、像の次元は{analysis.imageDimension}です。
           入力ベクトルuは{scene.sourceDimension === 0 ? '零ベクトル（成分なし）' : scene.inputVector.join('、')}、像T(u)は{scene.targetDimension === 0 ? '零ベクトル（成分なし）' : analysis.imageVector.join('、')}です。
-          図を使わなくても、行列と入力タブの数値入力と、行列の列・核・像タブの数値説明から同じ結果を確認できます。
+          核は{describeSubspace(analysis.kernelDimension, scene.sourceDimension)}、像は{describeSubspace(analysis.imageDimension, scene.targetDimension)}です。
+          {analysis.isInjective ? '単射です。' : '単射ではありません。'}
+          {analysis.isSurjective ? '全射です。' : '全射ではありません。'}
+          定義域の次元{scene.sourceDimension}はrank {analysis.rank}と退化次数{analysis.kernelDimension}の和です。
+          図を使わなくても、行列と入力タブと、行列の列・核・像タブの数値と説明から同じ結果を確認できます。
         </p>
 
         <div

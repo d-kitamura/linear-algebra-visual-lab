@@ -1454,6 +1454,20 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
           hidden={activeDimension !== 1}
           tabIndex={-1}
         >
+          <p className="visually-hidden" aria-live="polite" aria-atomic="true" data-testid="line-space-summary">
+            対象は1次元数直線です。
+            全ベクトルの成分：{oneDimensionalState.vectors.map((vector) => `${vector.name}は${vector.coordinates[0]}`).join('。') || 'ベクトルなし'}。
+            全ベクトルのrankは{oneDimensionalAnalysis.rank}です。
+            選択したベクトルは{oneDimensionalSpanVectors.map((vector) => vector.name).join('、') || 'なし'}です。
+            生成する空間は{oneDimensionalSpanAnalysis.rank === 0 ? '原点だけ' : '数直線全体'}で、次元とrankは{oneDimensionalSpanAnalysis.rank}です。
+            {oneDimensionalState.linearCombinationVisible && oneDimensionalLinearCombinationAnalysis ? (
+              <>ターゲットvの成分は{oneDimensionalState.target}です。
+                {oneDimensionalLinearCombinationAnalysis.status === 'none' ? '選択したベクトルの一次結合では表現できません。'
+                  : oneDimensionalLinearCombinationAnalysis.status === 'unique' ? '一次結合係数が一意に定まります。'
+                  : '一次結合係数は無数にあります。'}
+              </>
+            ) : null}
+          </p>
           <section className="plot-card" aria-labelledby="one-dimensional-plot-title">
             <div className="card-heading">
               <div>

@@ -6,12 +6,12 @@ const labs = [
   {
     id: 'vector-space',
     name: 'ベクトル空間Lab',
-    description: 'span・一次結合を2D／3Dで調べる',
+    description: 'span・一次結合を0D〜3Dで調べる',
   },
   {
     id: 'basis-dimension',
     name: '基底・次元Lab',
-    description: '基底の2条件・次元・座標を2D／3Dで調べる',
+    description: '基底の2条件・次元・座標を0D〜3Dで調べる',
   },
   {
     id: 'linear-map',

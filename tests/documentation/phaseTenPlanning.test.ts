@@ -70,7 +70,26 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(projectStatus).toContain('## 作業単位10.6実装記録（D-088）');
     expect(specification).toContain('#### FR-LOWDIM-05: 線形写像Labの0D・1D接続');
     expect(specification).toContain('### AC-64: 線形写像Labの0D・1D操作');
-    expect(specification).toContain('共有版更新を行う10.7まで共有を理由付きで無効化する');
+    expect(specification).toContain('10.7・D-089で全16次元組のlinear-map v2を生成する');
+  });
+
+  it('D-089の実装と利用者確認の範囲を区別し、13教材例への導線を残す', () => {
+    const section = roadmap.split('### 10.7 共有状態、教材例、アクセシビリティ')[1].split('### 10.8')[0];
+    expect(section).toContain('- [x] 1Dのspan・基底・一次結合');
+    expect(section).toContain('- [x] 数直線や一点表示を見られなくても');
+    expect(section).toContain('LOW_DIMENSIONAL_SCENARIOS.md');
+    expect(section).toContain('- [x] 0D・1Dの共有URL・QR');
+    expect(section).toContain('- [ ] 別タブでの復元と、編集後の共有時Reset');
+    expect(section).toContain('- [ ] キーボードのみ');
+    expect(section).toContain('- [ ] 390px幅');
+    expect(decisions).toContain('### D-089 0D・1Dの共有状態、教材例、読み上げ要約');
+    expect(projectStatus).toContain('## 作業単位10.7実装記録（D-089）');
+    expect(specification).toContain('#### FR-LOWDIM-06:');
+    expect(specification).toContain('### AC-65:');
+    const compatibility = readProjectFile('docs/SHARE_URL_COMPATIBILITY.md');
+    expect(compatibility).toContain('`vector-space` v4');
+    expect(compatibility).toContain('`basis-dimension` v2');
+    expect(compatibility).toContain('`linear-map` v2');
   });
 
   it('1Dを通常操作、0Dを制約付き境界教材として分ける', () => {
@@ -121,6 +140,6 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(roadmap).toContain('基底変換行列の「どの基底の座標から、どの基底の座標へ変換するか」');
     expect(roadmap).toContain('仮の記号で先行実装しない');
     expect(projectStatus).toContain('表現行列と写像定義用行列の文字');
-    expect(specification).toContain('| 文書バージョン | 0.99 |');
+    expect(specification).toContain('| 文書バージョン | 1.00 |');
   });
 });
