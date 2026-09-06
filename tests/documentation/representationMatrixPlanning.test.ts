@@ -22,14 +22,27 @@ function expectCoordinates(actual: readonly number[], expected: readonly number[
 }
 
 describe('11.1 表現行列Lab設計案', () => {
-  it('フェーズ10承認と11.1の未承認事項・実装境界を区別する', () => {
+  it('11.1の承認済み設計と11.2の実装境界を区別する', () => {
     expect(read('ROADMAP.md')).toContain('完了（10.1〜10.8・利用者確認・統合棚卸し済み）');
     expect(read('docs/DECISIONS.md')).toContain('### D-092 表現行列Labの記号・変換方向・状態境界の具体案');
-    for (const phrase of ['具体案作成済み・利用者確認待ち', 'representation-matrix', '9次元組', '基準座標', '2048文字', '3D側だけのカメラ', 'math-writing-rules.txt', '11.2']) {
+    for (const phrase of ['利用者確認済み・11.1完了', 'representation-matrix', '9次元組', '基準座標', '2048文字', '3D側だけのカメラ', 'math-writing-rules.txt', '11.2']) {
       expect(design).toContain(phrase);
     }
     expect(design).toContain(String.raw`\bm P_{\mathcal C\leftarrow\mathcal B}`);
     expect(design).toContain('基底変換モードは同じ次元・同じ空間種別に限定');
+  });
+
+  it('承認済み記号を表記ルールへ反映し、11.2は未着手として引き継ぐ', () => {
+    const rules = read('math-writing-rules.txt');
+    expect(rules).toContain('D-092、11.1採用');
+    expect(rules).toContain('基底Bの座標 → 基底Cの座標');
+    const roadmap = read('ROADMAP.md');
+    const approval = roadmap.split('### 11.1 ')[1].split('### 11.2 ')[0];
+    const implementation = roadmap.split('### 11.2 ')[1].split('### 11.3 ')[0];
+    expect(approval).not.toContain('- [ ]');
+    expect(implementation).toContain('未着手');
+    expect(implementation).not.toContain('- [x]');
+    expect(read('docs/PROJECT_STATUS.md')).toContain('11.2開始時の引継ぎ');
   });
 
   it('数ベクトル例の各列と入力の2経路が一致する', () => {

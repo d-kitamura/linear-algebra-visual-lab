@@ -135,7 +135,7 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(syllabus).toContain('線形写像の表現行列（１）');
     expect(syllabus).toContain('線形写像の表現行列（２）');
     expect(mathWritingRules).toContain('表現行列：T: U \\rightarrow Vなる線形写像');
-    expect(decisions).toContain('状態: **方針一部承認・詳細確認待ち**（2026-09-03、フェーズ11計画');
+    expect(decisions).toContain('状態: **利用者確認済み**（2026-09-06、フェーズ11計画');
     expect(roadmap).toContain('## 12. フェーズ11「表現行列・基底変換Lab」の詳細作業単位案');
     expect(roadmap).toContain('### 11.6 多項式空間上の線形写像と表現行列');
   });
@@ -151,8 +151,8 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
   it('表現行列の記号と基底変換の向きを実装前確認へ残す', () => {
     expect(roadmap).toContain('表現行列を添え字付きで略記するか');
     expect(roadmap).toContain('基底変換行列の「どの基底の座標から、どの基底の座標へ変換するか」');
-    expect(roadmap).toContain('仮の記号で先行実装しない');
+    expect(roadmap).toContain('採用した記号・変換方向を今後の実装へ適用する');
     expect(projectStatus).toContain('表現行列と写像定義用行列の文字');
-    expect(specification).toContain('| 文書バージョン | 1.02 |');
+    expect(specification).toContain('| 文書バージョン | 1.03 |');
   });
 });
