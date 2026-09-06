@@ -102,7 +102,7 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(projectStatus).toContain('## 作業単位10.8統合棚卸し（D-091）');
     expect(specification).toContain('#### FR-LOWDIM-07:');
     expect(specification).toContain('### AC-66:');
-    expect(roadmap).toContain('- [ ] **確認ゲート:** 学生が0D・1D・2D・3Dの違いを');
+    expect(roadmap).toContain('- [x] **確認ゲート:** 利用者が10.8・D-091の棚卸し結果と教材内容を確認し、フェーズ10を完了した');
   });
 
   it('1Dを通常操作、0Dを制約付き境界教材として分ける', () => {
@@ -153,6 +153,6 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(roadmap).toContain('基底変換行列の「どの基底の座標から、どの基底の座標へ変換するか」');
     expect(roadmap).toContain('仮の記号で先行実装しない');
     expect(projectStatus).toContain('表現行列と写像定義用行列の文字');
-    expect(specification).toContain('| 文書バージョン | 1.01 |');
+    expect(specification).toContain('| 文書バージョン | 1.02 |');
   });
 });
