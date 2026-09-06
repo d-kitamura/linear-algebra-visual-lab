@@ -68,3 +68,11 @@ export type {
   LinearMapLinearityAnalysis,
   LinearMapValidationCode,
 } from './linearMap';
+
+export { analyzeRepresentationMatrix, analyzeBasisChange } from './representationMatrix';
+export type {
+  RepresentationBasisFailureReason,
+  RepresentationBasisCheck,
+  RepresentationCoordinates,
+  RepresentationMatrixAnalysis,
+} from './representationMatrix';

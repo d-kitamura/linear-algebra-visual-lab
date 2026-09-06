@@ -5,7 +5,7 @@ import { analyzeBasisCoordinates, applyLinearMap, type VectorSet, type VectorSpa
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const design = read('docs/REPRESENTATION_MATRIX_DESIGN.md');
 
-// 設計書の例を既存APIで検算する。11.2の表現行列APIの先行実装ではない。
+// 設計書の例を既存APIでも検算する。新APIそのものの回帰はdomain/representationMatrix.test.ts。
 function coordinates(basis: VectorSet, target: readonly number[]): readonly number[] {
   const result = analyzeBasisCoordinates(basis, basis.vectors.map((v) => v.id), target, { targetSpace: 'ambient' });
   expect(result.status).toBe('coordinate-vector');
@@ -32,7 +32,7 @@ describe('11.1 表現行列Lab設計案', () => {
     expect(design).toContain('基底変換モードは同じ次元・同じ空間種別に限定');
   });
 
-  it('承認済み記号を表記ルールへ反映し、11.2は未着手として引き継ぐ', () => {
+  it('承認済み記号と11.2実装済み・11.3未着手の境界を維持する', () => {
     const rules = read('math-writing-rules.txt');
     expect(rules).toContain('D-092、11.1採用');
     expect(rules).toContain('基底Bの座標 → 基底Cの座標');
@@ -40,9 +40,12 @@ describe('11.1 表現行列Lab設計案', () => {
     const approval = roadmap.split('### 11.1 ')[1].split('### 11.2 ')[0];
     const implementation = roadmap.split('### 11.2 ')[1].split('### 11.3 ')[0];
     expect(approval).not.toContain('- [ ]');
-    expect(implementation).toContain('未着手');
-    expect(implementation).not.toContain('- [x]');
-    expect(read('docs/PROJECT_STATUS.md')).toContain('11.2開始時の引継ぎ');
+    expect(implementation).toContain('実装済み・利用者確認待ち');
+    expect(implementation).toContain('- [x]');
+    expect(implementation).toContain('- [ ] **確認ゲート:**');
+    expect(roadmap.split('### 11.3 ')[1].split('### 11.4 ')[0]).not.toContain('- [x]');
+    expect(read('docs/PROJECT_STATUS.md')).toContain('11.3開始時の引継ぎ');
+    expect(read('docs/REPRESENTATION_MATRIX_API.md')).toContain('numerical-failure');
   });
 
   it('数ベクトル例の各列と入力の2経路が一致する', () => {
