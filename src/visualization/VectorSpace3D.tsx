@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
@@ -83,6 +83,8 @@ interface VectorSpace3DProps {
   readonly unavailableFallbackDescription?: string;
   readonly axisLabels?: readonly [string, string, string];
   readonly spaceTitle?: string;
+  /** 数式を含む見出し。読み上げ・操作説明用のspaceTitleは文字列のまま保持する。 */
+  readonly spaceHeading?: ReactNode;
 }
 
 interface VectorCoordinatePreview {
@@ -196,6 +198,7 @@ export function VectorSpace3D({
   unavailableFallbackDescription = '数値入力と解析カード、共有URL、Resetはそのまま利用できます。',
   axisLabels = DEFAULT_AXIS_LABELS,
   spaceTitle = '3次元座標空間',
+  spaceHeading,
 }: VectorSpace3DProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<ThreeSpaceRuntime | null>(null);
@@ -328,7 +331,7 @@ export function VectorSpace3D({
       <div className="three-dimensional-heading">
         <div>
           <p className="panel-kicker">3D coordinate space</p>
-          <h2 id={`${idPrefix}-title`}>{spaceTitle}</h2>
+          <h2 id={`${idPrefix}-title`}>{spaceHeading ?? spaceTitle}</h2>
         </div>
         <div className="three-dimensional-toolbar">
           {showLinearCombinationControl ? (

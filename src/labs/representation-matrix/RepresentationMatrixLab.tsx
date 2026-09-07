@@ -66,6 +66,8 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
   const result = useMemo(() => analyzeRepresentationMatrix(scene.definition, scene.source, scene.target, scene.input), [scene]);
   const derived = result.representation;
   const kind = (side: BasisSide) => side === 'source' ? scene.sourceKind : scene.targetKind;
+  // 次元によらず同じ数式見出しを使い、3Dの読み上げ用文字列とは分離する。
+  const spaceHeading = (side: BasisSide) => <>{mode === 'basis-change' ? '同じ空間' : side === 'source' ? '定義域' : '終域'} <Scalar>{mode === 'basis-change' || side === 'source' ? 'U' : 'V'}</Scalar> = <SpaceName dimension={scene[side].dimension} kind={kind(side)} />{kind(side) === 'polynomial' && <>（係数空間）</>}{mode === 'basis-change' && <>（基底<BasisName name={side === 'source' ? 'B' : 'C'} />）</>}</>;
   const rule = polynomialMapRule(scene);
   const vectors = useMemo(() => graphVectors(scene), [scene]);
   const stable = useMemo(() => {
@@ -157,6 +159,7 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
       <div className="linear-map-diagram-grid">
         {(['source', 'target'] as const).map((side) => scene[side].dimension === 3 ? <Suspense key={side} fallback={<section className="plot-card">3Dグラフを読み込み中です。</section>}>
           <VectorSpace3D idPrefix={'representation-' + side + '-space'} active={active} resetKey={resetKey}
+            spaceHeading={spaceHeading(side)}
             spaceTitle={(mode === 'basis-change' ? (side === 'source' ? '同じ空間 U（基底B）' : '同じ空間 U（基底C）') : side === 'source' ? '定義域 U' : '終域 V') + (kind(side) === 'polynomial' ? '：3次元係数空間（高々2次多項式）' : ' = ℝ³')}
             axisLabels={kind(side) === 'polynomial' ? POLYNOMIAL_AXES_3D : undefined}
             vectors={stable.values[side]} colors={stable.colors[side]} editableVectorIds={stable.editable[side]} alwaysOpaqueVectorIds={stable.opaque[side]}
@@ -176,7 +179,7 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
           />
         </Suspense> : <section key={side} className="plot-card linear-map-plot-card" aria-labelledby={'representation-' + side + '-title'}>
           <div className="card-heading"><div><p className="panel-kicker">{side === 'source' ? 'Domain' : 'Codomain'}</p>
-            <h2 id={'representation-' + side + '-title'}>{mode === 'basis-change' ? '同じ空間' : side === 'source' ? '定義域' : '終域'} <Scalar>{mode === 'basis-change' || side === 'source' ? 'U' : 'V'}</Scalar> = <SpaceName dimension={scene[side].dimension} kind={kind(side)} />{kind(side) === 'polynomial' && <>（係数空間）</>}{mode === 'basis-change' && <>（基底<BasisName name={side === 'source' ? 'B' : 'C'} />）</>}</h2></div>
+            <h2 id={'representation-' + side + '-title'}>{spaceHeading(side)}</h2></div>
             <button type="button" className="basis-fit-button" onClick={() => setViews((value) => ({ ...value, plane: { ...value.plane, [side]: null }, line: { ...value.line, [side]: null } }))}>全体を表示</button>
           </div>
           {scene[side].dimension === 1 ? <VectorLine1D idPrefix={'representation-' + side + '-line'}

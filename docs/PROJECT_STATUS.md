@@ -18,6 +18,7 @@
 
 ## 11.6実装と11.7開始時の引継ぎ
 
+- 2026-09-08の利用者確認: 11.6の本体は問題なし。残る確認は3D見出しの表示修正のみ。RepresentationSceneViewで全次元の見出しを共通化し、VectorSpace3DのspaceHeadingへ数式要素を渡す。読み上げ・操作説明のspaceTitleは文字列として維持し、他LabとWebGLの再生成条件には影響させない。通常モード・基底変換モードの両側が対象。11.7は未着手。
 - 実装済み・D-097利用者確認待ち。11.5・D-096は今回の利用者確認で完了。両側にcoordinate／polynomialを独立選択でき、1〜3次元の9組×4種別組合せの36通常場面を持つ。恒等写像は同じ種類・次元だけで6場面。既定は従来の数ベクトル2→2。
 - RepresentationSceneへsourceKind／targetKindを追加し、数値配列は常に基準座標。多項式は標準単項式基底の昇べき順。M、両基底、入力、左右のline／plane／camerasは種類・次元・モード別に保持。representationSceneIdとrepresentationChangeIdがキー生成の正本。数ベクトルの通常キーは既存n-to-m、他は種類を含む。恒等写像は数ベクトルn／多項式polynomial-n。非表示のWebGLは保持しない。
 - selectRepresentationKindは通常モードでは片側だけ、恒等写像モードでは左右同時に変更する。updateActiveRepresentationSceneはキーと異なる種類・次元への書換えを拒否し、恒等写像のM=Eも固定する。Resetは現在の種類・次元・モードだけ。11.7では共有時InitialStateへ接続すること。
