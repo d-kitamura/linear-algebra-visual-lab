@@ -1,10 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { analyzeRepresentationMatrix, analyzeBasisChange, analyzeVectorSet, type VectorValue, type VectorSet } from '../../domain';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { analyzeRepresentationMatrix, analyzeVectorSet, type VectorValue } from '../../domain';
 import { LabActionControls } from '../../app/LabActionControls';
 import { VectorPlane2D, VectorLine1D, createAutoFitLineViewport, createAutoFitViewport } from '../../visualization';
-import { formatMathNumber, splitVectorName } from '../../ui';
+import { Vector, Scalar, BasisName, MapValue, Tuple, Formula, Equals, Column, Matrix, Combination } from './representationMath';
+import { RepresentationPaths, BasisChangePanel } from './RepresentationCoordinatePanels';
 import { dragRepresentationVector, dragRepresentationLineVector, setRepresentationVector, snapRepresentationSpaceVector, editRepresentationValue, parseRepresentationNumber, moveRepresentationBasis, REPRESENTATION_DIMENSIONS, type BasisSide, type RepresentationDimension, type RepresentationScene } from './representationMatrixState';
-import { createRepresentationWorkspace, representationShapeId, resetRepresentationWorkspace, type RepresentationViewState } from './representationWorkspace';
+import { createRepresentationWorkspace, resetRepresentationWorkspace, activeRepresentationScene, activeRepresentationViews, updateActiveRepresentationScene, updateActiveRepresentationViews, selectRepresentationDimension, createBasisChangeScene, type RepresentationViewState, type RepresentationMode, type BasisChangeDirection } from './representationWorkspace';
 
 const VectorSpace3D = lazy(async () => ({ default: (await import('../../visualization/VectorSpace3D')).VectorSpace3D }));
 
@@ -16,19 +17,24 @@ const color = (name: string) => COLORS[name.replace(/^T\((.*)\)$/u, '$1')] ?? '#
 /** M,wと順序付き基底だけを保持し、A・像・座標は常に導出する。 */
 export function RepresentationMatrixLab({ active }: { readonly active: boolean }) {
   const [workspace, setWorkspace] = useState(createRepresentationWorkspace);
-  const id = workspace.activeShapeId;
-  const scene = workspace.scenes[id];
+  const id = workspace.mode === 'map' ? workspace.activeShapeId : 'change-' + workspace.changeDimension;
+  const scene = activeRepresentationScene(workspace);
   // 非表示の次元組のWebGLは保持せず、教材と表示状態だけを保持する。
-  return <RepresentationSceneView key={id} active={active} committed={scene} views={workspace.views[id]}
-    setScene={(update) => setWorkspace((w) => ({ ...w, scenes: { ...w.scenes, [id]: update(w.scenes[id]) } }))}
-    setViews={(update) => setWorkspace((w) => ({ ...w, views: { ...w.views, [id]: update(w.views[id]) } }))}
+  return <RepresentationSceneView key={id} active={active} committed={scene} views={activeRepresentationViews(workspace)}
+    mode={workspace.mode} onModeChange={(mode) => setWorkspace((w) => ({ ...w, mode }))}
+    direction={workspace.changeDirections[workspace.changeDimension]}
+    onDirectionChange={(direction) => setWorkspace((w) => ({ ...w, changeDirections: { ...w.changeDirections, [w.changeDimension]: direction } }))}
+    setScene={(update) => setWorkspace((w) => updateActiveRepresentationScene(w, update))}
+    setViews={(update) => setWorkspace((w) => updateActiveRepresentationViews(w, update))}
     onReset={() => setWorkspace(resetRepresentationWorkspace)}
-    onDimensionChange={(side, dimension) => setWorkspace((w) => ({ ...w, activeShapeId: representationShapeId(
-      side === 'source' ? dimension : scene.source.dimension as RepresentationDimension,
-      side === 'target' ? dimension : scene.target.dimension as RepresentationDimension) }))} />;
+    onDimensionChange={(side, dimension) => setWorkspace((w) => selectRepresentationDimension(w, side, dimension))} />;
 }
 
 interface SceneViewProps {
+  readonly mode?: RepresentationMode;
+  readonly onModeChange?: (mode: RepresentationMode) => void;
+  readonly direction?: BasisChangeDirection;
+  readonly onDirectionChange?: (direction: BasisChangeDirection) => void;
   readonly active: boolean;
   readonly committed: RepresentationScene;
   readonly views: RepresentationViewState;
@@ -40,15 +46,15 @@ interface SceneViewProps {
 type DragPreview = { readonly side: BasisSide; readonly id: string; readonly coordinates: readonly [number, number, number] };
 
 /** 3Dはcommitとpreviewを分離し、ドラッグ中にWebGLの操作対象を再生成しない。 */
-export function RepresentationSceneView({ active, committed, views, setScene, setViews, onReset, onDimensionChange }: SceneViewProps) {
+export function RepresentationSceneView({ active, committed, views, setScene, setViews, onReset, onDimensionChange, mode = 'map', onModeChange, direction = 'B-to-C', onDirectionChange }: SceneViewProps) {
   const [preview, setPreview] = useState<DragPreview | null>(null);
   const scene = useMemo(() => preview ? setRepresentationVector(committed, preview.side, preview.id, preview.coordinates) : committed, [committed, preview]);
   const [tab, setTab] = useState<TabId>('edit');
+  const [inspectionDirection, setInspectionDirection] = useState<BasisChangeDirection>('B-to-C');
   const [resetKey, setResetKey] = useState(0);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [dragViews, setDragViews] = useState<ReturnType<typeof automaticViews> | null>(null);
   const result = useMemo(() => analyzeRepresentationMatrix(scene.definition, scene.source, scene.target, scene.input), [scene]);
-  const change = useMemo(() => scene.source.dimension === scene.target.dimension ? analyzeBasisChange(scene.source.dimension, scene.source, scene.target, scene.input) : null, [scene.source, scene.target, scene.input]);
   const derived = result.representation;
   const vectors = useMemo(() => graphVectors(scene), [scene]);
   const stable = useMemo(() => {
@@ -69,6 +75,7 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
     setDragViews(null);
     setResetKey((value) => value + 1);
     setTab('edit');
+    setInspectionDirection('B-to-C');
   }
   function tabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1
@@ -82,7 +89,7 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
   const failure = <div className="representation-warning" role={active ? 'status' : undefined}>
     {result.status === 'invalid-basis' ? <>
       {basisFailure('source') && <p>定義域の候補 <BasisName name="B" /> は <Scalar>U</Scalar> = ℝ<sup>{scene.source.dimension}</sup> の基底ではありません。</p>}
-      {basisFailure('target') && <p>終域の候補 <BasisName name="C" /> は <Scalar>V</Scalar> = ℝ<sup>{scene.target.dimension}</sup> の基底ではありません。</p>}
+      {basisFailure('target') && <p>終域の候補 <BasisName name="C" /> は <Scalar>{mode === 'basis-change' ? 'U' : 'V'}</Scalar> = ℝ<sup>{scene.target.dimension}</sup> の基底ではありません。</p>}
       <p>各候補が一次独立となるように編集してください。表現行列・基底座標は未確定です。</p>
     </> : <p>数値計算の精度を確認できません。成分の大きさや基底の近さを調整してください。数学的な「基底ではない」とは異なります。</p>}
     <p>基準座標の写像と像は引き続き表示しています。</p>
@@ -95,20 +102,38 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
         <p>同じ写像でも、2つの基底とその順序によって表現行列は変わります。</p>
       </div>
       <div><LabActionControls exportDisabled exportDescriptionId="representation-share-help" onExport={() => {}} onReset={reset} />
-        <p className="lab-action-help" id="representation-share-help">このLabの共有URL・QRは11.7で対応予定です。Resetは現在の次元組だけを初期例へ戻します。</p>
+        <p className="lab-action-help" id="representation-share-help">このLabの共有URL・QRは11.7で対応予定です。Resetは現在のモード・次元組だけを初期例へ戻します。</p>
       </div>
     </section>
-    <div className="representation-dimensions">{(['source', 'target'] as const).map((side) => <label key={side}>
+    <div className="representation-mode-controls" role="group" aria-label="教材モード">
+      <button type="button" className="basis-fit-button" aria-pressed={mode === 'map'} onClick={() => onModeChange?.('map')}>通常の写像</button>
+      <button type="button" className="basis-fit-button" aria-pressed={mode === 'basis-change'} onClick={() => onModeChange?.('basis-change')}>基底変換モード</button>
+    </div>
+    {mode === 'basis-change' && <>
+      <p className="representation-fixed-note">同じ数ベクトル空間の恒等写像に固定しています。<Scalar>T</Scalar>(<Vector name="w" />) = <Vector name="w" />、<Vector name="M" /> = <Vector name="E" />。通常の写像の教材状態と表示状態は別に保持します。</p>
+      <div className="representation-dimensions"><label>空間の次元 <select value={scene.source.dimension} onChange={(event) => onDimensionChange('source', Number(event.target.value) as RepresentationDimension)}>
+        {REPRESENTATION_DIMENSIONS.map((n) => <option key={n} value={n}>{n}D</option>)}
+      </select></label></div>
+      <div className="representation-example-controls" role="group" aria-label="基底変換の例">
+        {(['standard', 'order', 'oblique'] as const).map((example) => <button key={example} type="button" className="basis-fit-button"
+          disabled={example === 'order' && scene.source.dimension === 1}
+          onClick={() => { setScene(() => createBasisChangeScene(scene.source.dimension as RepresentationDimension, example)); setResetKey((value) => value + 1); setTab('change'); }}>
+          {example === 'standard' ? '両方とも標準基底' : example === 'order' ? '順序だけ異なる基底' : scene.source.dimension === 1 ? '長さ・向きの異なる基底' : '斜交基底の例'}
+        </button>)}
+      </div>
+      <p className="lab-action-help">例を選ぶと、このモード・次元の両基底と入力を置き換えます。1Dでは基底が1本なので、順序の入れ替えはありません。</p>
+    </>}
+    {mode === 'map' && <div className="representation-dimensions">{(['source', 'target'] as const).map((side) => <label key={side}>
       {side === 'source' ? '定義域の次元' : '終域の次元'} <select value={scene[side].dimension} onChange={(event) => onDimensionChange(side, Number(event.target.value) as RepresentationDimension)}>
         {REPRESENTATION_DIMENSIONS.map((dimension) => <option key={dimension} value={dimension}>{dimension}D</option>)}
-    </select></label>)}</div>
+    </select></label>)}</div>}
     <details><summary>0次元空間について</summary><p>零ベクトル空間の基底は空の組で、座標も空です。0次元からの写像は零ベクトルだけを写し、0次元への写像ではすべての入力が零ベクトルへ写ります。行列はそれぞれ0列・0行になります。図と境界例は既存の基底・次元Lab、線形写像Labの0Dで確認できます。このLabの通常操作は1〜3次元です。</p></details>
     <p className="representation-fixed-note">基底を編集・並べ替えても、基準行列 <Vector name="M" /> と入力 <Vector name="w" /> は変わりません。グラフの軸は標準座標のままです。</p>
     <div className="linear-map-workspace">
       <div className="linear-map-diagram-grid">
         {(['source', 'target'] as const).map((side) => scene[side].dimension === 3 ? <Suspense key={side} fallback={<section className="plot-card">3Dグラフを読み込み中です。</section>}>
           <VectorSpace3D idPrefix={'representation-' + side + '-space'} active={active} resetKey={resetKey}
-            spaceTitle={(side === 'source' ? '定義域 U' : '終域 V') + ' = ℝ³'}
+            spaceTitle={(mode === 'basis-change' ? (side === 'source' ? '同じ空間 U（基底B）' : '同じ空間 U（基底C）') : side === 'source' ? '定義域 U' : '終域 V') + ' = ℝ³'}
             vectors={stable.values[side]} colors={stable.colors[side]} editableVectorIds={stable.editable[side]} alwaysOpaqueVectorIds={stable.opaque[side]}
             spanVectors={committed[side].vectors} spanRank={stable.ranks[side]} spanLabel="基底候補が生成する空間" showSpan={false}
             linearCombinationVisible={false} linearCombinationTarget={null} linearCombinationCoefficients={null}
@@ -126,7 +151,7 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
           />
         </Suspense> : <section key={side} className="plot-card linear-map-plot-card" aria-labelledby={'representation-' + side + '-title'}>
           <div className="card-heading"><div><p className="panel-kicker">{side === 'source' ? 'Domain' : 'Codomain'}</p>
-            <h2 id={'representation-' + side + '-title'}>{side === 'source' ? '定義域' : '終域'} <Scalar>{side === 'source' ? 'U' : 'V'}</Scalar> = ℝ<sup>{scene[side].dimension}</sup></h2></div>
+            <h2 id={'representation-' + side + '-title'}>{mode === 'basis-change' ? '同じ空間' : side === 'source' ? '定義域' : '終域'} <Scalar>{mode === 'basis-change' || side === 'source' ? 'U' : 'V'}</Scalar> = ℝ<sup>{scene[side].dimension}</sup>{mode === 'basis-change' && <>（基底<BasisName name={side === 'source' ? 'B' : 'C'} />）</>}</h2></div>
             <button type="button" className="basis-fit-button" onClick={() => setViews((value) => ({ ...value, plane: { ...value.plane, [side]: null }, line: { ...value.line, [side]: null } }))}>全体を表示</button>
           </div>
           {scene[side].dimension === 1 ? <VectorLine1D idPrefix={'representation-' + side + '-line'}
@@ -158,12 +183,12 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
           className="linear-map-control-card inspector-panel representation-panel">
           <h2>{label}</h2>
           {id === 'edit' && <div className="representation-edit-grid" key={resetKey}>
-            <article><h3>基準基底に関する行列</h3><p>ここだけが写像そのものの編集です。</p>
+            <article><h3>基準基底に関する行列</h3><p>{mode === 'basis-change' ? '恒等写像のため単位行列に固定します。基底と入力を編集してください。' : '基準基底に関する行列を変更し、写像を編集します。'}</p>
               <p>{scene.target.dimension}行{scene.source.dimension}列の行列です。</p>
-              <Formula><Vector name="M" /> = <span className="linear-map-matrix-input" style={{ gridTemplateColumns: `repeat(${scene.source.dimension}, minmax(0, 1fr))` }}>
+              {mode === 'basis-change' ? <Formula><Vector name="M" /> = <Vector name="E" /> = <Matrix values={scene.definition.matrix} /></Formula> : <Formula><Vector name="M" /> = <span className="linear-map-matrix-input" style={{ gridTemplateColumns: `repeat(${scene.source.dimension}, minmax(0, 1fr))` }}>
                 {scene.definition.matrix.flatMap((row, r) => row.map((value, c) => <NumberInput key={r + '-' + c} value={value} label={'行列Mの第' + (r + 1) + '行第' + (c + 1) + '列'}
                   onValue={(next) => setScene((s) => editRepresentationValue(s, 'matrix', r, c, next))} />))}
-              </span></Formula>
+              </span></Formula>}
               <h3>標準座標の入力</h3><Formula><Vector name="w" /> = <span className="linear-map-vector-input">
                 {scene.input.map((value, r) => <NumberInput key={r} value={value} label={'入力wの第' + (r + 1) + '成分'}
                   onValue={(next) => setScene((s) => editRepresentationValue(s, 'input', r, 0, next))} />)}
@@ -197,29 +222,12 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
               </article>)}</div>
             </> : failure}
           </>}
-          {id === 'coordinates' && <>
-            <p>標準座標で写す経路と、基底座標を表現行列で移す経路を比べます。</p>
-            <Formula><MapValue name="w" /> = <Vector name="M" /><Vector name="w" /><Equals values={result.imageVector} /><Column values={result.imageVector} /></Formula>
-            <Formula><Matrix values={scene.definition.matrix} /><Column values={scene.input} /><Equals values={[...scene.definition.matrix.flat(), ...scene.input, ...result.imageVector]} /><Column values={result.imageVector} /></Formula>
-            {derived ? <>
-              <Formula><Vector name="c" /> = <CoordinateName basis="B" /><Equals values={derived.inputCoordinates} /><Column values={derived.inputCoordinates} /></Formula>
-              <Formula><Vector name="d" /> = <CoordinateName basis="C" mapped /> = <Vector name="A" /><Vector name="c" /><Equals values={derived.imageCoordinatesViaMatrix} /><Column values={derived.imageCoordinatesViaMatrix} /></Formula>
-              <Formula><Matrix values={derived.matrix} /><Column values={derived.inputCoordinates} /><Equals values={[...derived.matrix.flat(), ...derived.inputCoordinates, ...derived.imageCoordinatesViaMatrix]} /><Column values={derived.imageCoordinatesViaMatrix} /></Formula>
-              <Formula><MapValue name="w" /> = <Tuple basis={scene.target} /><Vector name="d" /><Equals values={derived.imageViaCoordinates} /><Column values={derived.imageViaCoordinates} /></Formula>
-              <p>2つの経路は数値許容誤差内で一致しています。同じ写像・同じ入力でも、基底とその順序を変えると座標が変わります。</p>
-            </> : failure}
+          {id === 'coordinates' && <RepresentationPaths scene={scene} result={result} failure={failure} />}
+          {id === 'change' && <>
+            {mode === 'map' && <p>このタブは現在の2基底について恒等写像を計算します。グラフの通常写像<Vector name="M" />は変更しません。グラフも恒等写像として操作する場合は、ページ上部の「基底変換モード」へ切り替えてください。</p>}
+            <BasisChangePanel scene={scene} direction={mode === 'basis-change' ? direction : inspectionDirection}
+              onDirectionChange={mode === 'basis-change' ? (value) => onDirectionChange?.(value) : setInspectionDirection} />
           </>}
-          {id === 'change' && (change ? <>
-            <p>ここでは同じ2基底で恒等写像を考えます。現在の写像 <Vector name="M" /> は変更しません。</p>
-            <h3>基底<BasisName name="B" />の座標 → 基底<BasisName name="C" />の座標</h3>
-            <Formula><ChangeName /><CoordinateName basis="B" /> = <CoordinateName basis="C" /></Formula>
-            <Formula><Tuple basis={scene.source} /> = <Tuple basis={scene.target} /><ChangeName /></Formula>
-            {change.representation ? <>
-              <Formula><ChangeName /><Equals values={change.representation.matrix.flat()} /><Matrix values={change.representation.matrix} /></Formula>
-              <Formula><Column values={change.representation.inputCoordinates} /> → <Column values={change.representation.imageCoordinates} /></Formula>
-              <p>座標を変えてもベクトル自体は同じです。逆方向の比較と独立した基底変換モードは11.5で追加します。</p>
-            </> : <p className="representation-warning">基底変換を確定できません。両候補の独立性と数値計算の精度を確認してください。</p>}
-          </> : <p>基底変換は同じ次元の2基底で考えます。現在は{scene.source.dimension}次元から{scene.target.dimension}次元への写像です。「表現行列の作り方」「座標での作用」で長方形の表現行列を確認してください。</p>)}
         </section>)}
       </div>
     </div>
@@ -251,29 +259,4 @@ function NumberInput({ value, label, onValue }: { readonly value: number; readon
     onKeyDown={(event) => { if (event.key === 'Escape') setDraft(String(value)); }} />
     {invalid && <small role="status">有限数（絶対値100万以下）を入力。グラフは直前値です。</small>}
   </label>;
-}
-function Vector({ name }: { readonly name: string }) {
-  const parts = splitVectorName(name);
-  return <span className="math-vector"><span className="math-vector-base">{parts.base}</span>{parts.subscript && <sub className="math-vector-subscript">{parts.subscript}</sub>}</span>;
-}
-function Scalar({ children }: { readonly children: ReactNode }) { return <span className="math-scalar-base">{children}</span>; }
-function BasisName({ name }: { readonly name: 'B' | 'C' }) { return <span className="basis-script-symbol">{name === 'B' ? 'ℬ' : '𝒞'}</span>; }
-function MapValue({ name }: { readonly name: string }) { return <span className="representation-atom"><Scalar>T</Scalar>(<Vector name={name} />)</span>; }
-function Tuple({ basis, mapped = false }: { readonly basis: VectorSet; readonly mapped?: boolean }) {
-  return <span className="representation-atom">({basis.vectors.map((v, i) => <span key={v.id}>{i > 0 && ', '}{mapped ? <MapValue name={v.name} /> : <Vector name={v.name} />}</span>)})</span>;
-}
-function ChangeName() { return <span className="representation-atom"><Vector name="P" /><sub><BasisName name="C" />←<BasisName name="B" /></sub></span>; }
-function CoordinateName({ basis, mapped = false }: { readonly basis: 'B' | 'C'; readonly mapped?: boolean }) {
-  return <span className="representation-atom">[{mapped ? <MapValue name="w" /> : <Vector name="w" />}]<sub><BasisName name={basis} /></sub></span>;
-}
-function Formula({ children }: { readonly children: ReactNode }) { return <div className="representation-formula linear-map-math">{children}</div>; }
-function Equals({ values }: { readonly values: readonly number[] }) { return <span>{values.some((v) => formatMathNumber(v).approximate) ? '≈' : '='}</span>; }
-function Column({ values }: { readonly values: readonly number[] }) {
-  return <span className="display-column-vector linear-map-column-vector" aria-label={'列ベクトル ' + values.join('、')}>{values.map((v, i) => <span key={i}>{formatMathNumber(v).text}</span>)}</span>;
-}
-function Matrix({ values, columnColors }: { readonly values: readonly (readonly number[])[]; readonly columnColors?: readonly string[] }) {
-  return <span className="linear-map-display-matrix" style={{ gridTemplateColumns: `repeat(${values[0].length}, minmax(0, auto))` }} aria-label={values.length + '行' + values[0].length + '列。' + values.map((row, i) => '第' + (i + 1) + '行 ' + row.join('、')).join('。')}>{values.flatMap((row, r) => row.map((v, c) => <span key={r + '-' + c} style={{ color: columnColors?.[c] }}>{formatMathNumber(v).text}</span>))}</span>;
-}
-function Combination({ basis, coefficients }: { readonly basis: VectorSet; readonly coefficients: readonly number[] }) {
-  return <>{basis.vectors.map((v, i) => <span className="representation-atom" key={v.id}>{i > 0 && ' + '}({formatMathNumber(coefficients[i]).text})<Vector name={v.name} /></span>)}</>;
 }

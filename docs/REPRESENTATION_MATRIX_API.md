@@ -2,7 +2,7 @@
 
 最終更新: 2026-09-07
 
-利用者確認済み（D-093）。採用記号と対象範囲は[設計書](./REPRESENTATION_MATRIX_DESIGN.md)を参照する。11.3で数ベクトル2→2の画面へ接続した（D-094利用者確認済み）。11.4で1〜3次元の9次元組と3Dドラッグプレビューへ接続した（D-095利用者確認済み）。共有は11.7。
+利用者確認済み（D-093）。採用記号と対象範囲は[設計書](./REPRESENTATION_MATRIX_DESIGN.md)を参照する。11.3で数ベクトル2→2の画面へ接続した（D-094利用者確認済み）。11.4で1〜3次元の9次元組と3Dドラッグプレビューへ接続した（D-095利用者確認済み）。11.5で双方向の基底変換と往復検算を画面へ追加した（D-096利用者確認待ち）。共有は11.7。
 
 ## 呼び出しと入力
 
@@ -40,6 +40,17 @@
 逆行列は明示計算せず、既存`analyzeBasisCoordinates`で各列を解く。派生値の積は入力上限や表示用の微小値丸めを適用せず計算する。
 
 ## 数値境界
+
+### 11.5 双方向変換と往復
+
+`analyzeBasisChangeRoundTrip(dimension, sourceBasis, targetBasis, inputVector, options?)`を追加。forwardはB→C、reverseはC→Bで、どちらにも同じ基準座標のwを渡す。両解析に加えて、実際のP(B←C)P(C←B)と逆順の積、P(B←C)(P(C←B)c)と逆向きの往復値を検証する。
+
+- `roundTrip`は成功時にproductOnB、productOnC、returnedToB、returnedToCを持つ。座標を行列入力の100万上限で切らず、未丸めの積を使う。
+- 積が単位行列と、往復座標が元の座標と相対許容誤差内で一致する場合のみstatus=ready。基底不成立はinvalid-basis、非有限や残差超過はnumerical-failureでroundTrip=nullとなる。
+- forward/reverseは診断のため残すが、画面で往復成功・逆変換を確定表示する条件はroundTripが非nullであること。片側だけの成功から両方の一致を断言しない。
+- `0D`の空の基底・行列にも対応。通常の画面は1〜3次元のみ。既存APIの数値許容誤差と失敗判定は変更しない。
+
+### 共通の数値境界
 
 非有限の計算結果は`non-finite-result`、一意な基底座標を得られなければ`coordinate-solve-failed`、再構成や経路の相対残差が許容誤差を超えたら`residual-too-large`を返す。これらは数学的な「基底でない」「表現不能」とは区別する。
 

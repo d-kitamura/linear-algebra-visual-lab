@@ -69,10 +69,11 @@ export type {
   LinearMapValidationCode,
 } from './linearMap';
 
-export { analyzeRepresentationMatrix, analyzeBasisChange } from './representationMatrix';
+export { analyzeRepresentationMatrix, analyzeBasisChange, analyzeBasisChangeRoundTrip } from './representationMatrix';
 export type {
   RepresentationBasisFailureReason,
   RepresentationBasisCheck,
   RepresentationCoordinates,
   RepresentationMatrixAnalysis,
+  BasisChangeRoundTripAnalysis,
 } from './representationMatrix';

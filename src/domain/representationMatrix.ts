@@ -158,6 +158,43 @@ export function analyzeBasisChange(
   }, sourceBasis, targetBasis, inputVector, options);
 }
 
+export interface BasisChangeRoundTripAnalysis {
+  readonly status: RepresentationMatrixAnalysis['status'];
+  readonly forward: RepresentationMatrixAnalysis;
+  readonly reverse: RepresentationMatrixAnalysis;
+  readonly roundTrip: {
+    /** P_(B←C) P_(C←B) と逆順の積。表示丸め前の値を検証する。 */
+    readonly productOnB: readonly (readonly number[])[];
+    readonly productOnC: readonly (readonly number[])[];
+    readonly returnedToB: readonly number[];
+    readonly returnedToC: readonly number[];
+  } | null;
+}
+
+/** 両向きの座標変換に加え、実際の行列積と往復残差も確認する。 */
+export function analyzeBasisChangeRoundTrip(dimension: VectorSpaceDimension, source: VectorSet, target: VectorSet, input: readonly number[], options: RankOptions = {}): BasisChangeRoundTripAnalysis {
+  const forward = analyzeBasisChange(dimension, source, target, input, options);
+  const reverse = analyzeBasisChange(dimension, target, source, input, options);
+  const f = forward.representation;
+  const r = reverse.representation;
+  if (!f || !r) return { forward, reverse, roundTrip: null,
+    status: forward.status === 'invalid-basis' || reverse.status === 'invalid-basis' ? 'invalid-basis' : 'numerical-failure' };
+  const product = (left: readonly (readonly number[])[], right: readonly (readonly number[])[]) => left.map((row) =>
+    Array.from({ length: dimension }, (_, c) => row.reduce((sum, entry, k) => sum + entry * right[k][c], 0)));
+  const productOnB = product(r.matrix, f.matrix);
+  const productOnC = product(f.matrix, r.matrix);
+  const returnedToB = multiply(r.matrix, f.imageCoordinatesViaMatrix);
+  const returnedToC = multiply(f.matrix, r.imageCoordinatesViaMatrix);
+  const identity = Array.from({ length: dimension }, (_, row) => Array.from({ length: dimension }, (_, c) => row === c ? 1 : 0));
+  const tolerance = options.relativeTolerance ?? DEFAULT_RELATIVE_TOLERANCE;
+  const pairs = [[productOnB.flat(), identity.flat()], [productOnC.flat(), identity.flat()],
+    [returnedToB, f.inputCoordinates], [returnedToC, r.inputCoordinates]] as const;
+  if (!pairs.every(([actual, expected]) => isFiniteVector(actual) && approximatelyEqual(actual, expected, tolerance))) {
+    return { status: 'numerical-failure', forward, reverse, roundTrip: null };
+  }
+  return { status: 'ready', forward, reverse, roundTrip: { productOnB, productOnC, returnedToB, returnedToC } };
+}
+
 function checkBasis(basis: VectorSet, dimension: VectorSpaceDimension, options: RankOptions): RepresentationBasisCheck {
   const failureReasons: RepresentationBasisFailureReason[] = [];
   try {

@@ -4244,6 +4244,33 @@
 .representation-dimensions select { padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: inherit; font: inherit; }
 .representation-lab .three-dimensional-plot-card { min-width: 0; }
 
+/* 11.5: 経路はDOMの順序のまま、狭幅で縦に読む。数式単位の折返しを維持。 */
+.representation-mode-controls,
+.representation-example-controls { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+.representation-mode-controls [aria-pressed='true'] { background: #2f6690; color: white; }
+.representation-direction { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.representation-direction select { max-width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 10px; font: inherit; }
+.representation-path,
+.representation-coordinate-pair { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.representation-path { list-style: none; padding: 0; counter-reset: path-step; }
+.representation-path-direct,
+.representation-coordinate-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.representation-path > li,
+.representation-coordinate-pair > article { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #f5f8fa; }
+.representation-path > li { counter-increment: path-step; }
+.representation-path h4::before { content: counter(path-step) '. '; }
+.representation-path h4,
+.representation-coordinate-pair h4 { margin: 8px 0; }
+.representation-path .representation-path-operation { min-height: 2.5em; margin: 0; font-size: 0.8rem; }
+.representation-path-result { padding: 14px; border-left: 4px solid #2f6690; background: #f5f8fa; }
+@media (max-width: 980px) {
+  .representation-path { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .representation-path,
+  .representation-coordinate-pair { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 980px) {
   .representation-edit-grid { grid-template-columns: 1fr; }
 }
