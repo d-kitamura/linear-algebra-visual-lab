@@ -21,7 +21,7 @@ const labs = [
   {
     id: 'representation-matrix',
     name: '表現行列・基底変換Lab',
-    description: '2つの基底と表現行列・座標の関係を調べる（2D）',
+    description: '2つの基底と表現行列・座標の関係を調べる（1D〜3D）',
   },
 ] as const;
 

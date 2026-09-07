@@ -4233,12 +4233,16 @@
 .representation-formula > .linear-map-display-matrix,
 .representation-formula > .display-column-vector { flex-shrink: 0; }
 .representation-atom { white-space: nowrap; }
-.representation-basis-row { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+.representation-basis-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0; }
 .representation-basis-row > .linear-map-vector-input { width: 110px; flex-shrink: 0; }
 .representation-number { min-width: 0; display: block; }
 .representation-number small { display: block; color: #a1332a; font: 0.7rem/1.5 sans-serif; }
 .representation-warning { padding: 12px 18px; border: 1px solid #d88b76; border-radius: 12px; background: #fff3ed; }
 .representation-lab .basis-fit-button { white-space: nowrap; }
+.representation-dimensions { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
+.representation-dimensions label { display: flex; align-items: center; gap: 12px; }
+.representation-dimensions select { padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: inherit; font: inherit; }
+.representation-lab .three-dimensional-plot-card { min-width: 0; }
 
 @media (max-width: 980px) {
   .representation-edit-grid { grid-template-columns: 1fr; }

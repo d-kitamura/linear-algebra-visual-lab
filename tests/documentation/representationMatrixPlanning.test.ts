@@ -60,6 +60,17 @@ describe('11.1 表現行列Lab設計案', () => {
     expect(design).toContain(String.raw`\bm A=\begin{bmatrix}1&2\\-1&-1\end{bmatrix}`);
   });
 
+  it('11.4は実装済みと利用者確認待ちを分け、11.5と共有を先行実装しない', () => {
+    const roadmap = read('ROADMAP.md');
+    const current = roadmap.split('### 11.4 ')[1].split('### 11.5 ')[0];
+    expect(current).toContain('実装済み・利用者確認待ち（D-095）');
+    expect(current.match(/- \[x\]/g)).toHaveLength(5);
+    expect(current).toContain('- [ ] **確認ゲート:**');
+    expect(roadmap.split('### 11.5 ')[1].split('### 11.6 ')[0]).not.toContain('- [x]');
+    expect(read('docs/PROJECT_STATUS.md')).toContain('11.4実装と11.5開始時の引継ぎ');
+    expect(read('docs/DECISIONS.md')).toContain('### D-095');
+  });
+
   it('基底変換例はBの座標からCの座標へ向かう', () => {
     const source = basis(2, [[1, 0], [1, 1]]);
     const target = basis(2, [[1, 1], [0, 1]]);

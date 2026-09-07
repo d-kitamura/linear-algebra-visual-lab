@@ -70,6 +70,8 @@ interface VectorSpace3DProps {
     vectorId: string,
     coordinates: readonly [number, number, number] | null,
   ) => void;
+  /** Lab固有の吸着対象を指定する場合だけ上書き。距離は共通の表示幅3%。 */
+  readonly onVectorCoordinatesSnap?: (vectorId: string, coordinates: readonly [number, number, number], maximumDistance: number) => ReturnType<typeof snapDraggedSpaceVectorToDependentPosition> | ReturnType<typeof snapSpaceTargetToSelectedSpan>;
   readonly onLinearCombinationTargetPlacement: (
     coordinates: readonly [number, number, number],
   ) => void;
@@ -184,6 +186,7 @@ export function VectorSpace3D({
   onCameraChange,
   onVectorCoordinatesCommit,
   onVectorCoordinatesPreview,
+  onVectorCoordinatesSnap,
   onLinearCombinationTargetPlacement,
   onLinearCombinationVisibility,
   idPrefix = 'space-3d',
@@ -200,6 +203,7 @@ export function VectorSpace3D({
   const onCameraChangeRef = useRef(onCameraChange);
   const onVectorCoordinatesCommitRef = useRef(onVectorCoordinatesCommit);
   const onVectorCoordinatesPreviewRef = useRef(onVectorCoordinatesPreview);
+  const onVectorCoordinatesSnapRef = useRef(onVectorCoordinatesSnap);
   const onLinearCombinationTargetPlacementRef = useRef(
     onLinearCombinationTargetPlacement,
   );
@@ -210,6 +214,7 @@ export function VectorSpace3D({
   onCameraChangeRef.current = onCameraChange;
   onVectorCoordinatesCommitRef.current = onVectorCoordinatesCommit;
   onVectorCoordinatesPreviewRef.current = onVectorCoordinatesPreview;
+  onVectorCoordinatesSnapRef.current = onVectorCoordinatesSnap;
   onLinearCombinationTargetPlacementRef.current = onLinearCombinationTargetPlacement;
 
   useEffect(() => {
@@ -268,6 +273,7 @@ export function VectorSpace3D({
             setErrorMessage(message);
           }
         },
+        (id, coordinates, distance) => onVectorCoordinatesSnapRef.current?.(id, coordinates, distance),
       );
       runtimeRef.current = runtime;
 
@@ -440,6 +446,7 @@ function createThreeSpaceRuntime(
   ) => void,
   onInteractionMessage: (message: string | null) => void,
   onError: (message: string) => void,
+  snapVectorCoordinates?: (vectorId: string, coordinates: readonly [number, number, number], maximumDistance: number) => ReturnType<typeof snapDraggedSpaceVectorToDependentPosition> | ReturnType<typeof snapSpaceTargetToSelectedSpan> | undefined,
 ): ThreeSpaceRuntime {
   host.replaceChildren();
 
@@ -967,7 +974,7 @@ function createThreeSpaceRuntime(
       currentPoint,
     );
     const snapDistance = spaceSnapDistanceForViewWidth(orthographicVisibleWidth(camera));
-    const snapResult = snapEditableVectorsToSpan
+    const snapResult = snapVectorCoordinates?.(activeVectorDrag.vector.id, directCoordinates, snapDistance) ?? (snapEditableVectorsToSpan
       ? snapSpaceTargetToSelectedSpan(
           directCoordinates,
           spanVectors,
@@ -979,7 +986,7 @@ function createThreeSpaceRuntime(
           directCoordinates,
           vectors,
           snapDistance,
-        );
+        ));
     activeVectorDrag.coordinates = [...snapResult.coordinates];
     activeVectorDrag.snapKind = snapResult.snapKind;
     activeVectorDrag.snapTargetVectorIds = 'targetVectorIds' in snapResult
@@ -1014,7 +1021,7 @@ function createThreeSpaceRuntime(
       camera,
       snapResult.snapKind,
     );
-    const snapDescription = snapEditableVectorsToSpan
+    const snapDescription = snapEditableVectorsToSpan || 'basisVectorIds' in snapResult
       ? describeEditableVectorSpanSnap(snapResult.snapKind as SpaceTargetSnapKind, spanLabel)
       : describeSpaceVectorSnap(
           snapResult.snapKind as SpaceVectorSnapKind,

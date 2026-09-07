@@ -55,6 +55,7 @@ export interface VectorLine1DProps {
   readonly showHelpText?: boolean;
   readonly spanColor?: string;
   readonly alwaysOpaqueVectorIds?: readonly string[];
+  readonly editableVectorIds?: readonly string[];
 }
 
 interface SvgPointerPoint {
@@ -93,6 +94,7 @@ export function VectorLine1D({
   showHelpText = true,
   spanColor,
   alwaysOpaqueVectorIds = [],
+  editableVectorIds,
 }: VectorLine1DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportRef = useRef(viewport);
@@ -303,6 +305,7 @@ export function VectorLine1D({
   ): void {
     if (
       !onVectorChange
+      || (editableVectorIds !== undefined && !editableVectorIds.includes(vectorId))
       || vectorDragRef.current
       || targetDragRef.current
       || pointersRef.current.size > 0
@@ -560,7 +563,7 @@ export function VectorLine1D({
                   <circle cx={originX} cy={axisY} r="8" fill={color} />
                 )}
                 <circle className="vector-tip" cx={endX} cy={axisY} r="4" fill={color} />
-                <circle
+                {(editableVectorIds === undefined || editableVectorIds.includes(vector.id)) && <circle
                   className={`line-vector-drag-handle ${draggingVectorId === vector.id ? 'is-dragging' : ''} ${draggingVectorId === vector.id && vectorSnappedToOrigin ? 'is-snapped' : ''}`}
                   cx={endX}
                   cy={axisY}
@@ -574,7 +577,7 @@ export function VectorLine1D({
                   onPointerUp={(event) => handleVectorPointerEnd(event, vector.id)}
                   onPointerCancel={(event) => handleVectorPointerEnd(event, vector.id)}
                   onLostPointerCapture={(event) => handleVectorPointerEnd(event, vector.id)}
-                />
+                />}
                 <text
                   className="vector-label line-vector-label"
                   x={endX + (labelOnRight ? 13 : -13)}
