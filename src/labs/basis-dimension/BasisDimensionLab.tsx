@@ -708,7 +708,7 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
                 ? <MathPolynomialSpace degree={activeDimension - 1} />
                 : `${activeDimension}D`}
             </p>
-            <h1 id="basis-dimension-title">基底を選んで、座標を読み解く。</h1>
+            <h1 id="basis-dimension-title">基底と次元</h1>
           </div>
           <div className="lab-intro-side">
             <p className="lab-intro-copy">

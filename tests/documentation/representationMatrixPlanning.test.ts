@@ -43,7 +43,7 @@ describe('11.1 表現行列Lab設計案', () => {
     expect(implementation).toContain('完了・利用者確認済み');
     expect(implementation).toContain('- [x]');
     expect(implementation).toContain('- [x] **確認ゲート:**');
-    expect(roadmap.split('### 11.3 ')[1].split('### 11.4 ')[0]).toContain('実装済み・利用者確認待ち（D-094）');
+    expect(roadmap.split('### 11.3 ')[1].split('### 11.4 ')[0]).toContain('完了・利用者確認済み（D-094）');
     expect(read('docs/PROJECT_STATUS.md')).toContain('11.4開始時の引継ぎ');
     expect(read('docs/REPRESENTATION_MATRIX_API.md')).toContain('numerical-failure');
   });

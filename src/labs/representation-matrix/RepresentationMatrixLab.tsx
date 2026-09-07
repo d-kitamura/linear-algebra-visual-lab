@@ -63,7 +63,7 @@ export function RepresentationMatrixLab({ active }: { readonly active: boolean }
   return <main className="lab-page representation-lab" data-lab-id="representation-matrix" aria-hidden={!active}>
     <section className="lab-intro" aria-labelledby="representation-title">
       <div><p className="panel-kicker">Representation matrix / 2D → 2D</p>
-        <h1 id="representation-title">表現行列・基底変換Lab</h1>
+        <h1 id="representation-title">表現行列と基底の変換</h1>
         <p>同じ写像でも、2つの基底とその順序によって表現行列は変わります。</p>
       </div>
       <div><LabActionControls exportDisabled exportDescriptionId="representation-share-help" onExport={() => {}} onReset={reset} />

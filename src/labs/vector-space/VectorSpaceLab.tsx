@@ -1310,7 +1310,7 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
         <section className="lab-intro" aria-labelledby="page-title">
           <div>
             <p className="eyebrow">ベクトル空間 / {activeDimension}D</p>
-            <h1 id="page-title">ベクトルを変えて、生成する空間を見る。</h1>
+            <h1 id="page-title">ベクトルが生成する空間</h1>
           </div>
           <div className="lab-intro-side">
             <p className="lab-intro-copy">

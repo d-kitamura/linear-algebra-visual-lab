@@ -556,7 +556,7 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
         <section className="lab-intro" aria-labelledby="linear-map-title">
           <div>
             <p className="eyebrow">線形写像 / {scene.sourceDimension}D → {scene.targetDimension}D</p>
-            <h1 id="linear-map-title">{scene.sourceDimension === 0 ? '零ベクトルから、写像を確かめる。' : '入力を動かして、像の動きを見る。'}</h1>
+            <h1 id="linear-map-title">線形写像</h1>
           </div>
           <div className="lab-intro-side">
             <p className="lab-intro-copy">
