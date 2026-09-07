@@ -32,7 +32,7 @@ describe('11.1 表現行列Lab設計案', () => {
     expect(design).toContain('基底変換モードは同じ次元・同じ空間種別に限定');
   });
 
-  it('承認済み記号と11.2実装済み・11.3未着手の境界を維持する', () => {
+  it('承認済み数学APIと11.3の実装・確認境界を維持する', () => {
     const rules = read('math-writing-rules.txt');
     expect(rules).toContain('D-092、11.1採用');
     expect(rules).toContain('基底Bの座標 → 基底Cの座標');
@@ -40,11 +40,11 @@ describe('11.1 表現行列Lab設計案', () => {
     const approval = roadmap.split('### 11.1 ')[1].split('### 11.2 ')[0];
     const implementation = roadmap.split('### 11.2 ')[1].split('### 11.3 ')[0];
     expect(approval).not.toContain('- [ ]');
-    expect(implementation).toContain('実装済み・利用者確認待ち');
+    expect(implementation).toContain('完了・利用者確認済み');
     expect(implementation).toContain('- [x]');
-    expect(implementation).toContain('- [ ] **確認ゲート:**');
-    expect(roadmap.split('### 11.3 ')[1].split('### 11.4 ')[0]).not.toContain('- [x]');
-    expect(read('docs/PROJECT_STATUS.md')).toContain('11.3開始時の引継ぎ');
+    expect(implementation).toContain('- [x] **確認ゲート:**');
+    expect(roadmap.split('### 11.3 ')[1].split('### 11.4 ')[0]).toContain('実装済み・利用者確認待ち（D-094）');
+    expect(read('docs/PROJECT_STATUS.md')).toContain('11.4開始時の引継ぎ');
     expect(read('docs/REPRESENTATION_MATRIX_API.md')).toContain('numerical-failure');
   });
 

@@ -37,6 +37,8 @@ interface VectorPlane2DProps {
     coordinates: readonly [number, number],
   ) => void;
   readonly onVectorDragEnd?: (vectorId: string) => void;
+  /** 未指定なら従来通り全矢印。像などの導出値は編集対象から外せる。 */
+  readonly editableVectorIds?: readonly string[];
   readonly parallelSnapTargetId?: string | null;
   readonly spanVectors?: readonly VectorValue[];
   readonly spanDimension?: number;
@@ -69,6 +71,7 @@ export function VectorPlane2D({
   onVectorDragStart,
   onVectorChange,
   onVectorDragEnd,
+  editableVectorIds,
   parallelSnapTargetId = null,
   spanVectors = [],
   spanDimension = 0,
@@ -326,6 +329,7 @@ export function VectorPlane2D({
   ): void {
     if (
       !onVectorChange
+      || (editableVectorIds !== undefined && !editableVectorIds.includes(vectorId))
       || vectorDragRef.current
       || targetDragRef.current
       || pointerPositionsRef.current.size > 0
@@ -675,7 +679,7 @@ export function VectorPlane2D({
                 <circle cx={origin[0]} cy={origin[1]} r="8" fill={color} />
               )}
               <circle className="vector-tip" cx={end[0]} cy={end[1]} r="4" fill={color} />
-              <circle
+              {(editableVectorIds === undefined || editableVectorIds.includes(vector.id)) && <circle
                 className={`vector-drag-handle ${draggingVectorId === vector.id ? 'is-dragging' : ''} ${draggingVectorId === vector.id && parallelSnapTargetId ? 'is-snapped' : ''}`}
                 cx={end[0]}
                 cy={end[1]}
@@ -689,7 +693,7 @@ export function VectorPlane2D({
                 onPointerUp={(event) => handleVectorPointerEnd(event, vector.id)}
                 onPointerCancel={(event) => handleVectorPointerEnd(event, vector.id)}
                 onLostPointerCapture={(event) => handleVectorPointerEnd(event, vector.id)}
-              />
+              />}
               <text
                 className="vector-label"
                 x={labelX}

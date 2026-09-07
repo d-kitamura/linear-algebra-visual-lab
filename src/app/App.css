@@ -4189,6 +4189,67 @@
   width: 100%;
 }
 
+/* 11.3: 共通の2図＋全幅タブ。式はまとまり単位で折り返す。 */
+.representation-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  margin-top: 20px;
+}
+
+.representation-column-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.representation-edit-grid article,
+.representation-column-grid article {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.representation-column-grid article { border-top-width: 4px; }
+.representation-panel h3 { font-size: 1rem; }
+.representation-panel p,
+.representation-legend,
+.representation-fixed-note { color: var(--muted); line-height: 1.7; }
+.representation-legend { margin: 0; font-size: 0.8rem; }
+
+.representation-formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 3px 0;
+  font-size: 1.1rem;
+}
+
+.representation-formula > .linear-map-display-matrix,
+.representation-formula > .display-column-vector { flex-shrink: 0; }
+.representation-atom { white-space: nowrap; }
+.representation-basis-row { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+.representation-basis-row > .linear-map-vector-input { width: 110px; flex-shrink: 0; }
+.representation-number { min-width: 0; display: block; }
+.representation-number small { display: block; color: #a1332a; font: 0.7rem/1.5 sans-serif; }
+.representation-warning { padding: 12px 18px; border: 1px solid #d88b76; border-radius: 12px; background: #fff3ed; }
+.representation-lab .basis-fit-button { white-space: nowrap; }
+
+@media (max-width: 980px) {
+  .representation-edit-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .representation-column-grid { grid-template-columns: 1fr; }
+  .representation-tabs { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .representation-formula { font-size: 1rem; }
+}
+
 .linear-map-plot-card {
   padding: clamp(17px, 2.5vw, 25px);
 }
