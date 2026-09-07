@@ -60,7 +60,7 @@ describe('11.1 表現行列Lab設計案', () => {
     expect(design).toContain(String.raw`\bm A=\begin{bmatrix}1&2\\-1&-1\end{bmatrix}`);
   });
 
-  it('11.4は承認済み、11.5は実装済み・確認待ちとして11.6以降を残す', () => {
+  it('11.5まで承認済み、11.6は実装済み・確認待ちとして共有を残す', () => {
     const roadmap = read('ROADMAP.md');
     const current = roadmap.split('### 11.4 ')[1].split('### 11.5 ')[0];
     expect(current).toContain('完了・利用者確認済み（D-095');
@@ -68,13 +68,18 @@ describe('11.1 表現行列Lab設計案', () => {
     expect(current).toContain('- [x] **確認ゲート:**');
     expect(current).not.toContain('- [ ]');
     const next = roadmap.split('### 11.5 ')[1].split('### 11.6 ')[0];
-    expect(next).toContain('実装済み・利用者確認待ち（D-096）');
-    expect(next.match(/- \[x\]/g)).toHaveLength(5);
-    expect(next).toContain('- [ ] **確認ゲート:**');
-    expect(roadmap.split('### 11.6 ')[1].split('### 11.7 ')[0]).not.toContain('- [x]');
+    expect(next).toContain('完了・利用者確認済み（D-096）');
+    expect(next.match(/- \[x\]/g)).toHaveLength(6);
+    const polynomial = roadmap.split('### 11.6 ')[1].split('### 11.7 ')[0];
+    expect(polynomial).toContain('実装済み・利用者確認待ち（D-097）');
+    expect(polynomial.match(/- \[x\]/g)).toHaveLength(5);
+    expect(polynomial).toContain('- [ ] **確認ゲート:**');
+    expect(roadmap.split('### 11.7 ')[1].split('### 11.8 ')[0]).not.toContain('- [x]');
     expect(read('docs/PROJECT_STATUS.md')).toContain('11.4実装と11.5開始時の引継ぎ');
     expect(read('docs/DECISIONS.md')).toContain('### D-095');
     expect(read('docs/DECISIONS.md')).toContain('### D-096');
+    expect(read('docs/DECISIONS.md')).toContain('### D-097');
+    expect(read('docs/PROJECT_STATUS.md')).toContain('11.6実装と11.7開始時の引継ぎ');
     expect(read('docs/PROJECT_STATUS.md')).toContain('11.5実装と11.6開始時の引継ぎ');
   });
 

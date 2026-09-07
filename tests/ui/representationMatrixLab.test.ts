@@ -62,7 +62,7 @@ describe('11.4 次元別の画面接続', () => {
     it(n + '→' + m + 'の成分数・行列形状と同次元の基底変換を表示する', () => {
       const html = renderScene(createRepresentationScene(n, m));
       expect(html.match(/<input/g)).toHaveLength(m * n + n + n * n + m * m);
-      expect(html.match(/<select/g)).toHaveLength(n === m ? 3 : 2);
+      expect(html.match(/<select/g)).toHaveLength(n === m ? 5 : 4);
       expect(html).toContain(m + '行' + n + '列');
       expect(html).toContain('repeat(' + n + ', minmax(0, auto))');
       expect(html.includes('基底変換は同じ次元の2基底')).toBe(n !== m);

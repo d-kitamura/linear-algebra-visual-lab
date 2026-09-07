@@ -5,7 +5,11 @@ import { analyzeVectorSet } from '../../domain';
 export type BasisSide = 'source' | 'target';
 export type RepresentationDimension = 1 | 2 | 3;
 export const REPRESENTATION_DIMENSIONS = [1, 2, 3] as const;
+export type RepresentationSpaceKind = 'coordinate' | 'polynomial';
+export const REPRESENTATION_SPACE_KINDS = ['coordinate', 'polynomial'] as const;
 export interface RepresentationScene {
+  readonly sourceKind: RepresentationSpaceKind;
+  readonly targetKind: RepresentationSpaceKind;
   readonly definition: LinearMapDefinition;
   readonly source: VectorSet;
   readonly target: VectorSet;
@@ -13,15 +17,17 @@ export interface RepresentationScene {
 }
 
 /** 数ベクトル1〜3次元。既定の2→2はD-092の確認済み初期例を維持する。 */
-export function createRepresentationScene(sourceDimension: RepresentationDimension = 2, targetDimension: RepresentationDimension = 2): RepresentationScene {
+export function createRepresentationScene(sourceDimension: RepresentationDimension = 2, targetDimension: RepresentationDimension = 2, sourceKind: RepresentationSpaceKind = 'coordinate', targetKind: RepresentationSpaceKind = 'coordinate'): RepresentationScene {
   if (!REPRESENTATION_DIMENSIONS.includes(sourceDimension) || !REPRESENTATION_DIMENSIONS.includes(targetDimension)) {
     throw new RangeError('通常操作の次元は1〜3です。0Dは補助説明の対象です。');
   }
+  if (!REPRESENTATION_SPACE_KINDS.includes(sourceKind) || !REPRESENTATION_SPACE_KINDS.includes(targetKind)) throw new TypeError('空間の種類は数ベクトルまたは多項式です。');
   const basis = (name: string, columns: number[][]): VectorSet => ({
     dimension: columns.length as RepresentationDimension,
     vectors: columns.map((coordinates, i) => ({ id: `${name}${i + 1}`, name: `${name}${i + 1}`, coordinates })),
   });
   return {
+    sourceKind, targetKind,
     definition: { sourceDimension, targetDimension, matrix: Array.from({ length: targetDimension }, (_, row) =>
       Array.from({ length: sourceDimension }, (_, column) => row === column || row === 0 ? 1 : 0)) },
     source: basis('u', [[1, 0, 0], [1, 1, 0], [0, 0, 1]].slice(0, sourceDimension).map((v) => v.slice(0, sourceDimension))),

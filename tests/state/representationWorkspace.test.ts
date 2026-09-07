@@ -19,7 +19,7 @@ describe('11.4 9次元組の独立状態と直接操作', () => {
   }
   it('各場面と両側の表示状態は独立でResetも現在の場面だけ', () => {
     const w = createRepresentationWorkspace();
-    expect(Object.keys(w.scenes)).toHaveLength(9);
+    expect(Object.keys(w.scenes)).toHaveLength(36);
     expect(w.scenes['1-to-2'].target).not.toBe(w.scenes['3-to-2'].target);
     const changed = { ...w, activeShapeId: '3-to-1' as const,
       scenes: { ...w.scenes, '3-to-1': editRepresentationValue(w.scenes['3-to-1'], 'input', 2, 0, 42) },

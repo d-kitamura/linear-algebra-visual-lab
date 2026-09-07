@@ -153,6 +153,6 @@ describe('フェーズ10 0・1次元拡張とフェーズ11 表現行列Labの�
     expect(roadmap).toContain('基底変換行列の「どの基底の座標から、どの基底の座標へ変換するか」');
     expect(roadmap).toContain('採用した記号・変換方向を今後の実装へ適用する');
     expect(projectStatus).toContain('表現行列と写像定義用行列の文字');
-    expect(specification).toContain('| 文書バージョン | 1.07 |');
+    expect(specification).toContain('| 文書バージョン | 1.08 |');
   });
 });
