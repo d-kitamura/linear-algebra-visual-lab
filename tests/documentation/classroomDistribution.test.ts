@@ -13,6 +13,11 @@ describe('授業配布・対応環境ガイド', () => {
     expect(guide).toContain('学生側の確認手順');
     expect(guide).toContain('授業中の復旧手順');
     expect(guide).toContain('Reset');
+    expect(guide).toContain('表現行列Lab');
+    expect(guide).toContain('基準行列M');
+    expect(guide).toContain('順序付き基底B・C');
+    expect(guide).toContain('現在の場面だけ');
+    expect(guide).toContain('計52代表例');
   });
 
   it('主要機能と失敗時の代替導線を分離して案内する', () => {

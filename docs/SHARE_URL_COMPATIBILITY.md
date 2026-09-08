@@ -46,7 +46,7 @@
 - `tests/fixtures/share-url-linear-map-v1.json`は、`2→3`の行列、入力`u,w`、スカラー、終域3Dカメラを含む線形写像Lab v1 URLと期待状態を固定する。
 - `tests/sharing/shareCompatibility.test.ts`は旧固定URLの数学状態を現行版へ正規化して照合し、現行版での決定的な再生成を確認する。旧URLと新版URLの文字列一致は要求しない。
 - `tests/fixtures/share-url-low-dimensions.json`は現行版の低次元8例を固定する。`tests/sharing/lowDimensionalSharing.test.ts`で復元と同一URL再生成、13追加教材例の数学・描画・QR・読み上げ要約を検証する。既存28例と計41例になる。
-- `tests/integration/multiLabRegression.test.ts`は、各固定URLが対象Labだけを共有InitialStateにすること、Reset基準からの決定的再生成、3件のQR生成、3Lab計28代表例を横断して確認する。
+- `tests/integration/multiLabRegression.test.ts`は、各固定URLが対象Labだけを共有InitialStateにすること、Reset基準からの決定的再生成、4件のQR生成、旧3Labの28例＋低次元13例＋第四Lab11例（計52代表例）を横断して確認する。
 - 将来いずれかのLabを更新するときは、別Labを含む既存fixtureを変更または削除しない。旧版の復元テストを残し、新版fixtureと旧版からの移行テストを追加する。
 - 互換fixtureのURLはコード整形、表示名変更、既定値変更を理由に更新しない。fixture自体が誤っていた場合だけ、理由を意思決定記録へ残して修正する。
 

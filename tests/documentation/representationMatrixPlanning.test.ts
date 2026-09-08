@@ -60,7 +60,7 @@ describe('11.1 表現行列Lab設計案', () => {
     expect(design).toContain(String.raw`\bm A=\begin{bmatrix}1&2\\-1&-1\end{bmatrix}`);
   });
 
-  it('11.6は確認済み、11.7の共有実装後の確認ゲートを残す', () => {
+  it('11.9まで確認済みとしてフェーズ11を完了する', () => {
     const roadmap = read('ROADMAP.md');
     const current = roadmap.split('### 11.4 ')[1].split('### 11.5 ')[0];
     expect(current).toContain('完了・利用者確認済み（D-095');
@@ -79,9 +79,14 @@ describe('11.1 表現行列Lab設計案', () => {
     expect(sharing.match(/- \[x\]/g)).toHaveLength(6);
     expect(sharing).toContain('- [x] **確認ゲート:**');
     const teaching = roadmap.split('### 11.8 ')[1].split('### 11.9 ')[0];
-    expect(teaching).toContain('実装済み・利用者確認待ち（D-100');
-    expect(teaching.match(/- \[x\]/g)).toHaveLength(4);
-    expect(teaching).toContain('- [ ] **確認ゲート:**');
+    expect(teaching).toContain('完了・利用者確認済み（D-100');
+    expect(teaching.match(/- \[x\]/g)).toHaveLength(5);
+    expect(teaching).toContain('- [x] **確認ゲート:**');
+    const inventory = roadmap.split('### 11.9 ')[1].split('## 13.')[0];
+    expect(inventory).toContain('完了・利用者確認済み（D-101');
+    expect(inventory.match(/- \[x\]/g)).toHaveLength(5);
+    expect(inventory).toContain('- [x] **確認ゲート:**');
+    expect(read('docs/INVENTORY_PHASE11.md')).toContain('対角化');
     expect(read('docs/REPRESENTATION_TEACHING_GUIDE.md')).toContain('計52例');
     expect(read('docs/PROJECT_STATUS.md')).toContain('11.4実装と11.5開始時の引継ぎ');
     expect(read('docs/DECISIONS.md')).toContain('### D-095');
