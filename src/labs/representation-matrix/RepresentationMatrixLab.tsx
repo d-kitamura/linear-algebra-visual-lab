@@ -1,4 +1,7 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { buildShareUrl } from '../../sharing';
+import { ShareExportDialog } from '../../app/ShareExportDialog';
+import { createRepresentationInitialization, createRepresentationShareState } from './representationSharing';
 import { analyzeRepresentationMatrix, analyzeVectorSet, polynomialCoefficientLabel, type VectorValue } from '../../domain';
 import { LabActionControls } from '../../app/LabActionControls';
 import { VectorPlane2D, VectorLine1D, createAutoFitLineViewport, createAutoFitViewport } from '../../visualization';
@@ -7,11 +10,12 @@ import { BasisElement, ObjectName, ObjectTuple, ReferenceCoordinates, ReferenceO
 import { openPolynomialMapExample, polynomialMapRule, type PolynomialMapExample } from './representationPolynomialExamples';
 import { RepresentationPaths, BasisChangePanel } from './RepresentationCoordinatePanels';
 import { dragRepresentationVector, dragRepresentationLineVector, setRepresentationVector, snapRepresentationSpaceVector, editRepresentationValue, parseRepresentationNumber, moveRepresentationBasis, REPRESENTATION_DIMENSIONS, type RepresentationSpaceKind, type BasisSide, type RepresentationDimension, type RepresentationScene } from './representationMatrixState';
-import { createRepresentationWorkspace, resetRepresentationWorkspace, activeRepresentationScene, activeRepresentationViews, updateActiveRepresentationScene, updateActiveRepresentationViews, selectRepresentationDimension, selectRepresentationKind, representationChangeId, createBasisChangeScene, type RepresentationViewState, type RepresentationMode, type BasisChangeDirection } from './representationWorkspace';
+import { resetRepresentationWorkspace, activeRepresentationScene, activeRepresentationViews, updateActiveRepresentationScene, updateActiveRepresentationViews, selectRepresentationDimension, selectRepresentationKind, representationChangeId, createBasisChangeScene, type RepresentationViewState, type RepresentationMode, type BasisChangeDirection } from './representationWorkspace';
 
 const VectorSpace3D = lazy(async () => ({ default: (await import('../../visualization/VectorSpace3D')).VectorSpace3D }));
 const POLYNOMIAL_AXES_3D = ['b₀', 'b₁', 'b₂'] as const;
 const POLYNOMIAL_AXES_2D = ['b₀', 'b₁'] as const;
+const ReportInvalidDraft = createContext<(id: string, invalid: boolean) => void>(() => {});
 
 const TABS = [['edit', '写像と基底'], ['columns', '表現行列の作り方'], ['coordinates', '座標での作用'], ['change', '基底変換']] as const;
 type TabId = typeof TABS[number][0];
@@ -20,24 +24,26 @@ const color = (name: string) => COLORS[name.replace(/^T\((.*)\)$/u, '$1')] ?? '#
 
 /** M,wと順序付き基底だけを保持し、A・像・座標は常に導出する。 */
 export function RepresentationMatrixLab({ active }: { readonly active: boolean }) {
-  const [workspace, setWorkspace] = useState(createRepresentationWorkspace);
+  const [initialization] = useState(() => createRepresentationInitialization(typeof window === 'undefined' ? 'http://localhost/' : window.location.href));
+  const [workspace, setWorkspace] = useState(() => initialization.initialWorkspace);
   const [exampleRevision, setExampleRevision] = useState(0);
   const id = workspace.mode === 'map' ? workspace.activeShapeId : 'change-' + representationChangeId(workspace);
   const scene = activeRepresentationScene(workspace);
   // 非表示の次元組のWebGLは保持せず、教材と表示状態だけを保持する。
   return <RepresentationSceneView key={id + '-' + exampleRevision} active={active} committed={scene} views={activeRepresentationViews(workspace)}
-    mode={workspace.mode} onModeChange={(mode) => setWorkspace((w) => ({ ...w, mode }))}
+    loadError={initialization.errorMessage} mode={workspace.mode} onModeChange={(mode) => setWorkspace((w) => ({ ...w, mode }))}
     direction={workspace.changeDirections[representationChangeId(workspace)]}
     onDirectionChange={(direction) => setWorkspace((w) => ({ ...w, changeDirections: { ...w.changeDirections, [representationChangeId(w)]: direction } }))}
     onKindChange={(side, kind) => setWorkspace((w) => selectRepresentationKind(w, side, kind))}
     onPolynomialExample={(example) => { setWorkspace((w) => openPolynomialMapExample(w, example)); setExampleRevision((v) => v + 1); }}
     setScene={(update) => setWorkspace((w) => updateActiveRepresentationScene(w, update))}
     setViews={(update) => setWorkspace((w) => updateActiveRepresentationViews(w, update))}
-    onReset={() => setWorkspace(resetRepresentationWorkspace)}
+    onReset={() => { setWorkspace((w) => resetRepresentationWorkspace(w, initialization.initialWorkspace)); setExampleRevision((v) => v + 1); }}
     onDimensionChange={(side, dimension) => setWorkspace((w) => selectRepresentationDimension(w, side, dimension))} />;
 }
 
 interface SceneViewProps {
+  readonly loadError?: string | null;
   readonly onKindChange?: (side: BasisSide, kind: RepresentationSpaceKind) => void;
   readonly onPolynomialExample?: (example: PolynomialMapExample) => void;
   readonly mode?: RepresentationMode;
@@ -55,7 +61,15 @@ interface SceneViewProps {
 type DragPreview = { readonly side: BasisSide; readonly id: string; readonly coordinates: readonly [number, number, number] };
 
 /** 3Dはcommitとpreviewを分離し、ドラッグ中にWebGLの操作対象を再生成しない。 */
-export function RepresentationSceneView({ active, committed, views, setScene, setViews, onReset, onDimensionChange, mode = 'map', onModeChange, direction = 'B-to-C', onDirectionChange, onKindChange, onPolynomialExample }: SceneViewProps) {
+export function RepresentationSceneView({ active, committed, views, setScene, setViews, onReset, onDimensionChange, mode = 'map', onModeChange, direction = 'B-to-C', onDirectionChange, onKindChange, onPolynomialExample, loadError }: SceneViewProps) {
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [exportError, setExportError] = useState('');
+  const [invalidDrafts, setInvalidDrafts] = useState<ReadonlySet<string>>(() => new Set());
+  const reportInvalid = useCallback((id: string, invalid: boolean) => setInvalidDrafts((current) => {
+    if (current.has(id) === invalid) return current;
+    const next = new Set(current); if (invalid) next.add(id); else next.delete(id); return next;
+  }), []);
+  useEffect(() => { if (!active) setShareUrl(null); }, [active]);
   const [preview, setPreview] = useState<DragPreview | null>(null);
   const scene = useMemo(() => preview ? setRepresentationVector(committed, preview.side, preview.id, preview.coordinates) : committed, [committed, preview]);
   const [tab, setTab] = useState<TabId>('edit');
@@ -83,6 +97,7 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
   } : null, [preview, committed.target.dimension, vectors]);
   const basisFailure = (side: BasisSide) => !result[side === 'source' ? 'sourceBasis' : 'targetBasis'].isBasis;
   function reset() {
+    setShareUrl(null); setExportError('');
     onReset();
     setPreview(null);
     setDragViews(null);
@@ -108,16 +123,25 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
     <p>基準座標の写像と像は引き続き表示しています。</p>
   </div>;
 
-  return <main className="lab-page representation-lab" data-lab-id="representation-matrix" aria-hidden={!active}>
+  function openShare() {
+    if (invalidDrafts.size || preview || dragViews) return;
+    try {
+      setShareUrl(buildShareUrl(window.location.href, createRepresentationShareState(committed, views, mode, direction)));
+      setExportError('');
+    } catch (error) { setExportError(error instanceof Error ? error.message : '共有URLを生成できませんでした。'); }
+  }
+  return <ReportInvalidDraft.Provider value={reportInvalid}><main className="lab-page representation-lab" data-lab-id="representation-matrix" aria-hidden={!active}>
     <section className="lab-intro" aria-labelledby="representation-title">
       <div><p className="panel-kicker">Representation matrix / {scene.source.dimension}D → {scene.target.dimension}D</p>
         <h1 id="representation-title">表現行列と基底の変換</h1>
         <p>同じ写像でも、2つの基底とその順序によって表現行列は変わります。</p>
       </div>
-      <div><LabActionControls exportDisabled exportDescriptionId="representation-share-help" onExport={() => {}} onReset={reset} />
-        <p className="lab-action-help" id="representation-share-help">このLabの共有URL・QRは11.7で対応予定です。Resetは現在のモード・次元組だけを初期例へ戻します。</p>
+      <div><LabActionControls exportDisabled={invalidDrafts.size > 0 || preview !== null || dragViews !== null} exportDescriptionId="representation-share-help" onExport={openShare} onReset={reset} />
+        <p className="lab-action-help" id="representation-share-help">現在の場面をURL・QRで共有します。Resetは現在の種類・次元・モードの初期状態（共有URLを開いた場面は共有時の状態）へ戻します。{invalidDrafts.size > 0 && '入力エラーを修正してから共有してください。'}</p>
       </div>
     </section>
+    {loadError && <p role={active ? 'alert' : undefined} className="representation-warning">共有状態を読み込めませんでした。初期例を表示しています。{loadError}</p>}
+    {exportError && <p role="alert" className="representation-warning">{exportError}</p>}
     <div className="representation-mode-controls" role="group" aria-label="教材モード">
       <button type="button" className="basis-fit-button" aria-pressed={mode === 'map'} onClick={() => onModeChange?.('map')}>通常の写像</button>
       <button type="button" className="basis-fit-button" aria-pressed={mode === 'basis-change'} onClick={() => onModeChange?.('basis-change')}>基底変換モード</button>
@@ -270,7 +294,8 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
         </section>)}
       </div>
     </div>
-  </main>;
+    {shareUrl && <ShareExportDialog key={shareUrl} url={shareUrl} onClose={() => setShareUrl(null)} />}
+  </main></ReportInvalidDraft.Provider>;
 }
 
 function graphVectors(scene: RepresentationScene): Record<BasisSide, VectorValue[]> {
@@ -290,9 +315,12 @@ function automaticViews(vectors: Record<BasisSide, readonly VectorValue[]>, view
 }
 
 function NumberInput({ value, label, onValue }: { readonly value: number; readonly label: string; readonly onValue: (value: number) => void }) {
+  const id = useId();
+  const reportInvalid = useContext(ReportInvalidDraft);
   const [draft, setDraft] = useState(String(value));
   useEffect(() => setDraft(String(value)), [value]);
   const invalid = parseRepresentationNumber(draft) === null;
+  useEffect(() => { reportInvalid(id, invalid); return () => reportInvalid(id, false); }, [id, invalid, reportInvalid]);
   return <label className="representation-number"><input type="text" inputMode="decimal" value={draft} aria-label={label} aria-invalid={invalid}
     onChange={(event) => { setDraft(event.target.value); const next = parseRepresentationNumber(event.target.value); if (next !== null) onValue(next); }}
     onKeyDown={(event) => { if (event.key === 'Escape') setDraft(String(value)); }} />

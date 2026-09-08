@@ -47,8 +47,18 @@ export function createRepresentationWorkspace(): RepresentationWorkspace {
     views: Object.fromEntries(entries.map(([id]) => [id, createRepresentationViewState()])) as Record<RepresentationSceneId, RepresentationViewState>,
   };
 }
-/** Resetは現在の場面だけ。共有導入時はこの初期値取得をInitialStateへ接続する。 */
-export function resetRepresentationWorkspace(workspace: RepresentationWorkspace): RepresentationWorkspace {
+/** Resetは現在の場面だけ。起動時の共有状態があれば、それを初期値として使う。 */
+export function resetRepresentationWorkspace(workspace: RepresentationWorkspace, initial?: RepresentationWorkspace): RepresentationWorkspace {
+  if (initial) {
+    if (workspace.mode === 'basis-change') {
+      const id = representationChangeId(workspace);
+      return { ...workspace, changeScenes: { ...workspace.changeScenes, [id]: initial.changeScenes[id] },
+        changeViews: { ...workspace.changeViews, [id]: initial.changeViews[id] },
+        changeDirections: { ...workspace.changeDirections, [id]: initial.changeDirections[id] } };
+    }
+    const id = workspace.activeShapeId;
+    return { ...workspace, scenes: { ...workspace.scenes, [id]: initial.scenes[id] }, views: { ...workspace.views, [id]: initial.views[id] } };
+  }
   if (workspace.mode === 'basis-change') {
     const id = representationChangeId(workspace);
     return { ...workspace, changeScenes: { ...workspace.changeScenes, [id]: createBasisChangeScene(workspace.changeDimension, 'oblique', workspace.changeKind) },

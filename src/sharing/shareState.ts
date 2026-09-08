@@ -123,7 +123,28 @@ export interface LinearMapShareStateV2 extends Omit<LinearMapShareStateV1, 'v' |
   readonly targetDimension: VectorSpaceDimension;
 }
 export type LinearMapShareState = LinearMapShareStateV2;
-export type SharedState = ShareState | BasisDimensionShareState | LinearMapShareState;
+export const REPRESENTATION_MATRIX_SHARE_STATE_VERSION = 1 as const;
+/** 順序付き基底。番号と成分を保存し、固定のu_i/v_i名は復元側で付ける。 */
+export interface SharedRepresentationBasisVector {
+  readonly index: number;
+  readonly coordinates: readonly number[];
+}
+export interface RepresentationMatrixShareState {
+  readonly v: typeof REPRESENTATION_MATRIX_SHARE_STATE_VERSION;
+  readonly lab: 'representation-matrix';
+  readonly mode: 'map' | 'basis-change';
+  readonly sourceDimension: 1 | 2 | 3;
+  readonly targetDimension: 1 | 2 | 3;
+  readonly sourceKind: BasisRepresentation;
+  readonly targetKind: BasisRepresentation;
+  readonly matrix: readonly (readonly number[])[];
+  readonly sourceBasis: readonly SharedRepresentationBasisVector[];
+  readonly targetBasis: readonly SharedRepresentationBasisVector[];
+  readonly input: readonly number[];
+  readonly direction: 'B-to-C' | 'C-to-B' | null;
+  readonly cameras: { readonly source: SharedCameraState | null; readonly target: SharedCameraState | null };
+}
+export type SharedState = ShareState | BasisDimensionShareState | LinearMapShareState | RepresentationMatrixShareState;
 
 export type ShareStateErrorCode =
   | 'EMPTY_ENCODED_STATE'
@@ -229,6 +250,7 @@ export function validateShareState(input: unknown): ShareState {
 }
 
 export function validateSharedState(input: unknown): SharedState {
+  if (requireRecord(input, '$').lab === 'representation-matrix') return validateRepresentationMatrixShareState(input);
   const state = expandFixedState(requireRecord(input, '$'));
   if (state.lab === BASIS_DIMENSION_SHARE_LAB) {
     return validateBasisDimensionShareState(state);
@@ -375,6 +397,55 @@ export function validateLinearMapShareState(input: unknown): LinearMapShareState
         '$.visualization.codomainCamera',
       ),
     },
+  };
+}
+
+/** 基底でない候補も教材として共有可能。形状・数値・番号は検証するがrankで拒否しない。 */
+export function validateRepresentationMatrixShareState(input: unknown): RepresentationMatrixShareState {
+  const s = requireRecord(input, '$');
+  if (s.v !== REPRESENTATION_MATRIX_SHARE_STATE_VERSION) throw new InvalidShareStateError('UNSUPPORTED_VERSION', '表現行列Labの共有状態バージョンに対応していません。', '$.v');
+  requireExactKeys(s, ['v', 'lab', 'mode', 'sourceDimension', 'targetDimension', 'sourceKind', 'targetKind', 'matrix', 'sourceBasis', 'targetBasis', 'input', 'direction', 'cameras'], '$');
+  if (s.lab !== 'representation-matrix') throw invalidState('共有状態のLabが正しくありません。', '$.lab');
+  const dimension = (value: unknown, path: string): 1 | 2 | 3 => {
+    if (value !== 1 && value !== 2 && value !== 3) throw invalidState('次元は1〜3です。', path);
+    return value;
+  };
+  const kind = (value: unknown, path: string): BasisRepresentation => {
+    if (value !== 'coordinate' && value !== 'polynomial') throw invalidState('空間の種類が正しくありません。', path);
+    return value;
+  };
+  const n = dimension(s.sourceDimension, '$.sourceDimension');
+  const m = dimension(s.targetDimension, '$.targetDimension');
+  const sourceKind = kind(s.sourceKind, '$.sourceKind');
+  const targetKind = kind(s.targetKind, '$.targetKind');
+  if (s.mode !== 'map' && s.mode !== 'basis-change') throw invalidState('教材モードが正しくありません。', '$.mode');
+  const matrix = requireShareMatrix(s.matrix, m, n, '$.matrix');
+  if (s.mode === 'basis-change') {
+    if (n !== m || sourceKind !== targetKind || matrix.some((row, i) => row.some((v, j) => v !== (i === j ? 1 : 0)))) {
+      throw invalidState('基底変換モードは同種・同次元の恒等写像である必要があります。', '$.matrix');
+    }
+    if (s.direction !== 'B-to-C' && s.direction !== 'C-to-B') throw invalidState('基底変換の方向が正しくありません。', '$.direction');
+  } else if (s.direction !== null) throw invalidState('通常モードの詳細タブの方向は共有しません。', '$.direction');
+  const basis = (value: unknown, dim: 1 | 2 | 3, path: string): SharedRepresentationBasisVector[] => {
+    if (!Array.isArray(value) || value.length !== dim) throw invalidState('基底候補の本数が次元と一致しません。', path);
+    const seen = new Set<number>();
+    return value.map((entry, i) => {
+      const p = `${path}[${i}]`;
+      const v = requireRecord(entry, p);
+      requireExactKeys(v, ['index', 'coordinates'], p);
+      if (typeof v.index !== 'number' || !Number.isInteger(v.index) || v.index < 1 || v.index > dim || seen.has(v.index)) throw invalidState('基底の番号は1〜次元の重複しない番号です。', `${p}.index`);
+      seen.add(v.index);
+      return { index: v.index, coordinates: requireCoordinates(v.coordinates, dim, `${p}.coordinates`) };
+    });
+  };
+  const cameras = requireRecord(s.cameras, '$.cameras');
+  requireExactKeys(cameras, ['source', 'target'], '$.cameras');
+  return {
+    v: REPRESENTATION_MATRIX_SHARE_STATE_VERSION, lab: 'representation-matrix', mode: s.mode,
+    sourceDimension: n, targetDimension: m, sourceKind, targetKind, matrix,
+    sourceBasis: basis(s.sourceBasis, n, '$.sourceBasis'), targetBasis: basis(s.targetBasis, m, '$.targetBasis'),
+    input: requireCoordinates(s.input, n, '$.input'), direction: s.direction as RepresentationMatrixShareState['direction'],
+    cameras: { source: requireDimensionCamera(cameras.source, n, '$.cameras.source'), target: requireDimensionCamera(cameras.target, m, '$.cameras.target') },
   };
 }
 
@@ -856,6 +927,7 @@ function invalidState(message: string, path?: string): InvalidShareStateError {
 
 /** 固定0D教材値はURLから省き、内部の正規形へ復元するときだけ補う。 */
 function compactFixedState(state: SharedState): object {
+  if (state.lab === 'representation-matrix') return state;
   if (state.lab !== 'linear-map') {
     return state.dim === 0 ? { v: state.v, lab: state.lab, dim: 0 } : state;
   }

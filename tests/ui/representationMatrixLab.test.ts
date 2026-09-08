@@ -28,12 +28,11 @@ describe('11.3 表現行列Labの画面接続', () => {
     expect(html).toContain('representation-source-plane');
     expect(html).toContain('representation-target-plane');
   });
-  it('共有は無効で他Labの状態を書き出さず、Resetは独立', () => {
+  it('第四Labの共有を有効化し、Resetは起動時の現在場面だけへ戻す', () => {
     const html = renderToStaticMarkup(createElement(RepresentationMatrixLab, { active: true }));
-    expect(html).toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
-    expect(source).not.toContain('buildShareUrl');
-    expect(source).not.toContain('window.location');
-    expect(source).toContain('setWorkspace(resetRepresentationWorkspace)');
+    expect(html).not.toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
+    expect(source).toContain('createRepresentationShareState(committed, views, mode, direction)');
+    expect(source).toContain('resetRepresentationWorkspace(w, initialization.initialWorkspace)');
   });
   it('像の矢先は操作対象にせず、既存の未指定時は操作ハンドルを維持する', () => {
     const props = { vectors: [{ id: 'a', name: 'u1', coordinates: [1, 0] }, { id: 'b', name: 'T(u1)', coordinates: [0, 1] }], colors: ['red', 'blue'] };

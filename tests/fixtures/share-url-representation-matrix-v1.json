@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoxLCJsYWIiOiJyZXByZXNlbnRhdGlvbi1tYXRyaXgiLCJtb2RlIjoibWFwIiwic291cmNlRGltZW5zaW9uIjozLCJ0YXJnZXREaW1lbnNpb24iOjIsInNvdXJjZUtpbmQiOiJwb2x5bm9taWFsIiwidGFyZ2V0S2luZCI6InBvbHlub21pYWwiLCJtYXRyaXgiOltbMCwxLDBdLFswLDAsMl1dLCJzb3VyY2VCYXNpcyI6W3siaW5kZXgiOjMsImNvb3JkaW5hdGVzIjpbMCwwLDFdfSx7ImluZGV4IjoxLCJjb29yZGluYXRlcyI6WzEsMCwwXX0seyJpbmRleCI6MiwiY29vcmRpbmF0ZXMiOlswLDEsMF19XSwidGFyZ2V0QmFzaXMiOlt7ImluZGV4IjoxLCJjb29yZGluYXRlcyI6WzEsMF19LHsiaW5kZXgiOjIsImNvb3JkaW5hdGVzIjpbMSwxXX1dLCJpbnB1dCI6WzEsMiwzXSwiZGlyZWN0aW9uIjpudWxsLCJjYW1lcmFzIjp7InNvdXJjZSI6eyJkaXJlY3Rpb24iOlswLjUwMzA1NTQ2LC0wLjY4MDYwNDQ1LDAuNTMyNjQ2OTZdLCJ0YXJnZXQiOlsxLC0yLDNdLCJ1cCI6WzAsMCwxXSwiem9vbSI6MS41fSwidGFyZ2V0IjpudWxsfX0",
+  "expectedState": {
+    "v": 1,
+    "lab": "representation-matrix",
+    "mode": "map",
+    "sourceDimension": 3,
+    "targetDimension": 2,
+    "sourceKind": "polynomial",
+    "targetKind": "polynomial",
+    "matrix": [
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        2
+      ]
+    ],
+    "sourceBasis": [
+      {
+        "index": 3,
+        "coordinates": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "index": 1,
+        "coordinates": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "index": 2,
+        "coordinates": [
+          0,
+          1,
+          0
+        ]
+      }
+    ],
+    "targetBasis": [
+      {
+        "index": 1,
+        "coordinates": [
+          1,
+          0
+        ]
+      },
+      {
+        "index": 2,
+        "coordinates": [
+          1,
+          1
+        ]
+      }
+    ],
+    "input": [
+      1,
+      2,
+      3
+    ],
+    "direction": null,
+    "cameras": {
+      "source": {
+        "direction": [
+          0.50305546,
+          -0.68060445,
+          0.53264696
+        ],
+        "target": [
+          1,
+          -2,
+          3
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ],
+        "zoom": 1.5
+      },
+      "target": null
+    }
+  }
+}
