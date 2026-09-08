@@ -3,12 +3,15 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { RepresentationSceneView } from '../../src/labs/representation-matrix/RepresentationMatrixLab';
 import { createRepresentationScene } from '../../src/labs/representation-matrix/representationMatrixState';
-import { createRepresentationViewState } from '../../src/labs/representation-matrix/representationWorkspace';
+import { createBasisChangeScene, createRepresentationViewState } from '../../src/labs/representation-matrix/representationWorkspace';
 
 describe('表現行列Labの次元共通見出し', () => {
   it('3Dも1D・2Dと同じ数式要素を使い、通常・基底変換モードの両側を表示する', async () => {
     const render = (n: 1 | 2 | 3, mode: 'map' | 'basis-change', kind: 'polynomial' | 'coordinate') => renderToStaticMarkup(createElement(RepresentationSceneView, {
-      active: true, mode, committed: createRepresentationScene(n, n, kind, kind), views: createRepresentationViewState(),
+      active: true, mode,
+      // 見出しだけのテストでも、基底変換モードには恒等写像という教材契約を守る。
+      committed: mode === 'basis-change' ? createBasisChangeScene(n, 'standard', kind) : createRepresentationScene(n, n, kind, kind),
+      views: createRepresentationViewState(),
       setScene: () => {}, setViews: () => {}, onReset: () => {}, onDimensionChange: () => {},
     }));
     // SSRではWebGLを起動せず、lazyの読み込み完了後に実際の3Dカード見出しを検証する。
