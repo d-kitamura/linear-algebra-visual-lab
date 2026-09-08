@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeRepresentationMatrix, analyzeLinearMapLinearity, applyLinearMap } from '../../src/domain';
-import { createRepresentationWorkspace, activeRepresentationScene, activeRepresentationViews, selectRepresentationKind, selectRepresentationDimension, updateActiveRepresentationScene, resetRepresentationWorkspace, representationChangeId } from '../../src/labs/representation-matrix/representationWorkspace';
-import { createPolynomialMapExample, openPolynomialMapExample, polynomialMapRule } from '../../src/labs/representation-matrix/representationPolynomialExamples';
+import { createRepresentationWorkspace, activeRepresentationScene, selectRepresentationKind, selectRepresentationDimension, updateActiveRepresentationScene, resetRepresentationWorkspace, representationChangeId } from '../../src/labs/representation-matrix/representationWorkspace';
+import { createPolynomialMapExample, polynomialMapRule } from '../../src/labs/representation-matrix/representationPolynomialExamples';
 import { editRepresentationValue, moveRepresentationBasis } from '../../src/labs/representation-matrix/representationMatrixState';
 
 describe('11.6 多項式の係数行列と場面分離', () => {
@@ -55,14 +55,6 @@ describe('11.6 多項式の係数行列と場面分離', () => {
     expect(activeRepresentationScene(reset).targetKind).toBe('coordinate');
     expect(activeRepresentationScene(reset).input).toEqual([3, 2]);
     expect(reset.scenes['2-to-2']).toBe(numeric);
-  });
-  it('例は指定先の多項式場面だけ置換し、他場面・恒等写像状態を維持', () => {
-    const w = createRepresentationWorkspace();
-    const next = openPolynomialMapExample(w, 'derivative');
-    expect(activeRepresentationScene(next)).toEqual(createPolynomialMapExample('derivative'));
-    expect(next.scenes['2-to-2']).toBe(w.scenes['2-to-2']);
-    expect(next.changeScenes).toBe(w.changeScenes);
-    expect(activeRepresentationViews(next).cameras.source).toBeNull();
   });
   it('恒等写像の種別は左右同時に切替え、数ベクトルと多項式を別保存', () => {
     let w = { ...createRepresentationWorkspace(), mode: 'basis-change' as const };

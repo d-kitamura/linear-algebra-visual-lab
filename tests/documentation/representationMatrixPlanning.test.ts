@@ -79,7 +79,7 @@ describe('11.1 表現行列Lab設計案', () => {
     expect(sharing.match(/- \[x\]/g)).toHaveLength(6);
     expect(sharing).toContain('- [x] **確認ゲート:**');
     const teaching = roadmap.split('### 11.8 ')[1].split('### 11.9 ')[0];
-    expect(teaching).toContain('実装済み・利用者確認待ち（D-099');
+    expect(teaching).toContain('実装済み・利用者確認待ち（D-100');
     expect(teaching.match(/- \[x\]/g)).toHaveLength(4);
     expect(teaching).toContain('- [ ] **確認ゲート:**');
     expect(read('docs/REPRESENTATION_TEACHING_GUIDE.md')).toContain('計52例');

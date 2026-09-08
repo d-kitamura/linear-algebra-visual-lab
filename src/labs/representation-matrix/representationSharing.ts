@@ -47,15 +47,3 @@ export function createRepresentationInitialization(href: string): { readonly ini
   if (result.status === 'success' && result.state.lab === 'representation-matrix') return { initialWorkspace: restoreRepresentationWorkspace(result.state), errorMessage: null };
   return { initialWorkspace: createRepresentationWorkspace(), errorMessage: result.status === 'error' ? result.error.message : null };
 }
-
-/** 教材例の指定先だけを置換する。呼出側の起動時InitialStateは更新しない。 */
-export function openRepresentationTeachingState(w: RepresentationWorkspace, state: RepresentationMatrixShareState): RepresentationWorkspace {
-  const restored = restoreRepresentationWorkspace(state);
-  if (restored.mode === 'map') {
-    const id = restored.activeShapeId;
-    return { ...w, mode: 'map', activeShapeId: id, scenes: { ...w.scenes, [id]: restored.scenes[id] }, views: { ...w.views, [id]: restored.views[id] } };
-  }
-  const id = representationChangeId(restored);
-  return { ...w, mode: 'basis-change', changeKind: restored.changeKind, changeDimension: restored.changeDimension,
-    changeScenes: { ...w.changeScenes, [id]: restored.changeScenes[id] }, changeViews: { ...w.changeViews, [id]: restored.changeViews[id] }, changeDirections: { ...w.changeDirections, [id]: restored.changeDirections[id] } };
-}
