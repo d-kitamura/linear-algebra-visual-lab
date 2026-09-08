@@ -4,6 +4,8 @@
 
 ## 目的
 
+11.8で第四Labの11例を追加した。既存28例と低次元13例を維持し計52例となる。第四Labの観察順・期待値・配布手順は[表現行列Labの授業導線](./REPRESENTATION_TEACHING_GUIDE.md)を参照する。
+
 フェーズ3〜9の統合確認と授業準備に共通して使える3つのLabの2D・3D代表例28件を定義する。ベクトル空間Labの16件は`vector-space` v3、基底・次元Labの4件は`basis-dimension` v1、線形写像Labの8件は`linear-map` v1で生成する。リンクを開いた時点の状態が各Lab・各次元組のInitialStateとなるため、操作後にResetすると同じ例へ戻る。
 
 状態の正本は `src/teaching/twoDimensionalScenarios.ts`、`src/teaching/threeDimensionalScenarios.ts`、`src/teaching/basisDimensionScenarios.ts`、`src/teaching/linearMapScenarios.ts` とし、期待する数学結果と本番共有URLの往復を自動テストする。

@@ -46,7 +46,7 @@ describe('11.5 経路と基底変換の表示', () => {
     const html = renderToStaticMarkup(createElement(RepresentationSceneView, { active: true, mode: 'basis-change', committed: createBasisChangeScene(n), views: createRepresentationViewState(),
       setScene: () => {}, setViews: () => {}, onReset: () => {}, onDimensionChange: () => {} }));
     expect(html.match(/<input/g)).toHaveLength(n + 2 * n * n);
-    expect(html.match(/<select/g)).toHaveLength(3);
+    expect(html.match(/<select/g)).toHaveLength(4);
     expect(html).not.toContain('行列Mの第');
     expect(html).toContain('単位行列に固定');
     expect(html).toContain('このモード・次元の両基底と入力を置き換え');

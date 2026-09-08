@@ -5293,3 +5293,12 @@
   }
 
 }
+.representation-teaching select {
+  max-width: 100%;
+}
+
+.representation-teaching,
+#representation-reading {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

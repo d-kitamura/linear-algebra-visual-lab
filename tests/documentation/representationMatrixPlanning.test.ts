@@ -75,10 +75,14 @@ describe('11.1 表現行列Lab設計案', () => {
     expect(polynomial.match(/- \[x\]/g)).toHaveLength(6);
     expect(polynomial).toContain('- [x] **確認ゲート:**');
     const sharing = roadmap.split('### 11.7 ')[1].split('### 11.8 ')[0];
-    expect(sharing).toContain('実装済み・利用者確認待ち（D-098');
-    expect(sharing.match(/- \[x\]/g)).toHaveLength(5);
-    expect(sharing).toContain('- [ ] **確認ゲート:**');
-    expect(roadmap.split('### 11.8 ')[1].split('### 11.9 ')[0]).not.toContain('- [x]');
+    expect(sharing).toContain('完了・利用者確認済み（D-098');
+    expect(sharing.match(/- \[x\]/g)).toHaveLength(6);
+    expect(sharing).toContain('- [x] **確認ゲート:**');
+    const teaching = roadmap.split('### 11.8 ')[1].split('### 11.9 ')[0];
+    expect(teaching).toContain('実装済み・利用者確認待ち（D-099');
+    expect(teaching.match(/- \[x\]/g)).toHaveLength(4);
+    expect(teaching).toContain('- [ ] **確認ゲート:**');
+    expect(read('docs/REPRESENTATION_TEACHING_GUIDE.md')).toContain('計52例');
     expect(read('docs/PROJECT_STATUS.md')).toContain('11.4実装と11.5開始時の引継ぎ');
     expect(read('docs/DECISIONS.md')).toContain('### D-095');
     expect(read('docs/DECISIONS.md')).toContain('### D-096');

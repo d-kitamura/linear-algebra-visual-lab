@@ -1,7 +1,9 @@
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { buildShareUrl } from '../../sharing';
+import { buildShareUrl, type RepresentationMatrixShareState } from '../../sharing';
 import { ShareExportDialog } from '../../app/ShareExportDialog';
-import { createRepresentationInitialization, createRepresentationShareState } from './representationSharing';
+import { createRepresentationInitialization, createRepresentationShareState, openRepresentationTeachingState } from './representationSharing';
+import { RepresentationTeachingPanel } from './RepresentationTeachingPanel';
+import { representationSummary } from './representationSummary';
 import { analyzeRepresentationMatrix, analyzeVectorSet, polynomialCoefficientLabel, type VectorValue } from '../../domain';
 import { LabActionControls } from '../../app/LabActionControls';
 import { VectorPlane2D, VectorLine1D, createAutoFitLineViewport, createAutoFitViewport } from '../../visualization';
@@ -10,7 +12,7 @@ import { BasisElement, ObjectName, ObjectTuple, ReferenceCoordinates, ReferenceO
 import { openPolynomialMapExample, polynomialMapRule, type PolynomialMapExample } from './representationPolynomialExamples';
 import { RepresentationPaths, BasisChangePanel } from './RepresentationCoordinatePanels';
 import { dragRepresentationVector, dragRepresentationLineVector, setRepresentationVector, snapRepresentationSpaceVector, editRepresentationValue, parseRepresentationNumber, moveRepresentationBasis, REPRESENTATION_DIMENSIONS, type RepresentationSpaceKind, type BasisSide, type RepresentationDimension, type RepresentationScene } from './representationMatrixState';
-import { resetRepresentationWorkspace, activeRepresentationScene, activeRepresentationViews, updateActiveRepresentationScene, updateActiveRepresentationViews, selectRepresentationDimension, selectRepresentationKind, representationChangeId, createBasisChangeScene, type RepresentationViewState, type RepresentationMode, type BasisChangeDirection } from './representationWorkspace';
+import { createRepresentationViewState, resetRepresentationWorkspace, activeRepresentationScene, activeRepresentationViews, updateActiveRepresentationScene, updateActiveRepresentationViews, selectRepresentationDimension, selectRepresentationKind, representationChangeId, createBasisChangeScene, type RepresentationViewState, type RepresentationMode, type BasisChangeDirection } from './representationWorkspace';
 
 const VectorSpace3D = lazy(async () => ({ default: (await import('../../visualization/VectorSpace3D')).VectorSpace3D }));
 const POLYNOMIAL_AXES_3D = ['b₀', 'b₁', 'b₂'] as const;
@@ -36,6 +38,7 @@ export function RepresentationMatrixLab({ active }: { readonly active: boolean }
     onDirectionChange={(direction) => setWorkspace((w) => ({ ...w, changeDirections: { ...w.changeDirections, [representationChangeId(w)]: direction } }))}
     onKindChange={(side, kind) => setWorkspace((w) => selectRepresentationKind(w, side, kind))}
     onPolynomialExample={(example) => { setWorkspace((w) => openPolynomialMapExample(w, example)); setExampleRevision((v) => v + 1); }}
+    onTeachingExample={(state) => { setWorkspace((w) => openRepresentationTeachingState(w, state)); setExampleRevision((v) => v + 1); }}
     setScene={(update) => setWorkspace((w) => updateActiveRepresentationScene(w, update))}
     setViews={(update) => setWorkspace((w) => updateActiveRepresentationViews(w, update))}
     onReset={() => { setWorkspace((w) => resetRepresentationWorkspace(w, initialization.initialWorkspace)); setExampleRevision((v) => v + 1); }}
@@ -43,6 +46,7 @@ export function RepresentationMatrixLab({ active }: { readonly active: boolean }
 }
 
 interface SceneViewProps {
+  readonly onTeachingExample?: (state: RepresentationMatrixShareState) => void;
   readonly loadError?: string | null;
   readonly onKindChange?: (side: BasisSide, kind: RepresentationSpaceKind) => void;
   readonly onPolynomialExample?: (example: PolynomialMapExample) => void;
@@ -61,7 +65,7 @@ interface SceneViewProps {
 type DragPreview = { readonly side: BasisSide; readonly id: string; readonly coordinates: readonly [number, number, number] };
 
 /** 3Dはcommitとpreviewを分離し、ドラッグ中にWebGLの操作対象を再生成しない。 */
-export function RepresentationSceneView({ active, committed, views, setScene, setViews, onReset, onDimensionChange, mode = 'map', onModeChange, direction = 'B-to-C', onDirectionChange, onKindChange, onPolynomialExample, loadError }: SceneViewProps) {
+export function RepresentationSceneView({ active, committed, views, setScene, setViews, onReset, onDimensionChange, mode = 'map', onModeChange, direction = 'B-to-C', onDirectionChange, onKindChange, onPolynomialExample, loadError, onTeachingExample }: SceneViewProps) {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [exportError, setExportError] = useState('');
   const [invalidDrafts, setInvalidDrafts] = useState<ReadonlySet<string>>(() => new Set());
@@ -79,6 +83,8 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
   const [dragViews, setDragViews] = useState<ReturnType<typeof automaticViews> | null>(null);
   const result = useMemo(() => analyzeRepresentationMatrix(scene.definition, scene.source, scene.target, scene.input), [scene]);
   const derived = result.representation;
+  const teachingState = useMemo(() => createRepresentationShareState(scene, createRepresentationViewState(), mode, direction), [scene, mode, direction]);
+  const reading = useMemo(() => representationSummary(scene, result, mode, direction), [scene, result, mode, direction]);
   const kind = (side: BasisSide) => side === 'source' ? scene.sourceKind : scene.targetKind;
   // 次元によらず同じ数式見出しを使い、3Dの読み上げ用文字列とは分離する。
   const spaceHeading = (side: BasisSide) => <>{mode === 'basis-change' ? '同じ空間' : side === 'source' ? '定義域' : '終域'} <Scalar>{mode === 'basis-change' || side === 'source' ? 'U' : 'V'}</Scalar> = <SpaceName dimension={scene[side].dimension} kind={kind(side)} />{kind(side) === 'polynomial' && <>（係数空間）</>}{mode === 'basis-change' && <>（基底<BasisName name={side === 'source' ? 'B' : 'C'} />）</>}</>;
@@ -142,6 +148,11 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
     </section>
     {loadError && <p role={active ? 'alert' : undefined} className="representation-warning">共有状態を読み込めませんでした。初期例を表示しています。{loadError}</p>}
     {exportError && <p role="alert" className="representation-warning">{exportError}</p>}
+    <RepresentationTeachingPanel current={teachingState} onOpen={onTeachingExample} />
+    <details id="representation-reading"><summary>現在の状態の読み上げ要約</summary>
+      <p>表示値は必要に応じて丸めています。ドラッグ中は内容を更新しますが、自動読み上げを連続発火させません。</p>
+      <ol>{reading.map((line, i) => <li key={i}>{line}</li>)}</ol>
+    </details>
     <div className="representation-mode-controls" role="group" aria-label="教材モード">
       <button type="button" className="basis-fit-button" aria-pressed={mode === 'map'} onClick={() => onModeChange?.('map')}>通常の写像</button>
       <button type="button" className="basis-fit-button" aria-pressed={mode === 'basis-change'} onClick={() => onModeChange?.('basis-change')}>基底変換モード</button>
