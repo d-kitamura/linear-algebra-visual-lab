@@ -26,5 +26,7 @@ describe('11.7 表現行列の共有UI', () => {
     expect(html.indexOf('aria-label="u3(x)の定数項"')).toBeLessThan(html.indexOf('aria-label="u1(x)の定数項"'));
     expect(html).not.toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
     expect(html).not.toContain('11.7で対応予定');
+    expect(html).not.toContain('現在の場面をURL・QRで共有します。');
+    expect(html).not.toContain('representation-share-help'); // 通常時は説明も参照先も残さない。
   });
 });

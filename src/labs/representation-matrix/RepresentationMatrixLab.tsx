@@ -134,12 +134,12 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
         <h1 id="representation-title">表現行列と基底の変換</h1>
         <p>同じ写像でも、2つの基底とその順序によって表現行列は変わります。</p>
       </div>
-      <div><LabActionControls exportDisabled={invalidDrafts.size > 0 || preview !== null || dragViews !== null} exportDescriptionId="representation-share-help" onExport={openShare} onReset={reset} />
-        <p className="lab-action-help" id="representation-share-help">現在の場面をURL・QRで共有します。Resetは現在の種類・次元・モードの初期状態（共有URLを開いた場面は共有時の状態）へ戻します。{invalidDrafts.size > 0 && '入力エラーを修正してから共有してください。'}</p>
+      <div><LabActionControls exportDisabled={invalidDrafts.size > 0 || preview !== null || dragViews !== null} exportDescriptionId={invalidDrafts.size > 0 ? 'representation-share-help' : undefined} onExport={openShare} onReset={reset} />
       </div>
     </section>
     {loadError && <p role={active ? 'alert' : undefined} className="representation-warning">共有状態を読み込めませんでした。初期例を表示しています。{loadError}</p>}
     {exportError && <p role="alert" className="representation-warning">{exportError}</p>}
+    {invalidDrafts.size > 0 && <p className="representation-warning" id="representation-share-help" role="status">入力エラーを修正してから共有してください。</p>}
     <div className="representation-mode-controls" role="group" aria-label="教材モード">
       <button type="button" className="basis-fit-button" aria-pressed={mode === 'map'} onClick={() => onModeChange?.('map')}>通常の写像</button>
       <button type="button" className="basis-fit-button" aria-pressed={mode === 'basis-change'} onClick={() => onModeChange?.('basis-change')}>基底変換モード</button>
