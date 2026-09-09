@@ -5,6 +5,8 @@
 .eigen-plot .basis-fit-button { flex: 0 0 auto; white-space: nowrap; }
 .eigen-selection { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0 4px; font-size: 0.82rem; }
 .eigen-space-detail + .eigen-space-detail { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); }
+.eigen-kernel-explanation { margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.eigen-numeric-note { color: var(--muted); font-size: .8rem; }
 .eigen-show { display: flex; align-items: center; gap: 6px; min-height: 44px; }
 .eigen-show input { width: 18px; height: 18px; }
 .eigen-editor fieldset { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; gap: 12px; }

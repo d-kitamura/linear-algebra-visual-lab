@@ -13,6 +13,7 @@ import { applyEigenPolynomialExample, EIGEN_POLYNOMIAL_EXAMPLES, eigenPolynomial
 import { EigenCoordinateName, EigenPolynomialValue, EigenPolynomialRule, EigenPolynomialCorrespondence, EigenPolynomialBasisValue } from './eigenPolynomialMath';
 import { SpaceName, StandardPolynomialBasis } from '../representation-matrix/representationObjects';
 import './eigenspace.css';
+import { EigenKernelExplanation, EigenShiftedMatrix, EigenSpaceSpan, eigenDirectionDescription } from './eigenExplanation';
 
 const TABS = [['values', '固有値'], ['space', '固有空間'], ['input', '入力と像'], ['equation', '固有方程式']] as const;
 type Tab = typeof TABS[number][0];
@@ -255,17 +256,18 @@ export function EigenPanel({ tab, analysis, input, kind = 'coordinate' }: { read
     <ul className="eigen-values">{analysis.realEigenvalues.map((value, i) => <li key={i}>
       <span className="linear-map-math">{i + 1}: <Scalar>λ</Scalar> = {eigenRootLabels(analysis)[i].split(' = ')[1]}</span><span>固有値の重複度：{value.algebraicMultiplicity ?? '判定保留'}</span>
       <span>固有空間の次元：{value.eigenspace?.dimension ?? '判定保留'}</span></li>)}</ul>
-    <p>重複度は、固有方程式の根として重なる回数です。</p></>;
-  if (tab === 'space') return analysis.realEigenvalues.length ? <>{analysis.realEigenvalues.map((root, index) => <article className="eigen-space-detail" key={index}>
+    <p>重複度は、固有方程式の根として重なる回数です。固有空間の次元は、その空間の基底を構成するベクトルの本数です。両者は必ずしも一致しません。</p></>;
+  if (tab === 'space') return analysis.realEigenvalues.length ? <><EigenKernelExplanation kind={kind} />{analysis.realEigenvalues.map((root, index) => <article className="eigen-space-detail" key={index}>
     <Formula><Scalar>λ</Scalar> = {eigenRootLabels(analysis)[index].split(' = ')[1]}</Formula>
     {root.eigenspace ? <>
-    <Formula><Scalar>W</Scalar>(<Scalar>λ</Scalar>; <Scalar>T</Scalar>) = {'{'}<Vector name="u" /> ∈ <Scalar>U</Scalar> | <MapValue name="u" /> = <Scalar>λ</Scalar><Vector name="u" />{'}'}</Formula>
+    <EigenShiftedMatrix analysis={analysis} index={index} rootLabel={eigenRootLabels(analysis)[index].split(' = ')[1]} />
     <p>固有空間の次元：{root.eigenspace.dimension}</p><h3>固有空間の基底の一例</h3>
     <Formula><span className="basis-script-symbol">𝒬</span> = ({root.eigenspace.basis.map((_, i) => <span key={i}>{i > 0 && ', '}<Vector name={`q${i + 1}`} /></span>)})</Formula>
     {root.eigenspace.basis.map((q, i) => kind === 'polynomial'
       ? <EigenPolynomialBasisValue key={i} name={`q${i + 1}`} coefficients={q} />
       : <Formula key={i}><Vector name={`q${i + 1}`} /> = <Column values={q} /></Formula>)}
-    <p>固有空間は零ベクトルを含みます。基底の取り方は唯一ではありません。</p>
+    <EigenSpaceSpan dimension={root.eigenspace.dimension} />
+    <p>この基底の任意の一次結合が、上の同次方程式の解になります。固有空間は零ベクトルを含みます。基底の取り方は唯一ではありません。</p>
     </> : <p>この固有値の固有空間は判定保留です。</p>}
   </article>)}</> : <p>{analysis.status === 'no-real-eigenvalues' ? '実固有値がないため、固有空間はありません。' : '表示できる固有空間は未確定です。'}</p>;
   if (tab === 'input') return <>
@@ -278,16 +280,20 @@ export function EigenPanel({ tab, analysis, input, kind = 'coordinate' }: { read
       : input.eigenvectorStatus === 'eigenvector' ? '入力は固有ベクトルです（数値基準内）。'
         : input.eigenvectorStatus === 'not-eigenvector' ? '入力は固有ベクトルではありません。' : '固有ベクトルかどうかの判定は保留です。'}</strong></p>
     {input.matchingEigenvalueIndices.map((i) => <div key={i}><Formula><MapValue name="u" /> = ({eigenRootLabels(analysis)[i].split(' = ')[1]})<Vector name="u" /></Formula>
-      <p>この固有値の固有空間に属します。</p></div>)}
+      {kind === 'polynomial' && <Formula><EigenCoordinateName kind={kind} mapped /> = ({eigenRootLabels(analysis)[i].split(' = ')[1]})<EigenCoordinateName kind={kind} /></Formula>}
+      <p>この固有値の固有空間に属します。{kind === 'polynomial' && '係数空間の矢印では、'}{eigenDirectionDescription(analysis.realEigenvalues[i].value)}</p></div>)}
     {kind === 'polynomial' && input.eigenvectorStatus === 'eigenvector' && <p>入力は固有ベクトルである多項式です。</p>}
     {input.zeroStatus === 'zero' && analysis.realEigenvalues.some((r) => r.eigenspace) && <p>零ベクトルは、すべての固有空間に属します。</p>}
-    {input.eigenvectorStatus === 'eigenvector' && input.imageVector?.every((v) => v === 0) && <p>非零の入力が零へ写ります。対応する固有値は0です。</p>}
+    {input.zeroStatus === 'zero' && <><Formula><MapValue name="u" /> = <Scalar>λ</Scalar><Vector name="u" /> = <Vector name="0" /></Formula>
+      <p>零入力では任意の実数 <Scalar>λ</Scalar> でこの等式が成り立つため、固有値を特定できません。固有ベクトルには非零という条件が必要です。</p></>}
     {input.status === 'numerical-failure' && <p className="representation-warning">{input.issues.map((issue) => ISSUES[issue]).join(' ')}</p>}
   </>;
   return <>
     <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = det(<Vector name="A" /> − <Scalar>λ</Scalar><Vector name="E" />)</Formula>
     {analysis.characteristicCoefficients ? <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = <EigenPolynomial coefficients={analysis.characteristicCoefficients} /> = 0</Formula> : <p>固有多項式の係数は数値計算を保留しています。</p>}
     <p><Vector name="E" /> は単位行列です。この方程式の実数解が固有値です。</p>
+    <p>行列 <Vector name="A" /> − <Scalar>λ</Scalar><Vector name="E" /> の行列式が0であることと、同次方程式に非零解があることは同値です。解全体と基底は「固有空間」タブで確認できます。</p>
+    <p className="eigen-numeric-note">数値は表示桁数に丸め、数式は等号で表示しています。判定は丸め前の値と数値基準を用い、不確かな結果は保留します。</p>
   </>;
 }
 function EigenPolynomial({ coefficients }: { readonly coefficients: readonly number[] }) {
