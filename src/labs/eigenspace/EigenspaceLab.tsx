@@ -6,8 +6,8 @@ import type { PlaneVectorPresentation } from '../../visualization/VectorPlane2D'
 import { SvgVectorLabel } from '../../visualization/SvgVectorLabel';
 import { toSvgPoint } from '../../visualization/planeGeometry';
 import { formatMathNumber } from '../../ui';
-import { Column, Equals, Formula, MapValue, Scalar, Vector } from '../representation-matrix/representationMath';
-import { createEigenScene, createEigenSpaceGeometry, editEigenMatrix, firstEigenSelection, parseEigenNumber, setEigenInput, snapEigenInput, type EigenScene } from './eigenScene';
+import { Column, Formula, MapValue, Scalar, Vector } from '../representation-matrix/representationMath';
+import { createEigenScene, createEigenSpaceGeometries, editEigenMatrix, parseEigenNumber, setEigenInput, snapEigenInput, type EigenScene } from './eigenScene';
 import './eigenspace.css';
 
 const TABS = [['values', '固有値'], ['space', '固有空間'], ['input', '入力と像'], ['equation', '固有方程式']] as const;
@@ -39,10 +39,10 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   // 入力のpreview・数値編集ではこの解析を繰り返さない。
   const analysis = useMemo(() => analyzeEigenMap(scene.definition), [scene.definition]);
-  const selected = firstEigenSelection(analysis, scene.selectedEigenvalueIndex);
   const current = preview ?? scene.input;
-  const inputResult = useMemo(() => analyzeEigenInput(analysis, current, selected), [analysis, current, selected]);
-  const geometry = createEigenSpaceGeometry(analysis, selected);
+  const inputResult = useMemo(() => analyzeEigenInput(analysis, current), [analysis, current]);
+  const geometries = createEigenSpaceGeometries(analysis);
+  const geometry = geometries[0];
   const vectors: VectorValue[] = [
     // 像を先に描き、編集できる入力ハンドルを常に手前に残す。
     ...(inputResult.imageVector ? [{ id: 'eigen-image', name: 'T(u)', coordinates: inputResult.imageVector }] : []),
@@ -76,22 +76,19 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
           <h2 id="eigen-plot-title">空間 <Scalar>U</Scalar> = ℝ<sup>2</sup></h2></div>
           <button className="basis-fit-button" type="button" disabled={dragViewport !== null} onClick={() => setManualViewport(null)}>全体を表示</button></div>
         <div className="eigen-selection">
-          <label htmlFor="eigen-select">固有値を選択</label>
-          <select id="eigen-select" value={selected ?? ''} disabled={selected === null || dragViewport !== null}
-            onChange={(event) => setScene((s) => ({ ...s, selectedEigenvalueIndex: Number(event.target.value) }))}>
-            {selected === null && <option value="">{analysis.status === 'no-real-eigenvalues' ? '実固有値なし' : '選択できる固有空間なし'}</option>}
-            {analysis.realEigenvalues.map((root, i) => <option key={i} value={i} disabled={!root.eigenspace}>{rootLabels[i]}{!root.eigenspace && '（空間は判定保留）'}</option>)}
-          </select>
           <label className="eigen-show"><input type="checkbox" checked={scene.showEigenspace} disabled={!geometry || dragViewport !== null}
             onChange={(event) => setScene((s) => ({ ...s, showEigenspace: event.target.checked }))} />固有空間を表示</label>
         </div>
         <VectorPlane2D idPrefix="eigen-plane" vectors={vectors} colors={colors} viewport={viewport}
           editableVectorIds={['eigen-input']} alwaysOpaqueVectorIds={['eigen-input', 'eigen-image']}
           vectorPresentation={presentation} onViewportChange={setManualViewport}
-          showSpan={scene.showEigenspace && geometry !== null} spanVectors={geometry?.vectors ?? []} spanDimension={geometry?.dimension ?? 0}
-          spanLabel="選択した固有空間" onVectorDragStart={() => { setDragViewport(viewport); previewRef.current = scene.input; }}
+          showSpan={scene.showEigenspace && !!geometry} spanVectors={geometry?.vectors ?? []} spanDimension={geometry?.dimension ?? 0}
+          spanLineDirections={geometries.filter((g) => g.dimension === 1).map((g) => ({
+            direction: g.vectors[0].coordinates as readonly [number, number], label: rootLabels[g.index] + 'の固有空間',
+          }))}
+          spanLabel={`固有空間（${geometries.length}個）`} onVectorDragStart={() => { setDragViewport(viewport); previewRef.current = scene.input; }}
           onVectorChange={(_, coordinates) => {
-            const snapped = snapEigenInput({ ...scene, selectedEigenvalueIndex: selected }, analysis, coordinates, viewport.maxX - viewport.minX);
+            const snapped = snapEigenInput(scene, analysis, coordinates, viewport.maxX - viewport.minX);
             previewRef.current = snapped.coordinates; setPreview(snapped.coordinates);
           }}
           onVectorDragEnd={() => { const input = previewRef.current; if (input) setScene((s) => setEigenInput(s, input)); cancelDrag(); }}
@@ -124,7 +121,7 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
           {(analysis.status === 'inconclusive' || analysis.status === 'numerical-failure') && <div className="representation-warning">
             <strong>数値判定を保留しています。</strong><p>{[...new Set(analysis.issues.map((issue) => ISSUES[issue]))].join(' ')}</p>
           </div>}
-          <EigenPanel tab={id} analysis={analysis} input={inputResult} selected={selected} />
+          <EigenPanel tab={id} analysis={analysis} input={inputResult} />
         </section>)}
       </div>
     </div>
@@ -134,7 +131,7 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
 /** 丸め表示が衝突する根はnumberの全桁へ戻し、序数も併記して同じ根に見せない。 */
 export function eigenRootLabels(analysis: EigenMapAnalysis): string[] {
   const texts = analysis.realEigenvalues.map((root) => formatMathNumber(root.value).text);
-  return analysis.realEigenvalues.map((root, i) => `${i + 1}: λ ≈ ${texts.filter((v) => v === texts[i]).length > 1 ? String(root.value).replaceAll('-', '−') : texts[i]}`);
+  return analysis.realEigenvalues.map((root, i) => `${i + 1}: λ = ${texts.filter((v) => v === texts[i]).length > 1 ? String(root.value).replaceAll('-', '−') : texts[i]}`);
 }
 export function eigenVectorPresentation(input: readonly number[], image: readonly number[] | null, viewport: PlaneViewport): Record<string, PlaneVectorPresentation> {
   const same = image !== null && input.every((v, i) => v === image[i]);
@@ -156,37 +153,39 @@ export function eigenVectorPresentation(input: readonly number[], image: readonl
   };
 }
 
-export function EigenPanel({ tab, analysis, input, selected }: { readonly tab: Tab; readonly analysis: EigenMapAnalysis; readonly input: EigenInputAnalysis; readonly selected: number | null }) {
-  const root = selected === null ? null : analysis.realEigenvalues[selected];
+export function EigenPanel({ tab, analysis, input }: { readonly tab: Tab; readonly analysis: EigenMapAnalysis; readonly input: EigenInputAnalysis }) {
+  // D-106: このLabの教材表示は丸めを含め等号で統一。内部の数値基準・保留は維持する。
   if (tab === 'values') return analysis.status === 'no-real-eigenvalues' ? <p>この線形変換には実固有値がありません。</p> : <>
     <p>実固有値{analysis.spectrumComplete ? `は${analysis.realEigenvalues.length}個です。` : 'の確認できた部分を示します。'}</p>
     <ul className="eigen-values">{analysis.realEigenvalues.map((value, i) => <li key={i}>
-      <span className="linear-map-math">{i + 1}: <Scalar>λ</Scalar> ≈ {eigenRootLabels(analysis)[i].split(' ≈ ')[1]}</span><span>固有値の重複度：{value.algebraicMultiplicity ?? '判定保留'}</span>
+      <span className="linear-map-math">{i + 1}: <Scalar>λ</Scalar> = {eigenRootLabels(analysis)[i].split(' = ')[1]}</span><span>固有値の重複度：{value.algebraicMultiplicity ?? '判定保留'}</span>
       <span>固有空間の次元：{value.eigenspace?.dimension ?? '判定保留'}</span></li>)}</ul>
     <p>重複度は、固有方程式の根として重なる回数です。</p></>;
-  if (tab === 'space') return root?.eigenspace ? <>
-    <Formula><Scalar>λ</Scalar> ≈ {formatMathNumber(root.value).text}</Formula>
+  if (tab === 'space') return analysis.realEigenvalues.length ? <>{analysis.realEigenvalues.map((root, index) => <article className="eigen-space-detail" key={index}>
+    <Formula><Scalar>λ</Scalar> = {eigenRootLabels(analysis)[index].split(' = ')[1]}</Formula>
+    {root.eigenspace ? <>
     <Formula><Scalar>W</Scalar>(<Scalar>λ</Scalar>; <Scalar>T</Scalar>) = {'{'}<Vector name="u" /> ∈ <Scalar>U</Scalar> | <MapValue name="u" /> = <Scalar>λ</Scalar><Vector name="u" />{'}'}</Formula>
     <p>固有空間の次元：{root.eigenspace.dimension}</p><h3>固有空間の基底の一例</h3>
     <Formula><span className="basis-script-symbol">𝒬</span> = ({root.eigenspace.basis.map((_, i) => <span key={i}>{i > 0 && ', '}<Vector name={`q${i + 1}`} /></span>)})</Formula>
-    {root.eigenspace.basis.map((q, i) => <Formula key={i}><Vector name={`q${i + 1}`} /><Equals values={q} /><Column values={q} /></Formula>)}
+    {root.eigenspace.basis.map((q, i) => <Formula key={i}><Vector name={`q${i + 1}`} /> = <Column values={q} /></Formula>)}
     <p>固有空間は零ベクトルを含みます。基底の取り方は唯一ではありません。</p>
-  </> : <p>{analysis.status === 'no-real-eigenvalues' ? '実固有値がないため、固有空間の選択はありません。' : '表示できる固有空間は未確定です。'}</p>;
+    </> : <p>この固有値の固有空間は判定保留です。</p>}
+  </article>)}</> : <p>{analysis.status === 'no-real-eigenvalues' ? '実固有値がないため、固有空間はありません。' : '表示できる固有空間は未確定です。'}</p>;
   if (tab === 'input') return <>
-    <Formula><Vector name="u" /><Equals values={input.inputVector} /><Column values={input.inputVector} /></Formula>
-    <Formula><MapValue name="u" /> = <Vector name="A" /><Vector name="u" />{input.imageVector ? <><Equals values={input.imageVector} /><Column values={input.imageVector} /></> : <>（数値計算を保留）</>}</Formula>
+    <Formula><Vector name="u" /> = <Column values={input.inputVector} /></Formula>
+    <Formula><MapValue name="u" /> = <Vector name="A" /><Vector name="u" />{input.imageVector ? <> = <Column values={input.imageVector} /></> : <>（数値計算を保留）</>}</Formula>
     <p><strong>{input.eigenvectorStatus === 'zero-input' ? '零ベクトルは固有ベクトルではありません。'
       : input.eigenvectorStatus === 'eigenvector' ? '入力は固有ベクトルです（数値基準内）。'
         : input.eigenvectorStatus === 'not-eigenvector' ? '入力は固有ベクトルではありません。' : '固有ベクトルかどうかの判定は保留です。'}</strong></p>
-    {input.matchingEigenvalueIndices.map((i) => <Formula key={i}><MapValue name="u" /> ≈ ({formatMathNumber(analysis.realEigenvalues[i].value).text})<Vector name="u" /></Formula>)}
-    <p>{input.selectionRelation === 'member' ? '選択した固有空間に属します（数値基準内）。' : input.selectionRelation === 'not-member' ? '選択した固有空間には属しません。' : input.selectionRelation === 'no-selection' ? '固有空間は選択されていません。' : '選択した固有空間への所属は判定保留です。'}</p>
-    {input.matchingEigenvalueIndices.some((i) => i !== selected) && <p>選択中とは別の固有値に対応する固有ベクトルです。</p>}
+    {input.matchingEigenvalueIndices.map((i) => <div key={i}><Formula><MapValue name="u" /> = ({eigenRootLabels(analysis)[i].split(' = ')[1]})<Vector name="u" /></Formula>
+      <p>この固有値の固有空間に属します。</p></div>)}
+    {input.zeroStatus === 'zero' && analysis.realEigenvalues.some((r) => r.eigenspace) && <p>零ベクトルは、すべての固有空間に属します。</p>}
     {input.eigenvectorStatus === 'eigenvector' && input.imageVector?.every((v) => v === 0) && <p>非零の入力が零へ写ります。対応する固有値は0です。</p>}
     {input.status === 'numerical-failure' && <p className="representation-warning">{input.issues.map((issue) => ISSUES[issue]).join(' ')}</p>}
   </>;
   return <>
     <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = det(<Vector name="A" /> − <Scalar>λ</Scalar><Vector name="E" />)</Formula>
-    {analysis.characteristicCoefficients ? <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) ≈ <EigenPolynomial coefficients={analysis.characteristicCoefficients} /></Formula> : <p>固有多項式の係数は数値計算を保留しています。</p>}
+    {analysis.characteristicCoefficients ? <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = <EigenPolynomial coefficients={analysis.characteristicCoefficients} /></Formula> : <p>固有多項式の係数は数値計算を保留しています。</p>}
     <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = 0</Formula>
     <p><Vector name="E" /> は単位行列です。この方程式の実数解が固有値です。</p>
   </>;

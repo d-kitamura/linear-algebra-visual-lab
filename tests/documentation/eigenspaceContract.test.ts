@@ -43,7 +43,7 @@ describe('12.1 固有値Labの契約', () => {
     const examples = [...contract.matchAll(/```json\n([^`]+)```/g)].map((match) => JSON.parse(match[1]));
     expect(examples).toHaveLength(2);
     expect(examples[0]).toEqual({ v: 1, lab: 'eigenspace', kind: 'coordinate', dim: 2,
-      matrix: [[2, 1], [1, 2]], input: [2, 1], selectedEigenvalueIndex: 0, showEigenspace: true, camera: null });
+      matrix: [[2, 1], [0, 3]], input: [2, 1], showEigenspace: false, camera: null });
     expect(examples[1]).toEqual({ v: 1, lab: 'eigenspace', dim: 0 });
     expect(contract).toContain('12.7で実装');
   });
@@ -52,7 +52,7 @@ describe('12.1 固有値Labの契約', () => {
     for (const phrase of ['spectrumComplete', 'algebraicMultiplicity', 'no-real-eigenvalues',
       'inconclusive', 'numerical-failure', '全成分が厳密に0', '選択空間以外も調べ',
       '基底次元0と表さない', 'cleanNumber', '既存Labの動作を変えず', '既存4Lab',
-      '0始まり序数', '空間表示をオフ', '初期Workspace', '12.2で検証']) expect(contract).toContain(phrase);
+      '全固有空間表示', '空間表示をオフ', '初期Workspace', '12.2で検証']) expect(contract).toContain(phrase);
   });
 
   it('具体契約と数値解法の承認を記録する', () => {

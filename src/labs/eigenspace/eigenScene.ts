@@ -5,18 +5,12 @@ import { parallelSnapDistanceForViewWidth, snapTargetToSelectedSpan } from '../.
 export interface EigenScene {
   readonly definition: EigenMapDefinition & { readonly dimension: 2 };
   readonly input: readonly [number, number];
-  readonly selectedEigenvalueIndex: number | null;
   readonly showEigenspace: boolean;
 }
-export function firstEigenSelection(analysis: EigenMapAnalysis, requested: number | null = null): number | null {
-  if (requested !== null && analysis.realEigenvalues[requested]?.eigenspace) return requested;
-  const first = analysis.realEigenvalues.findIndex((root) => root.eigenspace !== null);
-  return first < 0 ? null : first;
-}
-export function createEigenScene(matrix: readonly (readonly number[])[] = [[2, 1], [1, 2]]): EigenScene {
+export function createEigenScene(matrix: readonly (readonly number[])[] = [[2, 1], [0, 3]]): EigenScene {
   const definition = { dimension: 2 as const, matrix: matrix.map((row) => [...row]) };
-  const analysis = analyzeEigenMap(definition);
-  return { definition, input: [2, 1], selectedEigenvalueIndex: firstEigenSelection(analysis), showEigenspace: true };
+  analyzeEigenMap(definition); // 初期値の形状・成分を検証する。
+  return { definition, input: [2, 1], showEigenspace: false };
 }
 export function parseEigenNumber(text: string): number | null {
   if (!text.trim()) return null;
@@ -28,23 +22,30 @@ export function editEigenMatrix(scene: EigenScene, row: number, column: number, 
   if (scene.definition.matrix[row][column] === value) return scene;
   const definition = { ...scene.definition, matrix: scene.definition.matrix.map((entries, r) =>
     entries.map((entry, c) => r === row && c === column ? value : entry)) };
-  // 行列が変わった場合だけ最初の確認済み空間へ戻す。別の根を追跡したとは解釈しない。
-  return { ...scene, definition, selectedEigenvalueIndex: firstEigenSelection(analyzeEigenMap(definition)) };
+  return { ...scene, definition };
 }
 export function setEigenInput(scene: EigenScene, input: readonly [number, number]): EigenScene {
   if (!input.every((v) => parseEigenNumber(String(v)) !== null)) return scene;
   return { ...scene, input: [...input] };
 }
-export function createEigenSpaceGeometry(analysis: EigenMapAnalysis, index: number | null) {
-  const space = index === null ? null : analysis.realEigenvalues[index]?.eigenspace;
-  if (!space) return null;
-  return { dimension: space.dimension, vectors: space.basis.map((coordinates, i): VectorValue =>
-    ({ id: `eigen-q${i + 1}`, name: `q${i + 1}`, coordinates })) };
+export function createEigenSpaceGeometries(analysis: EigenMapAnalysis) {
+  // 固有空間ごとに保持する。異なる固有直線を合わせて「平面」と解釈しない。
+  return analysis.realEigenvalues.flatMap((root, index) => root.eigenspace ? [{
+    index, dimension: root.eigenspace.dimension, vectors: root.eigenspace.basis.map((coordinates, i): VectorValue =>
+      ({ id: `eigen-${index}-q${i + 1}`, name: `q${i + 1}`, coordinates })),
+  }] : []);
 }
 export function snapEigenInput(scene: EigenScene, analysis: EigenMapAnalysis, coordinates: readonly [number, number], viewWidth: number) {
-  const geometry = scene.showEigenspace ? createEigenSpaceGeometry(analysis, scene.selectedEigenvalueIndex) : null;
   const safe = coordinates.map((v) => Math.max(-1_000_000, Math.min(1_000_000, v))) as [number, number];
-  // 未確認・非表示の空間へは吸着しないが、原点の優先吸着は常に共用する。
-  return snapTargetToSelectedSpan(safe, geometry?.vectors ?? [], geometry?.dimension ?? 0,
-    parallelSnapDistanceForViewWidth(viewWidth));
+  const distance = parallelSnapDistanceForViewWidth(viewWidth);
+  const origin = snapTargetToSelectedSpan(safe, [], 0, distance);
+  if (origin.snapKind === 'origin' || !scene.showEigenspace) return origin;
+  // 全候補のうち最短距離へ吸着。同距離なら実根昇順。未確認空間は候補にしない。
+  let nearest = origin, bestDistance = Infinity;
+  for (const geometry of createEigenSpaceGeometries(analysis)) {
+    const candidate = snapTargetToSelectedSpan(safe, geometry.vectors, geometry.dimension, distance);
+    const move = Math.hypot(candidate.coordinates[0] - safe[0], candidate.coordinates[1] - safe[1]);
+    if (candidate.snapKind && move < bestDistance) { nearest = candidate; bestDistance = move; }
+  }
+  return nearest;
 }

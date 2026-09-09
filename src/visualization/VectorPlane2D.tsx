@@ -53,6 +53,8 @@ interface VectorPlane2DProps {
   readonly editableVectorIds?: readonly string[];
   readonly parallelSnapTargetId?: string | null;
   readonly spanVectors?: readonly VectorValue[];
+  /** 別々の1次元空間を同時に描く場合だけ指定。合成したspanは計算しない。 */
+  readonly spanLineDirections?: readonly { readonly direction: readonly [number, number]; readonly label: string }[];
   readonly spanDimension?: number;
   readonly showSpan?: boolean;
   readonly spanLabel?: string;
@@ -88,6 +90,7 @@ export function VectorPlane2D({
   editableVectorIds,
   parallelSnapTargetId = null,
   spanVectors = [],
+  spanLineDirections,
   spanDimension = 0,
   showSpan = false,
   spanLabel,
@@ -139,9 +142,11 @@ export function VectorPlane2D({
   const spanDirection = spanVectors.find((vector) =>
     vector.coordinates[0] !== 0 || vector.coordinates[1] !== 0,
   )?.coordinates as readonly [number, number] | undefined;
-  const spanLine = showSpan && spanDimension === 1 && spanDirection
-    ? createLineSegmentThroughViewport(spanDirection, viewport)
-    : null;
+  const spanLines = showSpan && spanDimension === 1
+    ? (spanLineDirections ?? (spanDirection ? [{ direction: spanDirection, label: '' }] : [])).flatMap(({ direction, label }) => {
+      const points = createLineSegmentThroughViewport(direction, viewport);
+      return points ? [{ points, label }] : [];
+    }) : [];
   const spanShapeLabel = spanDimension === 0
     ? '原点'
     : spanDimension === 1
@@ -542,15 +547,16 @@ export function VectorPlane2D({
               />
             </>
           ) : null}
-          {spanLine ? (
+          {spanLines.map(({ points, label }, i) => (
             <line
+              key={i}
               className="span-line"
-              x1={spanLine[0][0]}
-              y1={spanLine[0][1]}
-              x2={spanLine[1][0]}
-              y2={spanLine[1][1]}
-            />
-          ) : null}
+              x1={points[0][0]}
+              y1={points[0][1]}
+              x2={points[1][0]}
+              y2={points[1][1]}
+            >{label && <title>{label}</title>}</line>
+          ))}
           {spanDimension === 0 ? (
             <g className="span-origin" transform={`translate(${origin[0]} ${origin[1]})`}>
               <circle r="15" />

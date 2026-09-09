@@ -43,16 +43,42 @@ describe('12.3 固有値Lab画面', () => {
     const scalar = markup([[2, 0], [0, 2]], [0, 0]);
     expect(scalar).toContain('固有空間の次元：2');
     expect(scalar).toContain('零ベクトルは固有ベクトルではありません');
-    expect(scalar).toContain('選択した固有空間に属します');
+    expect(scalar).toContain('すべての固有空間に属します');
     expect(markup([[0, 0], [0, 2]], [1, 0])).toContain('非零の入力が零へ写ります');
-    expect(markup([[1, 0], [0, 2]], [0, 1])).toContain('選択中とは別の固有値');
+    expect(markup([[1, 0], [0, 2]], [0, 1])).toContain('この固有値の固有空間に属します');
   });
   it('固有方程式はdet(A−λE)の係数と符号を表示し、選択の表示丸めで根を併合しない', () => {
     const analysis = analyzeEigenMap(createEigenScene().definition);
-    const html = renderToStaticMarkup(createElement(EigenPanel, { tab: 'equation', analysis, input: analyzeEigenInput(analysis, [2, 1]), selected: 0 }));
-    expect(html).toContain('det('); expect(html).toContain('− 4'); expect(html).toContain('+ 3');
+    const html = renderToStaticMarkup(createElement(EigenPanel, { tab: 'equation', analysis, input: analyzeEigenInput(analysis, [2, 1]) }));
+    expect(html).toContain('det('); expect(html).toContain('− 5'); expect(html).toContain('+ 6');
     const labels = eigenRootLabels(analyzeEigenMap(createEigenScene([[1, 0], [0, 1 + 1e-12]]).definition));
-    expect(labels[0]).toContain('λ ≈ 1'); expect(labels[1]).toContain('1.000000000001');
+    expect(labels[0]).toContain('λ = 1'); expect(labels[1]).toContain('1.000000000001');
+  });
+  it('初期非表示でプルダウンなし。オンで2固有直線を同時に描き、平面にしない', () => {
+    const initial = createEigenScene();
+    const render = (showEigenspace: boolean) => renderToStaticMarkup(createElement(EigenspaceLab, {
+      active: true, initialScene: { ...initial, showEigenspace },
+    }));
+    const hidden = render(false), visible = render(true);
+    expect(hidden).not.toContain('<select');
+    expect(hidden).not.toContain('class="span-line"');
+    expect(hidden).not.toMatch(/type="checkbox"[^>]*checked/);
+    expect(visible.match(/class="span-line"/g)).toHaveLength(2);
+    expect(visible).not.toContain('class="span-plane-fill"');
+    expect(visible.match(/class="eigen-space-detail"/g)).toHaveLength(2);
+    expect(visible).toContain('λ = 2の固有空間');
+    expect(visible).toContain('λ = 3の固有空間');
+  });
+  it('丸め・非整数根・所属判定を含む全カードで等号に統一する', () => {
+    for (const matrix of [[[2, 1], [1, 2]], [[0, 2], [1, 0]]]) {
+      const html = markup(matrix, [1.123456789, 1.123456789]);
+      expect(html).not.toContain('≈');
+      expect(html).toContain(' = ');
+    }
+    const whole = { ...createEigenScene([[2, 0], [0, 2]]), showEigenspace: true };
+    const html = renderToStaticMarkup(createElement(EigenspaceLab, { active: true, initialScene: whole }));
+    expect(html.match(/class="span-plane-fill"/g)).toHaveLength(1);
+    expect(html).not.toContain('class="span-line"');
   });
   it('完全一致は1本の矢印と両ラベル、近接終点は上下に分離する', () => {
     const viewport = DEFAULT_PLANE_VIEWPORT;
