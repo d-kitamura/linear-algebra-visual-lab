@@ -1,0 +1,26 @@
+/* 共通Labの2列・編集カード・解析タブを使い、第五Lab固有の配置だけ補う。 */
+.eigenspace-lab .eigen-plot { min-width: 0; padding: 24px; border: 1px solid var(--line); border-radius: 24px; background: var(--paper); }
+.eigen-plot .card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.eigen-plot h2 { margin: 0; }
+.eigen-plot .basis-fit-button { flex: 0 0 auto; white-space: nowrap; }
+.eigen-selection { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0 4px; font-size: 0.82rem; }
+.eigen-selection select { min-width: 0; max-width: 100%; min-height: 44px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
+.eigen-show { display: flex; align-items: center; gap: 6px; min-height: 44px; }
+.eigen-show input { width: 18px; height: 18px; }
+.eigen-editor fieldset { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; gap: 12px; }
+.eigen-editor-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 10px; }
+.eigen-editor .linear-map-vector-input { max-width: 150px; }
+.eigen-panel h2 { margin-top: 0; }
+.eigen-panel .representation-formula { overflow-wrap: anywhere; }
+.eigen-values { list-style: none; padding: 0; display: grid; gap: 12px; }
+.eigen-values li { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.eigen-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; font-size: 0.85rem; }
+.eigenspace-lab #eigen-share-help { display: block; margin-top: 8px; color: var(--muted); }
+.eigenspace-lab .vector-arrow { pointer-events: none; }
+.eigenspace-lab .vector-drag-handle { pointer-events: all; }
+@media (max-width: 640px) {
+  .eigenspace-lab .eigen-plot { padding: 14px; }
+  .eigen-plot h2 { font-size: 1.05rem; }
+  .eigen-selection select { flex: 1 1 150px; }
+  .eigenspace-lab .inspector-tablist button { padding: 6px 3px; font-size: 0.72rem; }
+}

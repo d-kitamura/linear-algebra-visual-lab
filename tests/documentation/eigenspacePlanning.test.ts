@@ -6,16 +6,23 @@ const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta
 const plan = read('docs/EIGENSPACE_LAB_DESIGN.md');
 
 describe('フェーズ12の承認済み計画と12.1契約', () => {
-  it('計画承認と12.1の確認待ち・12.2以降の未着手を区別する', () => {
+  it('12.2までの承認と12.3の確認待ち・12.4以降の未着手を区別する', () => {
     const roadmap = read('ROADMAP.md');
     expect(roadmap).toContain('完了（11.1〜11.9・利用者確認・統合棚卸し済み、D-101）');
     const phase12 = roadmap.split('## 13. フェーズ12')[1].split('## 14. 文書更新')[0];
     expect(phase12).toContain('全体方針D-102利用者承認済み');
     const contract = phase12.split('### 12.1 ')[1].split('### 12.2 ')[0];
-    expect(contract).toContain('契約具体化済み・利用者確認待ち（D-103）');
-    expect(contract.match(/- \[x\]/g)).toHaveLength(4);
-    expect(contract).toContain('- [ ] **確認ゲート:**');
-    expect(phase12.split('### 12.2 ')[1]).not.toContain('- [x]');
+    expect(contract).toContain('完了・利用者確認済み（D-103）');
+    expect(contract.match(/- \[x\]/g)).toHaveLength(5);
+    expect(contract).toContain('- [x] **確認ゲート:**');
+    const numerics = phase12.split('### 12.2 ')[1].split('### 12.3 ')[0];
+    expect(numerics).toContain('利用者確認済み（D-104）');
+    expect(numerics.match(/- \[x\]/g)).toHaveLength(5);
+    const screen = phase12.split('### 12.3 ')[1].split('### 12.4 ')[0];
+    expect(screen).toContain('利用者確認待ち（D-105）');
+    expect(screen.match(/- \[x\]/g)).toHaveLength(4);
+    expect(screen).toContain('- [ ] **確認ゲート:**');
+    expect(phase12.split('### 12.4 ')[1]).not.toContain('- [x]');
     for (let i = 1; i <= 9; i += 1) expect(phase12).toContain(`### 12.${i} `);
     expect(phase12.match(/\*\*確認ゲート:\*\*/g)).toHaveLength(9);
     expect(read('docs/DECISIONS.md')).toContain('### D-102');
@@ -27,8 +34,8 @@ describe('フェーズ12の承認済み計画と12.1契約', () => {
       'D-100', '2048文字', 'eigenspace,1', '任意基底', '対角化', 'Cayley–Hamilton']) {
       expect(plan).toContain(phrase);
     }
-    expect(plan).toContain('新規依存導入はまだ決めない');
-    expect(plan).toContain('次の12.2');
+    expect(plan).toContain('12.2では追加依存なし');
+    expect(plan).toContain('次の12.4');
   });
 
   it('多項式の代表候補が同じ3次元空間への変換であることを検算する', () => {

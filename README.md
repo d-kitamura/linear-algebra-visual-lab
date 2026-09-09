@@ -2,7 +2,7 @@
 
 線形代数を学ぶ学生のための対話型教材アプリです。ベクトル空間Lab、基底・次元Lab、線形写像Labは0〜3次元（線形写像は全16次元組）、表現行列・基底変換Labは数ベクトル・多項式の1〜3次元に対応します。
 
-フェーズ0〜6・8〜11は完了、フェーズ7の授業評価は延期しています。フェーズ11・D-101は利用者確認済みです。フェーズ12「固有値・固有空間Lab」の全体計画はD-102承認済みです。12.1の具体契約を作成しました（D-103確認待ち、数学処理・画面は未実装）。現行は初版候補 `1.0.0-rc.1` で、正式リリースと共有URL互換保証は未開始です。
+フェーズ0〜6・8〜11は完了、フェーズ7の授業評価は延期しています。フェーズ11・D-101は利用者確認済みです。フェーズ12「固有値・固有空間Lab」の全体計画はD-102承認済みです。12.1・D-103は確認済みです。12.2・D-104は確認済みです。12.3の数ベクトル2D画面を実装しました（D-105確認待ち）。共有は後続12.7で接続します。現行は初版候補 `1.0.0-rc.1` で、正式リリースと共有URL互換保証は未開始です。
 
 ## 文書の役割
 
@@ -10,7 +10,8 @@
 
 - [`SPEC.md`](./SPEC.md): 決定済み要件、未決定事項、受入条件を管理する正本
 - [`docs/EIGENSPACE_LAB_DESIGN.md`](./docs/EIGENSPACE_LAB_DESIGN.md): フェーズ12の対象・数学・UI・数値計算・状態の採用設計（D-102承認済み）
-- [`docs/EIGENSPACE_API_CONTRACT.md`](./docs/EIGENSPACE_API_CONTRACT.md): 12.1の具体契約・判定保留・状態・共有（D-103確認待ち）
+- [`docs/EIGENSPACE_API_CONTRACT.md`](./docs/EIGENSPACE_API_CONTRACT.md): 12.1の具体契約・判定保留・状態・共有（D-103承認済み）
+- [`docs/EIGENSPACE_NUMERICS.md`](./docs/EIGENSPACE_NUMERICS.md): 12.2の採用解法・許容値・保留例・検証（D-104承認済み）
 - [`syllabus.txt`](./syllabus.txt): 授業の到達目標と週ごとの内容
 - [`ROADMAP.md`](./ROADMAP.md): 開発段階、確認ゲート、完了条件
 - [`docs/REPRESENTATION_MATRIX_DESIGN.md`](./docs/REPRESENTATION_MATRIX_DESIGN.md): 11.1の具体案、記号、変換方向、数値例、状態・共有の採用方針

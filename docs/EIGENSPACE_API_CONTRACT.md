@@ -2,7 +2,7 @@
 
 作成日: 2026-09-09
 
-状態: **契約具体化済み・利用者確認待ち（D-103）**。全体計画D-102は利用者承認済み。本書は12.2以降の実装契約であり、ここに書いたAPI・型・共有形式はまだアプリへ実装していない。解法・新規依存・数値許容値の決定は12.2へ残す。
+状態: **利用者確認済み（D-103）**。12.2の数学API・型は実装済み、採用解法・許容値は[数値解法記録](./EIGENSPACE_NUMERICS.md)とD-104を参照（利用者確認済み）。12.3で数ベクトル2Dの状態・画面を接続した（D-105確認待ち）。共有は未実装。
 
 [設計書](./EIGENSPACE_LAB_DESIGN.md)の範囲を維持し、曖昧だった結果分類、配列の向き、根の選択、零入力、7場面と共有時Resetを具体化する。
 
@@ -16,7 +16,7 @@
 - 固有空間は零を含み、固有ベクトルは零を除く。λ=0は零へ写る非零ベクトルを持つときの固有値である。0Dの零変換には非零ベクトルがないので固有値もなく、g(λ)=1。
 - 固有空間の基底の一例にはq_1,...を太字斜体で用い、順序付き組Q=(q_1,...)のQのみカリグラフィ体で示す。多項式ではその係数列に対応する多項式も併記する。基底は一例であり唯一ではない。
 
-## 2. 数学API（12.2で実装する名前と契約）
+## 2. 数学API（12.2実装済み）
 
 ### 入出力の共通規則
 
@@ -58,7 +58,7 @@ APIは入力を変更せず、結果はreadonlyのスナップショット。内
 - `inconclusive`: 確認できた部分結果があっても全体または空間が不確か。spectrumComplete=trueでも固有空間を確認できないならこの状態。根配列が空でも「実固有値なし」と言わない。
 - `numerical-failure`: 収束不能・非有限等により利用できる根を返せない。spectrumComplete=false、実固有値配列は空。計算できた固有多項式は保持可。
 - spectrumComplete=trueのとき、実根の重複度合計＋nonRealRootCount=n。次数0を除き、定数項はdet(A)、λ^(n−1)の係数は(−1)^(n−1)tr(A)。残差だけで全根発見・重複度を保証した扱いにしない。
-- 理由コードは`ambiguous-realness`、`unresolved-cluster`、`ambiguous-multiplicity`、`unstable-nullity`、`residual-too-large`、`incomplete-spectrum`、`iteration-limit`、`non-finite-result`を基本とする。必要な拡張は12.2で記録する。
+- 理由コードは`ambiguous-realness`、`unresolved-cluster`、`ambiguous-multiplicity`、`unstable-nullity`、`residual-too-large`、`incomplete-spectrum`、`iteration-limit`、`non-finite-result`を基本とする。12.2でprecision-limitとunrepresentable-resultを追加した。
 
 ### analyzeEigenInput(analysis, input, selectedEigenvalueIndex): EigenInputAnalysis
 
@@ -163,6 +163,6 @@ cameraは1D/2Dでnull、3Dでは既存SharedCameraState（direction,target,up,zo
 
 設計検算テストは係数表とdet(A−λE)の標本点の一致を独立に確認するものであり、固有値ソルバーを先行実装しない。
 
-次の12.2で決めるもの: 非対称2D/3Dの全根探索・実数性・重複度の検証手法、近似λからの固有空間抽出、残差・根の分離・所属の許容値、安定な基底正規化、収束上限、依存導入の要否。共通rankのD-009やUI吸着距離を数値精度の代わりに変更しない。
+以下は12.1から引き継いだ検証事項（12.2の採用結果は数値解法記録を参照）: 非対称2D/3Dの全根探索・実数性・重複度の検証手法、近似λからの固有空間抽出、残差・根の分離・所属の許容値、安定な基底正規化、収束上限、依存導入の要否。共通rankのD-009やUI吸着距離を数値精度の代わりに変更しない。
 
-新規依存または契約を満たす範囲の変更が必要なら採用前に相談する。次の12.2は数値計算法と境界検証が主作業なので「高」を推奨する。
+新規依存または契約を満たす範囲の変更が必要なら採用前に相談する。D-104は承認済み。12.3の画面はD-105の確認を経て12.4へ進む（推奨「高」）。

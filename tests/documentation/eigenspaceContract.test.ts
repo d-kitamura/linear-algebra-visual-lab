@@ -55,11 +55,17 @@ describe('12.1 固有値Labの契約', () => {
       '0始まり序数', '空間表示をオフ', '初期Workspace', '12.2で検証']) expect(contract).toContain(phrase);
   });
 
-  it('用語と具体契約の承認待ちを記録する', () => {
-    expect(contract).toContain('契約具体化済み・利用者確認待ち（D-103）');
+  it('具体契約と数値解法の承認を記録する', () => {
+    expect(contract).toContain('利用者確認済み（D-103）');
     expect(read('docs/DECISIONS.md')).toContain('### D-103');
+    const numerics = read('docs/EIGENSPACE_NUMERICS.md');
+    expect(numerics).toContain('D-104利用者確認済み');
+    for (const phrase of ['Sturm', '32768 bit', '1e-12', '1e-11', '1e-10',
+      '1e-8', 'spectrumComplete=false', 'imageVector=null', '新規依存は追加しない']) {
+      expect(numerics).toContain(phrase);
+    }
     const rules = read('math-writing-rules.txt');
-    expect(rules).toContain('固有値の重複度と固有空間の次元（D-103具体案）');
+    expect(rules).toContain('固有値の重複度と固有空間の次元（D-103採用）');
     expect(rules).toContain(String.raw`\mathcal{Q}=(\bm{q}_1,\ldots,\bm{q}_d)`);
   });
 });

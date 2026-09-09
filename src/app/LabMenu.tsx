@@ -1,8 +1,9 @@
 import { useRef } from 'react';
 
-export type LabId = 'vector-space' | 'basis-dimension' | 'linear-map' | 'representation-matrix';
+export type LabId = 'vector-space' | 'basis-dimension' | 'linear-map' | 'representation-matrix' | 'eigenspace';
 
 const labs = [
+  // 表示順は既存Labを維持し、追加単元は末尾へ置く。
   {
     id: 'vector-space',
     name: 'ベクトル空間Lab',
@@ -22,6 +23,11 @@ const labs = [
     id: 'representation-matrix',
     name: '表現行列・基底変換Lab',
     description: '数ベクトル・多項式の基底と表現行列・座標を調べる（1D〜3D）',
+  },
+  {
+    id: 'eigenspace',
+    name: '固有値・固有空間Lab',
+    description: '入力と像・実固有値・固有空間を調べる（2D）',
   },
 ] as const;
 

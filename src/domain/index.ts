@@ -70,6 +70,9 @@ export type {
 } from './linearMap';
 
 export { analyzeRepresentationMatrix, analyzeBasisChange, analyzeBasisChangeRoundTrip } from './representationMatrix';
+export { analyzeEigenMap, analyzeEigenInput } from './eigen';
+export { InvalidEigenInputError } from './eigenTypes';
+export type { EigenMapDefinition, EigenMapAnalysis, EigenSpace, RealEigenvalue, EigenInputAnalysis, EigenIssue, EigenValidationCode } from './eigenTypes';
 export type {
   RepresentationBasisFailureReason,
   RepresentationBasisCheck,

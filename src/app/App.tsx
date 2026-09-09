@@ -3,6 +3,7 @@ import { BasisDimensionLab } from '../labs/basis-dimension/BasisDimensionLab';
 import { LinearMapLab } from '../labs/linear-map/LinearMapLab';
 import { RepresentationMatrixLab } from '../labs/representation-matrix/RepresentationMatrixLab';
 import { VectorSpaceLab } from '../labs/vector-space/VectorSpaceLab';
+import { EigenspaceLab } from '../labs/eigenspace/EigenspaceLab';
 import { LabMenu, type LabId } from './LabMenu';
 import { projectInfo } from './projectInfo';
 import { readShareStateFromUrl } from '../sharing';
@@ -55,6 +56,9 @@ export function App() {
       </div>
       <div className="lab-host" hidden={activeLabId !== 'representation-matrix'}>
         <RepresentationMatrixLab active={activeLabId === 'representation-matrix'} />
+      </div>
+      <div className="lab-host" hidden={activeLabId !== 'eigenspace'}>
+        <EigenspaceLab active={activeLabId === 'eigenspace'} />
       </div>
 
       <footer className="site-footer">

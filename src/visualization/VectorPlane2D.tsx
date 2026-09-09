@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import type { VectorValue } from '../domain';
@@ -26,6 +27,15 @@ import {
   type SvgPoint,
 } from './planeGeometry';
 
+/** 重なる入力・像などの表示用。未指定なら既存Labの見た目を保つ。 */
+export interface PlaneVectorPresentation {
+  readonly label?: ReactNode;
+  readonly labelOffset?: readonly [number, number];
+  readonly strokeWidth?: number;
+  readonly outline?: boolean;
+  readonly hideArrow?: boolean;
+}
+
 interface VectorPlane2DProps {
   readonly vectors: readonly VectorValue[];
   readonly colors: readonly string[];
@@ -37,6 +47,8 @@ interface VectorPlane2DProps {
     coordinates: readonly [number, number],
   ) => void;
   readonly onVectorDragEnd?: (vectorId: string) => void;
+  readonly onVectorDragCancel?: (vectorId: string) => void;
+  readonly vectorPresentation?: Readonly<Record<string, PlaneVectorPresentation>>;
   /** 未指定なら従来通り全矢印。像などの導出値は編集対象から外せる。 */
   readonly editableVectorIds?: readonly string[];
   readonly parallelSnapTargetId?: string | null;
@@ -71,6 +83,8 @@ export function VectorPlane2D({
   onVectorDragStart,
   onVectorChange,
   onVectorDragEnd,
+  onVectorDragCancel,
+  vectorPresentation = {},
   editableVectorIds,
   parallelSnapTargetId = null,
   spanVectors = [],
@@ -392,7 +406,8 @@ export function VectorPlane2D({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    onVectorDragEnd?.(vectorId);
+    if (event.type !== 'pointerup' && onVectorDragCancel) onVectorDragCancel(vectorId);
+    else onVectorDragEnd?.(vectorId);
   }
 
   function handleTargetPointerDown(
@@ -656,8 +671,9 @@ export function VectorPlane2D({
           const end = toSvgPoint(coordinates, viewport);
           const arrowHead = createArrowHeadPoints(origin, end);
           const color = colors[index % colors.length];
-          const labelX = end[0] + (coordinates[0] >= 0 ? 14 : -14);
-          const labelY = end[1] - 14;
+          const presentation = vectorPresentation[vector.id];
+          const labelX = end[0] + (presentation?.labelOffset?.[0] ?? (coordinates[0] >= 0 ? 14 : -14));
+          const labelY = end[1] + (presentation?.labelOffset?.[1] ?? -14);
           const nameParts = splitVectorName(vector.name);
 
           return (
@@ -666,19 +682,22 @@ export function VectorPlane2D({
               className={`vector-arrow ${parallelSnapTargetId === vector.id ? 'is-snap-target' : ''} ${spanVectorIds.has(vector.id) ? 'is-span-selected' : ''} ${alwaysOpaqueVectorIdSet.has(vector.id) ? 'is-always-opaque' : ''}`}
             >
               <title>{`${vector.name} は第1成分 ${coordinates[0]}、第2成分 ${coordinates[1]} の列ベクトル`}</title>
-              <line
+              {!presentation?.hideArrow && <><line
                 x1={origin[0]}
                 y1={origin[1]}
                 x2={end[0]}
                 y2={end[1]}
                 stroke={color}
+                style={{ strokeWidth: presentation?.strokeWidth }}
               />
               {arrowHead ? (
-                <polygon points={pointsToSvg(arrowHead)} fill={color} />
+                <polygon points={pointsToSvg(arrowHead)} fill={presentation?.outline ? 'var(--paper)' : color}
+                  stroke={presentation?.outline ? color : undefined} strokeWidth={presentation?.outline ? 2 : undefined} />
               ) : (
-                <circle cx={origin[0]} cy={origin[1]} r="8" fill={color} />
+                <circle cx={origin[0]} cy={origin[1]} r="8" fill={presentation?.outline ? 'var(--paper)' : color}
+                  stroke={presentation?.outline ? color : undefined} strokeWidth={presentation?.outline ? 2 : undefined} />
               )}
-              <circle className="vector-tip" cx={end[0]} cy={end[1]} r="4" fill={color} />
+              <circle className="vector-tip" cx={end[0]} cy={end[1]} r="4" fill={color} /></>}
               {(editableVectorIds === undefined || editableVectorIds.includes(vector.id)) && <circle
                 className={`vector-drag-handle ${draggingVectorId === vector.id ? 'is-dragging' : ''} ${draggingVectorId === vector.id && parallelSnapTargetId ? 'is-snapped' : ''}`}
                 cx={end[0]}
@@ -694,15 +713,15 @@ export function VectorPlane2D({
                 onPointerCancel={(event) => handleVectorPointerEnd(event, vector.id)}
                 onLostPointerCapture={(event) => handleVectorPointerEnd(event, vector.id)}
               />}
-              <text
+              {presentation?.label !== null && <text
                 className="vector-label"
                 x={labelX}
                 y={labelY}
                 fill={color}
                 textAnchor={coordinates[0] >= 0 ? 'start' : 'end'}
               >
-                <SvgVectorLabel name={vector.name} fallbackParts={nameParts} />
-              </text>
+                {presentation?.label ?? <SvgVectorLabel name={vector.name} fallbackParts={nameParts} />}
+              </text>}
             </g>
           );
         })}
