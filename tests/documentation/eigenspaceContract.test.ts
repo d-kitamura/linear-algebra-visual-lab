@@ -43,7 +43,7 @@ describe('12.1 固有値Labの契約', () => {
     const examples = [...contract.matchAll(/```json\n([^`]+)```/g)].map((match) => JSON.parse(match[1]));
     expect(examples).toHaveLength(2);
     expect(examples[0]).toEqual({ v: 1, lab: 'eigenspace', kind: 'coordinate', dim: 2,
-      matrix: [[4, 1], [0, 2]], input: [2, 1], showEigenspace: false, camera: null });
+      matrix: [[4, 1], [0, 2]], input: [1, 2], showEigenspace: false, camera: null });
     expect(examples[1]).toEqual({ v: 1, lab: 'eigenspace', dim: 0 });
     expect(contract).toContain('12.7で実装');
   });

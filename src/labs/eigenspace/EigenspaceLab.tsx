@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { analyzeEigenInput, analyzeEigenMap, type EigenInputAnalysis, type EigenMapAnalysis, type EigenIssue, type VectorValue } from '../../domain';
 import { LabActionControls } from '../../app/LabActionControls';
 import { VectorPlane2D, VectorLine1D, ZeroSpace0D, createAutoFitViewport, createAutoFitLineViewport, type PlaneViewport, type LineViewport } from '../../visualization';
@@ -44,7 +44,7 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
   const [revision, setRevision] = useState(0);
   const dimension = workspace.dimension;
   const kind = workspace.kind;
-  return <>
+  const selectionControls = <>
     <div className="dimension-switcher eigen-kinds"><div className="dimension-tablist" role="group" aria-label="固有値Labのベクトルの種類">
       {(['coordinate', 'polynomial'] as const).map((value) => <button key={value} type="button" aria-pressed={kind === value}
         onClick={() => setWorkspace((w) => selectEigenKind(w, value))}>{value === 'coordinate' ? '数ベクトル' : '多項式'}</button>)}
@@ -53,13 +53,13 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
       {([0, 1, 2, 3] as const).filter((n) => kind !== 'polynomial' || n !== 0).map((n) => <button type="button" key={n} aria-pressed={dimension === n}
         onClick={() => setWorkspace((w) => selectEigenDimension(w, n))}>{n}D</button>)}
     </div></div>
-    <EigenSceneView key={`${kind}-${dimension}-${revision}`} active={active} slot={currentEigenSlot(workspace)}
+  </>;
+  return <EigenSceneView key={`${kind}-${dimension}-${revision}`} active={active} slot={currentEigenSlot(workspace)} selectionControls={selectionControls}
       onSlot={(change) => setWorkspace((w) => updateEigenSlot(w, dimension, change, kind))}
       onReset={() => { setWorkspace((w) => resetEigenWorkspace(w, initial)); setRevision((r) => r + 1); }} />
-  </>;
 }
 
-function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: boolean; readonly slot: EigenSlot;
+function EigenSceneView({ active, slot, onSlot, onReset, selectionControls }: { readonly active: boolean; readonly slot: EigenSlot; readonly selectionControls: ReactNode;
   readonly onSlot: (change: (slot: EigenSlot) => EigenSlot) => void; readonly onReset: () => void }) {
   const { scene, view } = slot;
   const kind = scene.kind;
@@ -120,6 +120,7 @@ function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: bo
       <div><LabActionControls exportDisabled exportDescriptionId="eigen-share-help" onExport={NOOP} onReset={onReset} />
         <small id="eigen-share-help">このLabの共有は準備中です。</small></div>
     </section>
+    {selectionControls}
     <div className="lab-workspace eigen-workspace">
       <section className="plot-card eigen-plot" aria-labelledby="eigen-plot-title">
         <div className="card-heading"><div><p className="panel-kicker">Linear transformation</p>
@@ -166,7 +167,7 @@ function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: bo
             onVectorCoordinatesCommit={(_, coordinates) => { setScene((s) => setEigenInput(s, coordinates)); cancelDrag(); }}
             onVectorCoordinatesSnap={(_, coordinates, distance) => snapEigenSpaceInput(scene, analysis, coordinates, distance)}
             onLinearCombinationTargetPlacement={NOOP} onLinearCombinationVisibility={NOOP}
-            showLinearCombinationControl={false} showHelpText={false} spaceTitle={polynomial ? '入力と像の係数空間' : '入力と像'}
+            showLinearCombinationControl={false} showHeading={false} showHelpText={false} spaceTitle={polynomial ? '入力と像の係数空間' : '入力と像'}
             assistiveDescription={polynomial ? '入力多項式と像の標準単項式係数を同じ3次元係数空間に表示します。固有値・固有空間の基底と多項式は解析タブで確認できます。' : '入力と像を同じ3次元座標空間に表示します。固有値、各固有空間の次元と基底、入力と像の成分は解析タブで確認できます。'}
             unavailableFallbackDescription="行列・入力の数値編集と解析タブ、Resetはそのまま利用できます。" />
         </Suspense>}
@@ -285,8 +286,7 @@ export function EigenPanel({ tab, analysis, input, kind = 'coordinate' }: { read
   </>;
   return <>
     <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = det(<Vector name="A" /> − <Scalar>λ</Scalar><Vector name="E" />)</Formula>
-    {analysis.characteristicCoefficients ? <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = <EigenPolynomial coefficients={analysis.characteristicCoefficients} /></Formula> : <p>固有多項式の係数は数値計算を保留しています。</p>}
-    <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = 0</Formula>
+    {analysis.characteristicCoefficients ? <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = <EigenPolynomial coefficients={analysis.characteristicCoefficients} /> = 0</Formula> : <p>固有多項式の係数は数値計算を保留しています。</p>}
     <p><Vector name="E" /> は単位行列です。この方程式の実数解が固有値です。</p>
   </>;
 }

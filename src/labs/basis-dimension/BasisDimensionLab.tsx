@@ -636,6 +636,57 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
         基底候補の操作領域へ移動
       </a>
       <main className="lab-page">
+        <section className="lab-intro" aria-labelledby="basis-dimension-title">
+          <div>
+            <p className="eyebrow">
+              基底・次元 / {activeDimension === 0
+                ? '0D'
+                : polynomialMode
+                ? <MathPolynomialSpace degree={activeDimension - 1} />
+                : `${activeDimension}D`}
+            </p>
+            <h1 id="basis-dimension-title">基底と次元</h1>
+            <p className="lab-intro-copy">
+              {activeDimension === 0 ? (
+                <>
+                  零ベクトル空間 <MathSpaceName /> = &#123;<MathVectorName name="0" />&#125; では、
+                  ベクトルを1本も含まない空の組が基底になります。2つの基底条件から次元0の意味を確かめます。
+                </>
+              ) : polynomialMode ? (
+                <>
+                  集合 <MathSetName /> の多項式をベクトルとして扱い、順序付きの基底候補 <MathBasisName /> を選びます。
+                  係数ベクトルとの対応から、基底と座標の関係を調べます。
+                  {linearCombinationVisible
+                    ? <> 配置したターゲット <MathVectorName name="v" /> = <MathFunctionName target /> の一次結合を確認できます。</>
+                    : null}
+                </>
+              ) : (
+                <>
+                  集合 <MathSetName /> のベクトルから順序付きの基底候補 <MathBasisName /> を選びます。
+                  2つの基底条件を確かめ、基底の選び方と順序による違いを比べます。
+                  {linearCombinationVisible
+                    ? <> 配置したターゲット <MathVectorName name="v" /> の一次結合と座標を確認できます。</>
+                    : null}
+                </>
+              )}
+            </p>
+          </div>
+          <div className="lab-intro-side">
+            <LabActionControls
+              exportDisabled={hasInvalidCoordinateDraft}
+              exportDescriptionId={hasInvalidCoordinateDraft
+                ? 'basis-share-disabled-help'
+                : undefined}
+              onExport={handleOpenShareDialog}
+              onReset={handleReset}
+            />
+            {hasInvalidCoordinateDraft ? (
+              <p className="lab-action-help" id="basis-share-disabled-help" role="status">
+                未確定の成分が{invalidDraftCount}か所あります。訂正すると共有URLを作成できます。
+              </p>
+            ) : null}
+          </div>
+        </section>
         <nav className="dimension-switcher" aria-label="基底・次元Labの次元">
           <div className="dimension-tablist" role="tablist" aria-label="0D・1D・2D・3Dの切替">
             {DIMENSION_TABS.map((tab) => (
@@ -698,58 +749,6 @@ export function BasisDimensionLab({ active }: BasisDimensionLabProps) {
             </>
           ) : null}
         </p>
-
-        <section className="lab-intro" aria-labelledby="basis-dimension-title">
-          <div>
-            <p className="eyebrow">
-              基底・次元 / {activeDimension === 0
-                ? '0D'
-                : polynomialMode
-                ? <MathPolynomialSpace degree={activeDimension - 1} />
-                : `${activeDimension}D`}
-            </p>
-            <h1 id="basis-dimension-title">基底と次元</h1>
-          </div>
-          <div className="lab-intro-side">
-            <p className="lab-intro-copy">
-              {activeDimension === 0 ? (
-                <>
-                  零ベクトル空間 <MathSpaceName /> = &#123;<MathVectorName name="0" />&#125; では、
-                  ベクトルを1本も含まない空の組が基底になります。2つの基底条件から次元0の意味を確かめます。
-                </>
-              ) : polynomialMode ? (
-                <>
-                  集合 <MathSetName /> の多項式をベクトルとして扱い、順序付きの基底候補 <MathBasisName /> を選びます。
-                  係数ベクトルとの対応から、基底と座標の関係を調べます。
-                  {linearCombinationVisible
-                    ? <> 配置したターゲット <MathVectorName name="v" /> = <MathFunctionName target /> の一次結合を確認できます。</>
-                    : null}
-                </>
-              ) : (
-                <>
-                  集合 <MathSetName /> のベクトルから順序付きの基底候補 <MathBasisName /> を選びます。
-                  2つの基底条件を確かめ、基底の選び方と順序による違いを比べます。
-                  {linearCombinationVisible
-                    ? <> 配置したターゲット <MathVectorName name="v" /> の一次結合と座標を確認できます。</>
-                    : null}
-                </>
-              )}
-            </p>
-            <LabActionControls
-              exportDisabled={hasInvalidCoordinateDraft}
-              exportDescriptionId={hasInvalidCoordinateDraft
-                ? 'basis-share-disabled-help'
-                : undefined}
-              onExport={handleOpenShareDialog}
-              onReset={handleReset}
-            />
-            {hasInvalidCoordinateDraft ? (
-              <p className="lab-action-help" id="basis-share-disabled-help" role="status">
-                未確定の成分が{invalidDraftCount}か所あります。訂正すると共有URLを作成できます。
-              </p>
-            ) : null}
-          </div>
-        </section>
 
         {loadErrorMessage ? (
           <div className="page-alert" role="alert" aria-labelledby="basis-load-error-title">

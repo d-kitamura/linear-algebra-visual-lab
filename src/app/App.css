@@ -173,12 +173,12 @@
   font-size: 0.72rem;
 }
 
-.lab-menu-item.is-current:hover,
-.lab-menu-item.is-current:focus-visible {
+.lab-menu-item:hover,
+.lab-menu-item:focus-visible {
   background: var(--accent-soft);
 }
 
-.lab-menu-item.is-current:focus-visible {
+.lab-menu-item:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent);
   outline-offset: -1px;
 }
@@ -294,8 +294,33 @@
   margin-bottom: 36px;
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
-  gap: clamp(32px, 7vw, 96px);
-  align-items: end;
+  gap: 12px clamp(32px, 7vw, 96px);
+  align-items: center;
+}
+
+/* 全Lab共通：説明文の長さにかかわらず、共有・Resetはタイトルの行に置く。 */
+.lab-intro > div:first-child {
+  display: contents;
+}
+
+.lab-intro > div:first-child > .eyebrow,
+.lab-intro > div:first-child > .panel-kicker {
+  grid-area: 1 / 1;
+  margin: 0;
+}
+
+.lab-intro > div:first-child > h1 {
+  grid-area: 2 / 1;
+}
+
+.lab-intro > div:first-child > p:not(.eyebrow):not(.panel-kicker) {
+  grid-area: 3 / 1;
+  margin: 0;
+}
+
+.lab-intro > div:last-child {
+  grid-area: 2 / 2;
+  min-width: 0;
 }
 
 .eyebrow,
@@ -576,6 +601,10 @@
   letter-spacing: -0.035em;
 }
 
+.three-dimensional-heading.is-toolbar-only {
+  justify-content: flex-end;
+}
+
 .three-dimensional-toolbar {
   display: grid;
   justify-items: end;
@@ -623,63 +652,6 @@
   background: #2f6690;
 }
 
-.three-dimensional-gesture-guide {
-  margin-top: 14px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px 18px;
-  color: var(--muted);
-  font-size: 0.67rem;
-  font-weight: 700;
-  line-height: 1.5;
-}
-
-.three-dimensional-gesture-guide span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.vector-tip-gesture-mark,
-.target-placement-gesture-mark,
-.target-vector-gesture-mark,
-.camera-gesture-mark {
-  flex: 0 0 auto;
-  display: inline-block;
-}
-
-.target-vector-gesture-mark {
-  width: 11px;
-  height: 11px;
-  border: 2px solid #245b8d;
-  border-radius: 50%;
-  background: #245b8d;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #245b8d 20%, transparent);
-}
-
-.target-placement-gesture-mark {
-  width: 11px;
-  height: 11px;
-  border: 2px solid #245b8d;
-  border-radius: 50%;
-  background: color-mix(in srgb, #245b8d 20%, transparent);
-}
-
-.vector-tip-gesture-mark {
-  width: 11px;
-  height: 11px;
-  border: 2px solid #2f6690;
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #2f6690 13%, transparent);
-}
-
-.camera-gesture-mark {
-  width: 15px;
-  height: 10px;
-  border: 1.5px solid #68747c;
-  border-radius: 4px;
-  background: linear-gradient(135deg, transparent 42%, #68747c 43% 54%, transparent 55%);
-}
 
 .three-dimensional-render-frame {
   position: relative;
@@ -4915,6 +4887,14 @@
   .lab-intro {
     grid-template-columns: 1fr;
     gap: 20px;
+  }
+
+  .lab-intro > div:last-child {
+    grid-area: 3 / 1;
+  }
+
+  .lab-intro > div:first-child > p:not(.eyebrow):not(.panel-kicker) {
+    grid-area: 4 / 1;
   }
 
   .lab-intro-copy {

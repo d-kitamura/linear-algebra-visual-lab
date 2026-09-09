@@ -81,6 +81,8 @@ interface VectorSpace3DProps {
   readonly idPrefix?: string;
   readonly showLinearCombinationControl?: boolean;
   readonly showHelpText?: boolean;
+  /** 外側のカードに同じ空間の見出しがある場合は重複を避ける。視点ボタンは残す。 */
+  readonly showHeading?: boolean;
   readonly assistiveDescription?: string;
   readonly unavailableFallbackDescription?: string;
   readonly axisLabels?: readonly [string, string, string];
@@ -204,6 +206,7 @@ export function VectorSpace3D({
   idPrefix = 'space-3d',
   showLinearCombinationControl = true,
   showHelpText = true,
+  showHeading = true,
   assistiveDescription = 'ベクトルの座標、rank、生成する空間、一次独立性、一次結合の解は、3D表示の後にある数値入力と解析カードでも確認できます。3D表示を利用できない場合も、数値入力、共有URL、Resetは利用できます。',
   unavailableFallbackDescription = '数値入力と解析カード、共有URL、Resetはそのまま利用できます。',
   axisLabels = DEFAULT_AXIS_LABELS,
@@ -343,12 +346,12 @@ export function VectorSpace3D({
   }, [vectorCoordinatePreview]);
 
   return (
-    <section className="three-dimensional-plot-card" aria-labelledby={`${idPrefix}-title`}>
-      <div className="three-dimensional-heading">
-        <div>
+    <section className="three-dimensional-plot-card" aria-labelledby={showHeading ? `${idPrefix}-title` : undefined} aria-label={showHeading ? undefined : spaceTitle}>
+      <div className={`three-dimensional-heading${showHeading ? '' : ' is-toolbar-only'}`}>
+        {showHeading ? <div>
           <p className="panel-kicker">3D coordinate space</p>
           <h2 id={`${idPrefix}-title`}>{spaceHeading ?? spaceTitle}</h2>
-        </div>
+        </div> : null}
         <div className="three-dimensional-toolbar">
           {showLinearCombinationControl ? (
             <button
@@ -380,18 +383,6 @@ export function VectorSpace3D({
         </div>
       </div>
 
-      <div className="three-dimensional-gesture-guide" aria-label="3D表示の操作方法">
-        {(editableVectorIds?.length ?? vectors.length) > 0 ? (
-          <span><i className="vector-tip-gesture-mark" aria-hidden="true" />通常ベクトルの矢先をドラッグ：画面内で移動・吸着</span>
-        ) : null}
-        {linearCombinationVisible && linearCombinationTarget ? (
-          <span><i className="target-vector-gesture-mark" aria-hidden="true" />ターゲット v の矢先をドラッグ：画面内で移動・生成する空間へ吸着</span>
-        ) : null}
-        {linearCombinationVisible ? (
-          <span><i className="target-placement-gesture-mark" aria-hidden="true" />背景を短くタップ：ターゲット v を配置</span>
-        ) : null}
-        <span><i className="camera-gesture-mark" aria-hidden="true" />背景をドラッグ：視点を回転</span>
-      </div>
 
       <p className="visually-hidden" id={`${idPrefix}-canvas-alternative`}>
         3D図形は補助的な可視化です。{assistiveDescription}

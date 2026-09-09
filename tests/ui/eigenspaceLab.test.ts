@@ -51,6 +51,9 @@ describe('12.3 固有値Lab画面', () => {
     const analysis = analyzeEigenMap(createEigenScene().definition);
     const html = renderToStaticMarkup(createElement(EigenPanel, { tab: 'equation', analysis, input: analyzeEigenInput(analysis, [2, 1]) }));
     expect(html).toContain('det('); expect(html).toContain('− 6'); expect(html).toContain('+ 8');
+    const equations = html.match(/<div class="representation-formula linear-map-math"[^>]*>[\s\S]*?<\/div>/g) ?? [];
+    expect(equations).toHaveLength(2);
+    expect(equations[1].replace(/<[^>]+>/g, '')).toMatch(/\+ 8 = 0$/);
     const labels = eigenRootLabels(analyzeEigenMap(createEigenScene([[1, 0], [0, 1 + 1e-12]]).definition));
     expect(labels[0]).toContain('λ = 1'); expect(labels[1]).toContain('1.000000000001');
   });

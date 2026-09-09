@@ -11,6 +11,16 @@ const render = (n: 0 | 1 | 2 | 3, active = true) => renderToStaticMarkup(createE
   { active, initialScene: createEigenSceneForDimension(n) }));
 
 describe('12.4 固有値Labの次元別画面', () => {
+  it('種別・次元の選択をページ内の見出し・共有操作の下に置く', () => {
+    const html = render(2);
+    expect(html).toMatch(/^<main[^>]*><section class="lab-intro"/);
+    const introEnd = html.indexOf('</section>');
+    expect(html.indexOf('eigen-kinds')).toBeGreaterThan(introEnd);
+    expect(html.indexOf('eigen-dimensions')).toBeGreaterThan(html.indexOf('eigen-kinds'));
+    expect(html.indexOf('eigen-workspace')).toBeGreaterThan(html.indexOf('eigen-dimensions'));
+    expect(html).toContain('列ベクトル 6、4');
+    expect(read('src/labs/eigenspace/EigenspaceLab.tsx')).toContain('showHeading={false}');
+  });
   it('0Dは一点・g=1・固有値なしで、成分入力を置かない', () => {
     const html = render(0);
     expect(html).toContain('zero-space-point');
@@ -65,11 +75,17 @@ describe('12.4 固有値Labの次元別画面', () => {
       linearCombinationVisible: false, linearCombinationTarget: null, linearCombinationCoefficients: null,
       active: true, resetKey: 0, camera: null, onCameraChange: noop, onVectorCoordinatesCommit: noop,
       onLinearCombinationTargetPlacement: noop, onLinearCombinationVisibility: noop,
-      showLinearCombinationControl: false, showHelpText: false,
+      showLinearCombinationControl: false, showHeading: false, showHelpText: false, spaceTitle: '入力と像',
     }));
     expect(html).toContain('λ=−1の固有空間：');
     expect(html).toContain('λ=2の固有空間：');
     expect(html).toContain('個別の半透明');
     expect(html).not.toContain('一次結合を調べる');
+    expect(html).not.toContain('<h2');
+    expect(html).not.toContain('3D coordinate space');
+    expect(html).not.toContain('three-dimensional-gesture-guide');
+    expect(html).toContain('全体を表示');
+    expect(html).toContain('aria-label="入力と像"');
+    expect(html).not.toContain('aria-labelledby="three-dimensional-title"');
   });
 });

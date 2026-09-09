@@ -18,7 +18,7 @@ describe('12.4 次元別の教材と表示状態', () => {
       expect(view).toEqual({ line: null, plane: null, camera: null });
       const analysis = analyzeEigenMap(scene.definition);
       expect(analysis.realEigenvalues.map((r) => r.value)).toEqual([[], [-2], [2, 4], [-1, 2]][n]);
-      expect(analyzeEigenInput(analysis, scene.input).imageVector).toEqual([[], [-2], [9, 2], [2, 2, -1]][n]);
+      expect(analyzeEigenInput(analysis, scene.input).imageVector).toEqual([[], [-2], [6, 4], [2, 2, -1]][n]);
     }
   });
   it('次元切替・現在次元Resetはほかの教材と範囲を変更しない', () => {

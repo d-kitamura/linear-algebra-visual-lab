@@ -527,6 +527,32 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
     <div className="linear-map-lab" data-lab-id="linear-map" aria-hidden={!active}>
       <a className="skip-link" href="#linear-map-workspace">線形写像の操作領域へ移動</a>
       <main className="lab-page">
+        <section className="lab-intro" aria-labelledby="linear-map-title">
+          <div>
+            <p className="eyebrow">線形写像 / {scene.sourceDimension}D → {scene.targetDimension}D</p>
+            <h1 id="linear-map-title">線形写像</h1>
+            <p className="lab-intro-copy">
+              {isFixedMap ? <>0次元を含むこの次元組では、線形写像は一つだけに決まります。核と像、単射・全射を確かめます。</> : <>
+              定義域の入力 <MathVectorName name="u" /> と行列 <MathMatrixName /> を変えると、
+              終域の像 <MathMapValue argument="u" /> がリアルタイムに決まります。
+              </>}
+              薄い青色の核 <MathNamedSubspace name="Ker" /> と薄いピンク色の像 <MathNamedSubspace name="Im" /> を比較できます。
+            </p>
+          </div>
+          <div className="lab-intro-side">
+            <LabActionControls
+              exportDisabled={invalidDraftCount > 0}
+              exportDescriptionId={invalidDraftCount > 0 ? 'linear-map-share-disabled-help' : undefined}
+              onExport={handleOpenShareDialog}
+              onReset={handleReset}
+            />
+            {invalidDraftCount > 0 ? (
+              <p className="lab-action-help" id="linear-map-share-disabled-help" role="status">
+                未確定の成分が{invalidDraftCount}か所あります。訂正すると共有URLを作成できます。
+              </p>
+            ) : null}
+          </div>
+        </section>
         <nav className="linear-map-shape-switcher" aria-label="線形写像の定義域と終域の次元">
           <div className="linear-map-dimension-selectors">
             <label>定義域の次元
@@ -552,33 +578,6 @@ export function LinearMapLab({ active }: LinearMapLabProps) {
           <strong><MathMapSignature sourceDimension={scene.sourceDimension} targetDimension={scene.targetDimension} /></strong>
           <small>{scene.sourceDimension}次元から{scene.targetDimension}次元への線形写像</small>
         </div>
-
-        <section className="lab-intro" aria-labelledby="linear-map-title">
-          <div>
-            <p className="eyebrow">線形写像 / {scene.sourceDimension}D → {scene.targetDimension}D</p>
-            <h1 id="linear-map-title">線形写像</h1>
-          </div>
-          <div className="lab-intro-side">
-            <p className="lab-intro-copy">
-              {isFixedMap ? <>0次元を含むこの次元組では、線形写像は一つだけに決まります。核と像、単射・全射を確かめます。</> : <>
-              定義域の入力 <MathVectorName name="u" /> と行列 <MathMatrixName /> を変えると、
-              終域の像 <MathMapValue argument="u" /> がリアルタイムに決まります。
-              </>}
-              薄い青色の核 <MathNamedSubspace name="Ker" /> と薄いピンク色の像 <MathNamedSubspace name="Im" /> を比較できます。
-            </p>
-            <LabActionControls
-              exportDisabled={invalidDraftCount > 0}
-              exportDescriptionId={invalidDraftCount > 0 ? 'linear-map-share-disabled-help' : undefined}
-              onExport={handleOpenShareDialog}
-              onReset={handleReset}
-            />
-            {invalidDraftCount > 0 ? (
-              <p className="lab-action-help" id="linear-map-share-disabled-help" role="status">
-                未確定の成分が{invalidDraftCount}か所あります。訂正すると共有URLを作成できます。
-              </p>
-            ) : null}
-          </div>
-        </section>
 
         {loadErrorMessage ? (
           <div className="page-alert" role="alert" aria-labelledby="linear-map-load-error-title">

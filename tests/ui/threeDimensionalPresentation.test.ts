@@ -121,7 +121,7 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain('const finishTargetPlacement');
     expect(componentSource).toContain('setFromNormalAndCoplanarPoint(\n      viewDirection,\n      ORIGIN');
     expect(componentSource).toContain('coordinatesFromWorldPoint(targetPoint)');
-    expect(componentSource).toContain('背景を短くタップ：ターゲット v を配置');
+    expect(componentSource).toContain('背景を短くクリックまたはタップすると');
     expect(appSource).toContain('handleThreeDimensionalTargetPlacement');
     expect(appSource).toContain('onLinearCombinationTargetPlacement');
     expect(cssSource).toMatch(/\.three-dimensional-canvas\.is-target-placement-mode\s*\{[^}]*cursor:\s*crosshair;/su);
@@ -146,8 +146,7 @@ describe('固定3D表示とカメラ操作', () => {
   });
 
   it('矢先と背景を起点にベクトル移動と視点操作を自動で分ける', () => {
-    expect(componentSource).toContain('通常ベクトルの矢先をドラッグ：画面内で移動・吸着');
-    expect(componentSource).toContain('背景をドラッグ：視点を回転');
+    expect(componentSource).not.toContain('three-dimensional-gesture-guide');
     expect(componentSource).toContain('findVectorTipAtPointer');
     expect(componentSource).toContain('setFromNormalAndCoplanarPoint');
     expect(componentSource).toContain('controls.enabled = false');
@@ -162,7 +161,7 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain('coordinatesFromScreenPlaneDrag');
     expect(componentSource).toContain('updateVectorScreenPlanePreview');
     expect(componentSource).toContain('onVectorCoordinatesCommit');
-    expect(cssSource).toMatch(/\.three-dimensional-gesture-guide\s*\{/su);
+    expect(cssSource).not.toContain('.three-dimensional-gesture-guide');
     expect(cssSource).toMatch(/\.three-dimensional-canvas\.is-vector-tip-dragging\s*\{/su);
     expect(appSource).not.toContain('threeDimensionalInteractionMode');
   });
@@ -173,7 +172,7 @@ describe('固定3D表示とカメラ操作', () => {
     expect(componentSource).toContain('updateTargetScreenPlanePreview');
     expect(componentSource).toContain('createSpaceTargetDragPreview(coordinates, spanVectors)');
     expect(componentSource).toContain('combinationGeometryGroup.visible = false');
-    expect(componentSource).toContain('ターゲット v の矢先をドラッグ：画面内で移動');
+    expect(componentSource).toContain('ターゲットの矢先をドラッグすると');
     expect(cssSource).toMatch(/\.three-dimensional-canvas\.is-target-tip-dragging\s*\{[^}]*cursor:\s*grabbing;/su);
   });
 
@@ -186,7 +185,6 @@ describe('固定3D表示とカメラ操作', () => {
   it('ターゲットをrank 0〜2のspanへ画面幅相対の距離で吸着する', () => {
     expect(componentSource).toContain('snapSpaceTargetToSelectedSpan');
     expect(componentSource).toContain('activeTargetScreenPlaneDrag.snapKind = snapResult.snapKind');
-    expect(componentSource).toContain('生成する空間へ吸着');
     expect(componentSource).toContain('生成する原点・直線・平面へ近づけると吸着します');
     expect(componentSource).toContain('原点にスナップ（零ベクトルとして一次結合で表現できます）');
     expect(componentSource).toContain('が生成する直線にスナップ（一次結合で表現できます）');

@@ -1283,36 +1283,10 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
       </a>
 
       <main className="lab-page">
-        <nav className="dimension-switcher" aria-label="教材の次元">
-          <div className="dimension-tablist" role="tablist" aria-label="0Dから3Dの切替">
-            {dimensionTabs.map((tab) => (
-              <button
-                key={tab.dimension}
-                id={`dimension-tab-${tab.dimension}`}
-                type="button"
-                role="tab"
-                aria-selected={activeDimension === tab.dimension}
-                aria-controls={`dimension-panel-${tab.dimension}`}
-                tabIndex={activeDimension === tab.dimension ? 0 : -1}
-                onClick={() => handleDimensionChange(tab.dimension)}
-                onKeyDown={handleDimensionTabKeyDown}
-              >
-                <span className="dimension-tab-label-wide">{tab.label}</span>
-                <span className="dimension-tab-label-short">{tab.shortLabel}</span>
-              </button>
-            ))}
-          </div>
-          <p aria-live="polite">
-            {`${activeDimension}次元の教材状態を表示しています。`}
-          </p>
-        </nav>
-
         <section className="lab-intro" aria-labelledby="page-title">
           <div>
             <p className="eyebrow">ベクトル空間 / {activeDimension}D</p>
             <h1 id="page-title">ベクトルが生成する空間</h1>
-          </div>
-          <div className="lab-intro-side">
             <p className="lab-intro-copy">
               {activeDimension === 0 ? (
                 <>
@@ -1336,6 +1310,8 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
                 </>
               )}
             </p>
+          </div>
+          <div className="lab-intro-side">
             <LabActionControls
               exportDisabled={hasInvalidCoordinateDraft}
               exportDescriptionId={hasInvalidCoordinateDraft
@@ -1364,6 +1340,29 @@ export function VectorSpaceLab({ active = true }: VectorSpaceLabProps) {
             ) : null}
           </div>
         </section>
+        <nav className="dimension-switcher" aria-label="教材の次元">
+          <div className="dimension-tablist" role="tablist" aria-label="0Dから3Dの切替">
+            {dimensionTabs.map((tab) => (
+              <button
+                key={tab.dimension}
+                id={`dimension-tab-${tab.dimension}`}
+                type="button"
+                role="tab"
+                aria-selected={activeDimension === tab.dimension}
+                aria-controls={`dimension-panel-${tab.dimension}`}
+                tabIndex={activeDimension === tab.dimension ? 0 : -1}
+                onClick={() => handleDimensionChange(tab.dimension)}
+                onKeyDown={handleDimensionTabKeyDown}
+              >
+                <span className="dimension-tab-label-wide">{tab.label}</span>
+                <span className="dimension-tab-label-short">{tab.shortLabel}</span>
+              </button>
+            ))}
+          </div>
+          <p aria-live="polite">
+            {`${activeDimension}次元の教材状態を表示しています。`}
+          </p>
+        </nav>
 
         {loadErrorMessage ? (
           <div className="page-alert" role="alert" aria-labelledby="load-error-title">

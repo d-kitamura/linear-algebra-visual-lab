@@ -6,7 +6,7 @@ describe('12.3 固有値Labの2D教材状態', () => {
   it('D-106初期例は固有値2・4、空間初期非表示、選択状態なし', () => {
     const scene = createEigenScene();
     expect(scene.definition).toEqual({ dimension: 2, matrix: [[4, 1], [0, 2]] });
-    expect(scene.input).toEqual([2, 1]);
+    expect(scene.input).toEqual([1, 2]);
     expect(analyzeEigenMap(scene.definition).realEigenvalues.map((r) => r.value)).toEqual([2, 4]);
     expect(scene.showEigenspace).toBe(false);
     expect(Object.keys(scene).sort()).toEqual(['definition', 'input', 'kind', 'showEigenspace']);
@@ -17,7 +17,7 @@ describe('12.3 固有値Labの2D教材状態', () => {
     const edited = setEigenInput(scene, [1, 1.01]);
     expect(edited.definition).toBe(scene.definition);
     expect(edited.input).toEqual([1, 1.01]);
-    expect(initial.input).toEqual([2, 1]);
+    expect(initial.input).toEqual([1, 2]);
   });
   it('行列変更は入力・表示設定を維持し、回転は固有空間なしにする', () => {
     const initial = createEigenScene();
@@ -62,7 +62,7 @@ describe('12.3 固有値Labの2D教材状態', () => {
     expect(result.selectionRelation).toBe('member');
     expect(result.eigenvectorStatus).toBe('eigenvector');
     expect(result.imageVector![0]).toBeCloseTo(preview[0], 12);
-    expect(scene.input).toEqual([2, 1]); // previewの取消しでは確定状態を変えない。
+    expect(scene.input).toEqual([1, 2]); // previewの取消しでは確定状態を変えない。
   });
   it('2直線の吸着範囲が重なる場合は近い方へ吸着する', () => {
     const scene = { ...createEigenScene([[2, 1], [0, 3]]), showEigenspace: true }, analysis = analyzeEigenMap(scene.definition);

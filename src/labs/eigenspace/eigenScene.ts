@@ -12,7 +12,7 @@ export function createEigenScene(matrix: readonly (readonly number[])[] = [[4, 1
   if (kind === 'polynomial' && matrix.length === 0) throw new RangeError('多項式の係数空間は1〜3次元です。');
   const definition = { dimension: matrix.length as EigenMapDefinition['dimension'], matrix: matrix.map((row) => [...row]) };
   analyzeEigenMap(definition); // 初期値の形状・成分を検証する。
-  return { kind, definition, input: kind === 'coordinate' && definition.dimension === 2 ? [2, 1] : Array.from({ length: definition.dimension }, () => 1), showEigenspace: false };
+  return { kind, definition, input: kind === 'coordinate' && definition.dimension === 2 ? [1, 2] : Array.from({ length: definition.dimension }, () => 1), showEigenspace: false };
 }
 export function createEigenSceneForDimension(dimension: EigenMapDefinition['dimension']): EigenScene {
   const matrices = { 0: [], 1: [[-2]], 2: [[4, 1], [0, 2]], 3: [[2, 0, 0], [0, 2, 0], [0, 0, -1]] };
