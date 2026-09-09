@@ -9,7 +9,7 @@ describe('12.3 固有値Labの2D教材状態', () => {
     expect(scene.input).toEqual([2, 1]);
     expect(analyzeEigenMap(scene.definition).realEigenvalues.map((r) => r.value)).toEqual([2, 4]);
     expect(scene.showEigenspace).toBe(false);
-    expect(Object.keys(scene).sort()).toEqual(['definition', 'input', 'showEigenspace']);
+    expect(Object.keys(scene).sort()).toEqual(['definition', 'input', 'kind', 'showEigenspace']);
   });
   it('入力変更は行列参照を維持し、数値入力には吸着しない', () => {
     const initial = createEigenScene();

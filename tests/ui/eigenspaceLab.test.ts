@@ -98,7 +98,7 @@ describe('12.3 固有値Lab画面', () => {
     const source = read('src/labs/eigenspace/EigenspaceLab.tsx');
     for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End']) expect(source).toContain(key);
     expect(source).toContain('resetEigenWorkspace(w, initial)');
-    expect(source).toContain('key={`${dimension}-${revision}`}');
+    expect(source).toContain('key={`${kind}-${dimension}-${revision}`}');
     expect(source).toContain("useState<Tab>('values')");
     expect(source).toContain('dragViewport ?? manualViewport ?? createAutoFitViewport(dimension === 2 ? vectors : [])');
     expect(source).toContain('analyzeEigenMap(scene.definition), [scene.definition]');

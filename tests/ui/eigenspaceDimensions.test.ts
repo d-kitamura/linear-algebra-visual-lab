@@ -19,7 +19,7 @@ describe('12.4 固有値Labの次元別画面', () => {
     expect(html).toContain('0×0行列の行列式は1です');
     expect(html).toContain('正の次元の零変換（固有値0）とは異なります');
     expect(html).not.toContain('空の組がこの空間の基底');
-    expect(html.match(/aria-pressed=/g)).toHaveLength(4);
+    expect(html.match(/aria-pressed=/g)).toHaveLength(6); // 種別2つ＋数ベクトルの次元4つ。
   });
   it('1Dは2個の入力と1個の編集可能な矢先。負と零固有値を扱う', () => {
     const html = render(1);

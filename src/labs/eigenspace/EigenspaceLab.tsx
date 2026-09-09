@@ -8,7 +8,10 @@ import { toSvgPoint } from '../../visualization/planeGeometry';
 import { formatMathNumber } from '../../ui';
 import { Column, Formula, MapValue, Scalar, Vector } from '../representation-matrix/representationMath';
 import { createEigenSpaceGeometries, editEigenMatrix, parseEigenNumber, setEigenInput, snapEigenInput, snapEigenSpaceInput, type EigenScene } from './eigenScene';
-import { createEigenWorkspace, resetEigenWorkspace, updateEigenSlot, type EigenSlot, type EigenView } from './eigenWorkspace';
+import { createEigenWorkspace, currentEigenSlot, selectEigenDimension, selectEigenKind, resetEigenWorkspace, updateEigenSlot, type EigenSlot, type EigenView } from './eigenWorkspace';
+import { applyEigenPolynomialExample, EIGEN_POLYNOMIAL_EXAMPLES, eigenPolynomialRule, type EigenPolynomialExample } from './eigenPolynomial';
+import { EigenCoordinateName, EigenPolynomialValue, EigenPolynomialRule, EigenPolynomialCorrespondence, EigenPolynomialBasisValue } from './eigenPolynomialMath';
+import { SpaceName, StandardPolynomialBasis } from '../representation-matrix/representationObjects';
 import './eigenspace.css';
 
 const TABS = [['values', '固有値'], ['space', '固有空間'], ['input', '入力と像'], ['equation', '固有方程式']] as const;
@@ -19,6 +22,8 @@ const EDITABLE_IDS = ['eigen-input'];
 const OPAQUE_IDS = ['eigen-input', 'eigen-image'];
 const EMPTY_VECTORS: readonly VectorValue[] = [];
 const NOOP = () => {};
+const POLYNOMIAL_AXES_2D = ['b₀', 'b₁'] as const;
+const POLYNOMIAL_AXES_3D = ['b₀', 'b₁', 'b₂'] as const;
 const ISSUES: Record<EigenIssue, string> = {
   'unresolved-cluster': '近い固有値を数値で区別できません。',
   'ambiguous-realness': '根が実数か確認できません。',
@@ -38,13 +43,18 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
   const [workspace, setWorkspace] = useState(initial);
   const [revision, setRevision] = useState(0);
   const dimension = workspace.dimension;
+  const kind = workspace.kind;
   return <>
-    <div className="dimension-switcher eigen-dimensions"><div className="dimension-tablist" role="group" aria-label="固有値Labの次元">
-      {([0, 1, 2, 3] as const).map((n) => <button type="button" key={n} aria-pressed={dimension === n}
-        onClick={() => setWorkspace((w) => ({ ...w, dimension: n }))}>{n}D</button>)}
+    <div className="dimension-switcher eigen-kinds"><div className="dimension-tablist" role="group" aria-label="固有値Labのベクトルの種類">
+      {(['coordinate', 'polynomial'] as const).map((value) => <button key={value} type="button" aria-pressed={kind === value}
+        onClick={() => setWorkspace((w) => selectEigenKind(w, value))}>{value === 'coordinate' ? '数ベクトル' : '多項式'}</button>)}
     </div></div>
-    <EigenSceneView key={`${dimension}-${revision}`} active={active} slot={workspace.slots[dimension]}
-      onSlot={(change) => setWorkspace((w) => updateEigenSlot(w, dimension, change))}
+    <div className="dimension-switcher eigen-dimensions"><div className="dimension-tablist" style={{ gridTemplateColumns: `repeat(${kind === 'polynomial' ? 3 : 4}, minmax(0, 1fr))` }} role="group" aria-label="固有値Labの次元">
+      {([0, 1, 2, 3] as const).filter((n) => kind !== 'polynomial' || n !== 0).map((n) => <button type="button" key={n} aria-pressed={dimension === n}
+        onClick={() => setWorkspace((w) => selectEigenDimension(w, n))}>{n}D</button>)}
+    </div></div>
+    <EigenSceneView key={`${kind}-${dimension}-${revision}`} active={active} slot={currentEigenSlot(workspace)}
+      onSlot={(change) => setWorkspace((w) => updateEigenSlot(w, dimension, change, kind))}
       onReset={() => { setWorkspace((w) => resetEigenWorkspace(w, initial)); setRevision((r) => r + 1); }} />
   </>;
 }
@@ -52,12 +62,15 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
 function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: boolean; readonly slot: EigenSlot;
   readonly onSlot: (change: (slot: EigenSlot) => EigenSlot) => void; readonly onReset: () => void }) {
   const { scene, view } = slot;
+  const kind = scene.kind;
+  const polynomial = kind === 'polynomial';
   const dimension = scene.definition.dimension;
   const setScene = (change: (scene: EigenScene) => EigenScene) => onSlot((s) => ({ ...s, scene: change(s.scene) }));
   const setView = (change: Partial<EigenView>) => onSlot((s) => ({ ...s, view: { ...s.view, ...change } }));
   const setManualViewport = (plane: PlaneViewport | null) => setView({ plane });
   const manualViewport = view.plane;
   const [tab, setTab] = useState<Tab>('values');
+  const [editorRevision, setEditorRevision] = useState(0);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
   const [dragLine, setDragLine] = useState<LineViewport | null>(null);
   const [preview, setPreview] = useState<readonly number[] | null>(null);
@@ -102,7 +115,7 @@ function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: bo
   const colors = inputResult.imageVector ? [IMAGE_COLOR, INPUT_COLOR] : [INPUT_COLOR];
   return <main className="lab-page eigenspace-lab" data-lab-id="eigenspace" aria-hidden={!active}>
     <section className="lab-intro" aria-labelledby="eigenspace-title">
-      <div><p className="panel-kicker">Eigenspace / {dimension}D</p><h1 id="eigenspace-title">固有値と固有空間</h1>
+      <div><p className="panel-kicker">Eigenspace / {polynomial ? 'Polynomial / ' : ''}{dimension}D</p><h1 id="eigenspace-title">固有値と固有空間</h1>
         <p>入力とその像を重ねて、固有値と固有空間の関係を調べます。</p></div>
       <div><LabActionControls exportDisabled exportDescriptionId="eigen-share-help" onExport={NOOP} onReset={onReset} />
         <small id="eigen-share-help">このLabの共有は準備中です。</small></div>
@@ -110,7 +123,7 @@ function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: bo
     <div className="lab-workspace eigen-workspace">
       <section className="plot-card eigen-plot" aria-labelledby="eigen-plot-title">
         <div className="card-heading"><div><p className="panel-kicker">Linear transformation</p>
-          <h2 id="eigen-plot-title">空間 <Scalar>U</Scalar> = {dimension === 0 ? <>{'{'}<Vector name="0" />{'}'}</> : <>ℝ<sup>{dimension}</sup></>}</h2></div>
+          <h2 id="eigen-plot-title">空間 <Scalar>U</Scalar> = {dimension === 0 ? <>{'{'}<Vector name="0" />{'}'}</> : <SpaceName kind={kind} dimension={dimension} />}{polynomial && '（係数空間）'}</h2></div>
           {(dimension === 1 || dimension === 2) && <button className="basis-fit-button" type="button" disabled={dragging}
             onClick={() => setView({ plane: null, line: null })}>全体を表示</button>}</div>
         <div className="eigen-selection">
@@ -119,6 +132,7 @@ function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: bo
         </div>
         {dimension === 0 && <ZeroSpace0D idPrefix="eigen-zero" spaceName="U" description="この空間にあるベクトルは零ベクトルだけです。成分はなく、空間の次元は0です。" />}
         {dimension === 1 && <VectorLine1D idPrefix="eigen-line" vectors={vectors} colors={colors} viewport={lineViewport}
+          axisLabel={polynomial ? 'b₀' : 'x'}
           editableVectorIds={EDITABLE_IDS} alwaysOpaqueVectorIds={OPAQUE_IDS} showHelpText={false}
           outlinedVectorIds={['eigen-image']} onViewportChange={(line) => setView({ line })}
           showSpan={scene.showEigenspace && !!geometry} spanDimension={geometry ? 1 : 0} spanLabel="固有空間"
@@ -127,6 +141,7 @@ function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: bo
           onVectorDragEnd={() => { const input = previewRef.current; if (input) setScene((s) => setEigenInput(s, input)); cancelDrag(); }}
           onVectorDragCancel={cancelDrag} />}
         {dimension === 2 && <VectorPlane2D idPrefix="eigen-plane" vectors={vectors} colors={colors} viewport={viewport}
+          axisLabels={polynomial ? POLYNOMIAL_AXES_2D : undefined}
           editableVectorIds={EDITABLE_IDS} alwaysOpaqueVectorIds={OPAQUE_IDS}
           vectorPresentation={presentation} onViewportChange={setManualViewport}
           showSpan={scene.showEigenspace && !!geometry} spanVectors={geometry?.vectors ?? []} spanDimension={geometry?.dimension ?? 0}
@@ -142,6 +157,7 @@ function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: bo
           onVectorDragCancel={cancelDrag} />}
         {dimension === 3 && active && <Suspense fallback={<p role="status">3D表示を準備しています。数値入力と解析は利用できます。</p>}>
           <Space3D idPrefix="eigen-space" vectors={spaceVectors} colors={spaceColors} spanVectors={geometry?.vectors ?? EMPTY_VECTORS}
+            axisLabels={polynomial ? POLYNOMIAL_AXES_3D : undefined}
             spanRank={geometry?.dimension ?? 0} spanGroups={spaceGroups} showSpan={scene.showEigenspace}
             spanLabel="表示中の各固有空間" snapEditableVectorsToSpan editableVectorIds={EDITABLE_IDS} alwaysOpaqueVectorIds={OPAQUE_IDS}
             vectorCoordinatePreview={imagePreview} linearCombinationVisible={false} linearCombinationTarget={null} linearCombinationCoefficients={null}
@@ -150,26 +166,36 @@ function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: bo
             onVectorCoordinatesCommit={(_, coordinates) => { setScene((s) => setEigenInput(s, coordinates)); cancelDrag(); }}
             onVectorCoordinatesSnap={(_, coordinates, distance) => snapEigenSpaceInput(scene, analysis, coordinates, distance)}
             onLinearCombinationTargetPlacement={NOOP} onLinearCombinationVisibility={NOOP}
-            showLinearCombinationControl={false} showHelpText={false} spaceTitle="入力と像"
-            assistiveDescription="入力と像を同じ3次元座標空間に表示します。固有値、各固有空間の次元と基底、入力と像の成分は解析タブで確認できます。"
+            showLinearCombinationControl={false} showHelpText={false} spaceTitle={polynomial ? '入力と像の係数空間' : '入力と像'}
+            assistiveDescription={polynomial ? '入力多項式と像の標準単項式係数を同じ3次元係数空間に表示します。固有値・固有空間の基底と多項式は解析タブで確認できます。' : '入力と像を同じ3次元座標空間に表示します。固有値、各固有空間の次元と基底、入力と像の成分は解析タブで確認できます。'}
             unavailableFallbackDescription="行列・入力の数値編集と解析タブ、Resetはそのまま利用できます。" />
         </Suspense>}
-        {dimension > 0 && <p className="eigen-legend"><span style={{ color: INPUT_COLOR }}>● 入力 <Vector name="u" /></span>
-          <span style={{ color: IMAGE_COLOR }}>◇ 像 <MapValue name="u" /></span></p>}
+        {dimension > 0 && <p className="eigen-legend"><span style={{ color: INPUT_COLOR }}>● 入力 <EigenCoordinateName kind={kind} /></span>
+          <span style={{ color: IMAGE_COLOR }}>◇ 像 <EigenCoordinateName kind={kind} mapped /></span></p>}
+        {polynomial && <p className="eigen-coefficient-note">矢印は多項式の係数列を表します（関数グラフではありません）。</p>}
       </section>
       <div className="analysis-column">
         <section className="basis-candidate-card eigen-editor" aria-labelledby="eigen-edit-title">
           <p className="panel-kicker">Edit transformation</p><h2 id="eigen-edit-title">行列と入力</h2>
-          <Formula><MapValue name="u" /> = <Vector name="A" /><Vector name="u" /></Formula>
-          {dimension === 0 ? <p>零ベクトルだけの空間です。行列と入力の成分はありません。</p> : <fieldset disabled={dragging}>
+          {polynomial && <Formula><span className="basis-script-symbol">ℰ</span> = <StandardPolynomialBasis dimension={dimension} /></Formula>}
+          <Formula><EigenCoordinateName kind={kind} mapped /> = <Vector name="A" /><EigenCoordinateName kind={kind} /></Formula>
+          {polynomial && <><label className="eigen-example-select">行列の例（入力は保持）<select aria-label="多項式の線形変換の行列の例" value="" disabled={dragging}
+            onChange={(event) => { const example = event.target.value as EigenPolynomialExample;
+              if (EIGEN_POLYNOMIAL_EXAMPLES.some(([id]) => id === example)) {
+                setScene((s) => applyEigenPolynomialExample(s, example)); setEditorRevision((r) => r + 1);
+              }
+            }}><option value="">選択して適用</option>{EIGEN_POLYNOMIAL_EXAMPLES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+            <EigenPolynomialRule rule={eigenPolynomialRule(scene)} /></>}
+          {dimension === 0 ? <p>零ベクトルだけの空間です。行列と入力の成分はありません。</p> : <fieldset key={editorRevision} disabled={dragging}>
             <legend className="visually-hidden">行列と入力の成分</legend>
             <div className="eigen-editor-row"><Vector name="A" /> = <span className="linear-map-matrix-input" style={{ gridTemplateColumns: `repeat(${dimension}, minmax(0, 1fr))` }}>
               {scene.definition.matrix.flatMap((row, r) => row.map((v, c) => <EigenNumberInput key={`${r}-${c}`} value={v} label={`行列Aの第${r + 1}行第${c + 1}列`}
                 onValue={(value) => setScene((s) => editEigenMatrix(s, r, c, value))} />))}</span></div>
-            <div className="eigen-editor-row" style={{ color: INPUT_COLOR }}><Vector name="u" /> = <span className="linear-map-vector-input">
-              {scene.input.map((v, i) => <EigenNumberInput key={i} value={v} label={`入力uの第${i + 1}成分`}
+            <div className="eigen-editor-row" style={{ color: INPUT_COLOR }}><EigenCoordinateName kind={kind} /> = <span className="linear-map-vector-input">
+              {scene.input.map((v, i) => <EigenNumberInput key={i} value={v} label={polynomial ? `入力多項式の係数b${i}` : `入力uの第${i + 1}成分`}
                 onValue={(value) => setScene((s) => setEigenInput(s, s.input.map((entry, index) => index === i ? value : entry)))} />)}</span></div>
           </fieldset>}
+          {polynomial && <EigenPolynomialValue coefficients={current} />}
         </section>
         <div className="inspector-tablist" role="tablist" aria-label="固有値Labの解析">
           {TABS.map(([id, label], i) => <button key={id} type="button" id={`eigen-tab-${id}`} role="tab" aria-selected={tab === id}
@@ -182,7 +208,7 @@ function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: bo
           {(analysis.status === 'inconclusive' || analysis.status === 'numerical-failure') && <div className="representation-warning">
             <strong>数値判定を保留しています。</strong><p>{[...new Set(analysis.issues.map((issue) => ISSUES[issue]))].join(' ')}</p>
           </div>}
-          <EigenPanel tab={id} analysis={analysis} input={inputResult} />
+          <EigenPanel tab={id} analysis={analysis} input={inputResult} kind={kind} />
         </section>)}
       </div>
     </div>
@@ -214,7 +240,7 @@ export function eigenVectorPresentation(input: readonly number[], image: readonl
   };
 }
 
-export function EigenPanel({ tab, analysis, input }: { readonly tab: Tab; readonly analysis: EigenMapAnalysis; readonly input: EigenInputAnalysis }) {
+export function EigenPanel({ tab, analysis, input, kind = 'coordinate' }: { readonly tab: Tab; readonly analysis: EigenMapAnalysis; readonly input: EigenInputAnalysis; readonly kind?: EigenScene['kind'] }) {
   // D-106: このLabの教材表示は丸めを含め等号で統一。内部の数値基準・保留は維持する。
   if (analysis.definition.dimension === 0) return tab === 'equation' ? <>
     <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = det(<Vector name="A" /> − <Scalar>λ</Scalar><Vector name="E" />) = 1</Formula>
@@ -235,18 +261,24 @@ export function EigenPanel({ tab, analysis, input }: { readonly tab: Tab; readon
     <Formula><Scalar>W</Scalar>(<Scalar>λ</Scalar>; <Scalar>T</Scalar>) = {'{'}<Vector name="u" /> ∈ <Scalar>U</Scalar> | <MapValue name="u" /> = <Scalar>λ</Scalar><Vector name="u" />{'}'}</Formula>
     <p>固有空間の次元：{root.eigenspace.dimension}</p><h3>固有空間の基底の一例</h3>
     <Formula><span className="basis-script-symbol">𝒬</span> = ({root.eigenspace.basis.map((_, i) => <span key={i}>{i > 0 && ', '}<Vector name={`q${i + 1}`} /></span>)})</Formula>
-    {root.eigenspace.basis.map((q, i) => <Formula key={i}><Vector name={`q${i + 1}`} /> = <Column values={q} /></Formula>)}
+    {root.eigenspace.basis.map((q, i) => kind === 'polynomial'
+      ? <EigenPolynomialBasisValue key={i} name={`q${i + 1}`} coefficients={q} />
+      : <Formula key={i}><Vector name={`q${i + 1}`} /> = <Column values={q} /></Formula>)}
     <p>固有空間は零ベクトルを含みます。基底の取り方は唯一ではありません。</p>
     </> : <p>この固有値の固有空間は判定保留です。</p>}
   </article>)}</> : <p>{analysis.status === 'no-real-eigenvalues' ? '実固有値がないため、固有空間はありません。' : '表示できる固有空間は未確定です。'}</p>;
   if (tab === 'input') return <>
-    <Formula><Vector name="u" /> = <Column values={input.inputVector} /></Formula>
-    <Formula><MapValue name="u" /> = <Vector name="A" /><Vector name="u" />{input.imageVector ? <> = <Column values={input.imageVector} /></> : <>（数値計算を保留）</>}</Formula>
+    {kind === 'polynomial' && <><EigenPolynomialCorrespondence dimension={analysis.definition.dimension} />
+      <EigenPolynomialValue coefficients={input.inputVector} /></>}
+    <Formula><EigenCoordinateName kind={kind} /> = <Column values={input.inputVector} /></Formula>
+    <Formula><EigenCoordinateName kind={kind} mapped /> = <Vector name="A" /><EigenCoordinateName kind={kind} />{input.imageVector ? <> = <Column values={input.imageVector} /></> : <>（数値計算を保留）</>}</Formula>
+    {kind === 'polynomial' && input.imageVector && <EigenPolynomialValue mapped coefficients={input.imageVector} />}
     <p><strong>{input.eigenvectorStatus === 'zero-input' ? '零ベクトルは固有ベクトルではありません。'
       : input.eigenvectorStatus === 'eigenvector' ? '入力は固有ベクトルです（数値基準内）。'
         : input.eigenvectorStatus === 'not-eigenvector' ? '入力は固有ベクトルではありません。' : '固有ベクトルかどうかの判定は保留です。'}</strong></p>
     {input.matchingEigenvalueIndices.map((i) => <div key={i}><Formula><MapValue name="u" /> = ({eigenRootLabels(analysis)[i].split(' = ')[1]})<Vector name="u" /></Formula>
       <p>この固有値の固有空間に属します。</p></div>)}
+    {kind === 'polynomial' && input.eigenvectorStatus === 'eigenvector' && <p>入力は固有ベクトルである多項式です。</p>}
     {input.zeroStatus === 'zero' && analysis.realEigenvalues.some((r) => r.eigenspace) && <p>零ベクトルは、すべての固有空間に属します。</p>}
     {input.eigenvectorStatus === 'eigenvector' && input.imageVector?.every((v) => v === 0) && <p>非零の入力が零へ写ります。対応する固有値は0です。</p>}
     {input.status === 'numerical-failure' && <p className="representation-warning">{input.issues.map((issue) => ISSUES[issue]).join(' ')}</p>}

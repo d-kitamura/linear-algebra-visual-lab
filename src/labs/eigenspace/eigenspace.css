@@ -19,6 +19,13 @@
 .eigenspace-lab .vector-arrow { pointer-events: none; }
 .eigenspace-lab .vector-drag-handle { pointer-events: all; }
 .eigen-dimensions { margin: 16px 0; }
+.eigen-kinds { margin-bottom: 12px; }
+.eigen-kinds .dimension-tablist { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.eigen-kinds button[aria-pressed="true"] { color: var(--ink); background: var(--paper); border-color: var(--line); }
+.eigen-example-select { display: grid; gap: 6px; margin: 12px 0; color: var(--muted); font-size: .8rem; }
+.eigen-example-select select { min-width: 0; width: 100%; min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; }
+.eigen-coefficient-note { color: var(--muted); font-size: .8rem; }
+.eigen-polynomial-correspondence { margin-bottom: 18px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
 .eigen-dimensions button { min-width: 48px; min-height: 44px; }
 .eigen-dimensions button[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--line); box-shadow: 0 5px 15px rgba(18, 28, 36, 0.08); }
 .eigen-plot .three-dimensional-plot-card { padding: 0; border: 0; box-shadow: none; background: transparent; }
