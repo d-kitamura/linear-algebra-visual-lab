@@ -20,7 +20,7 @@
 
 ### D-106修正（現行仕様・下の12.3初回記録より優先）
 
-- 利用者指定4点を実装。初期A=[[2,1],[0,3]]（固有値2・3）、input=[2,1]、showEigenspace=false。Resetも非表示。単一固有値のプルダウン・sceneのselectedEigenvalueIndex・選択補正関数を削除。
+- 利用者指定4点を実装。初期A=[[4,1],[0,2]]（固有値2・4）、input=[2,1]、showEigenspace=false。Resetも非表示。単一固有値のプルダウン・sceneのselectedEigenvalueIndex・選択補正関数を削除。
 - createEigenSpaceGeometriesで確認済み全空間を個別取得。共通VectorPlane2Dの任意spanLineDirectionsで複数の直線を同時表示し、異なる空間を合成しない。既存Labの省略時動作は維持する。表示オン時の全候補から最短距離の吸着を選ぶ。原点は常に最優先。
 - 固有空間タブは全根の空間を表示。入力カードはmatchingEigenvalueIndicesを使い、任意の一空間との関係を表示しない。数値・等式は本Labのみ「=」に統一し、内部数値APIと保留は変更しない。
 - API契約・詳細設計・ROADMAPの後続3D／共有も同じ方針へ更新。共有設計は選択フィールドを持たない。下記はD-105初回実装の履歴として参照する。

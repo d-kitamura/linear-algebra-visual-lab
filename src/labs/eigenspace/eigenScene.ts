@@ -7,7 +7,7 @@ export interface EigenScene {
   readonly input: readonly [number, number];
   readonly showEigenspace: boolean;
 }
-export function createEigenScene(matrix: readonly (readonly number[])[] = [[2, 1], [0, 3]]): EigenScene {
+export function createEigenScene(matrix: readonly (readonly number[])[] = [[4, 1], [0, 2]]): EigenScene {
   const definition = { dimension: 2 as const, matrix: matrix.map((row) => [...row]) };
   analyzeEigenMap(definition); // 初期値の形状・成分を検証する。
   return { definition, input: [2, 1], showEigenspace: false };

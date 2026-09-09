@@ -3,11 +3,11 @@ import { analyzeEigenInput, analyzeEigenMap } from '../../src/domain';
 import { createEigenScene, createEigenSpaceGeometries, editEigenMatrix, parseEigenNumber, setEigenInput, snapEigenInput } from '../../src/labs/eigenspace/eigenScene';
 
 describe('12.3 固有値Labの2D教材状態', () => {
-  it('D-106初期例は固有値2・3、空間初期非表示、選択状態なし', () => {
+  it('D-106初期例は固有値2・4、空間初期非表示、選択状態なし', () => {
     const scene = createEigenScene();
-    expect(scene.definition).toEqual({ dimension: 2, matrix: [[2, 1], [0, 3]] });
+    expect(scene.definition).toEqual({ dimension: 2, matrix: [[4, 1], [0, 2]] });
     expect(scene.input).toEqual([2, 1]);
-    expect(analyzeEigenMap(scene.definition).realEigenvalues.map((r) => r.value)).toEqual([2, 3]);
+    expect(analyzeEigenMap(scene.definition).realEigenvalues.map((r) => r.value)).toEqual([2, 4]);
     expect(scene.showEigenspace).toBe(false);
     expect(Object.keys(scene).sort()).toEqual(['definition', 'input', 'showEigenspace']);
   });
@@ -24,9 +24,9 @@ describe('12.3 固有値Labの2D教材状態', () => {
     const scene = editEigenMatrix(initial, 0, 0, 3);
     expect(scene.showEigenspace).toBe(false);
     expect(scene.input).toBe(initial.input);
-    expect(initial.definition.matrix[0][0]).toBe(2);
+    expect(initial.definition.matrix[0][0]).toBe(4);
     expect(createEigenSpaceGeometries(analyzeEigenMap(createEigenScene([[0, -1], [1, 0]]).definition))).toEqual([]);
-    expect(editEigenMatrix(initial, 0, 0, 2)).toBe(initial);
+    expect(editEigenMatrix(initial, 0, 0, 4)).toBe(initial);
   });
   it('判定保留の空間を描画用の直線や原点に置き換えない', () => {
     const analysis = analyzeEigenMap(createEigenScene([[1, 1], [1e-24, 1]]).definition);
@@ -65,7 +65,7 @@ describe('12.3 固有値Labの2D教材状態', () => {
     expect(scene.input).toEqual([2, 1]); // previewの取消しでは確定状態を変えない。
   });
   it('2直線の吸着範囲が重なる場合は近い方へ吸着する', () => {
-    const scene = { ...createEigenScene(), showEigenspace: true }, analysis = analyzeEigenMap(scene.definition);
+    const scene = { ...createEigenScene([[2, 1], [0, 3]]), showEigenspace: true }, analysis = analyzeEigenMap(scene.definition);
     // 両直線から0.2以内、原点からは0.2以上。斜め線の方が近い。
     const result = snapEigenInput(scene, analysis, [.25, .18], 10);
     expect(result.coordinates[0]).toBeCloseTo(.215, 12);

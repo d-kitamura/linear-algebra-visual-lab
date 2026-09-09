@@ -50,7 +50,7 @@ describe('12.3 固有値Lab画面', () => {
   it('固有方程式はdet(A−λE)の係数と符号を表示し、選択の表示丸めで根を併合しない', () => {
     const analysis = analyzeEigenMap(createEigenScene().definition);
     const html = renderToStaticMarkup(createElement(EigenPanel, { tab: 'equation', analysis, input: analyzeEigenInput(analysis, [2, 1]) }));
-    expect(html).toContain('det('); expect(html).toContain('− 5'); expect(html).toContain('+ 6');
+    expect(html).toContain('det('); expect(html).toContain('− 6'); expect(html).toContain('+ 8');
     const labels = eigenRootLabels(analyzeEigenMap(createEigenScene([[1, 0], [0, 1 + 1e-12]]).definition));
     expect(labels[0]).toContain('λ = 1'); expect(labels[1]).toContain('1.000000000001');
   });
@@ -67,7 +67,7 @@ describe('12.3 固有値Lab画面', () => {
     expect(visible).not.toContain('class="span-plane-fill"');
     expect(visible.match(/class="eigen-space-detail"/g)).toHaveLength(2);
     expect(visible).toContain('λ = 2の固有空間');
-    expect(visible).toContain('λ = 3の固有空間');
+    expect(visible).toContain('λ = 4の固有空間');
   });
   it('丸め・非整数根・所属判定を含む全カードで等号に統一する', () => {
     for (const matrix of [[[2, 1], [1, 2]], [[0, 2], [1, 0]]]) {
