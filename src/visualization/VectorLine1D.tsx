@@ -39,6 +39,9 @@ export interface VectorLine1DProps {
   readonly onVectorDragStart?: (vectorId: string) => void;
   readonly onVectorChange?: (vectorId: string, coordinates: readonly [number]) => void;
   readonly onVectorDragEnd?: (vectorId: string) => void;
+  readonly onVectorDragCancel?: (vectorId: string) => void;
+  /** 重なる入力と像を区別するため、像を太い輪郭で描ける。 */
+  readonly outlinedVectorIds?: readonly string[];
   readonly spanDimension?: 0 | 1;
   readonly showSpan?: boolean;
   readonly spanLabel?: string;
@@ -78,6 +81,8 @@ export function VectorLine1D({
   onVectorDragStart,
   onVectorChange,
   onVectorDragEnd,
+  onVectorDragCancel,
+  outlinedVectorIds = [],
   spanDimension = 0,
   showSpan = false,
   spanLabel = '生成する空間',
@@ -374,7 +379,8 @@ export function VectorLine1D({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    onVectorDragEnd?.(vectorId);
+    if (event.type !== 'pointerup' && onVectorDragCancel) onVectorDragCancel(vectorId);
+    else onVectorDragEnd?.(vectorId);
   }
 
   function handleTargetPointerDown(event: ReactPointerEvent<SVGCircleElement>): void {
@@ -544,6 +550,7 @@ export function VectorLine1D({
             const coordinate = vector.coordinates[0] ?? 0;
             const endX = toLineSvgX(coordinate, viewport);
             const color = colors[index % Math.max(1, colors.length)] ?? '#d55535';
+            const outline = outlinedVectorIds.includes(vector.id);
             const arrowHead = createArrowHeadPoints([originX, axisY], [endX, axisY], 16, 7);
             const labelAbove = index % 2 === 0;
             // 長いT(e_i)もプロット端で切れないよう、必要なら矢先の内側に置く。
@@ -556,9 +563,9 @@ export function VectorLine1D({
                 className={`line-vector-arrow ${selectedIds.has(vector.id) ? 'is-span-selected' : ''} ${alwaysOpaqueVectorIds.includes(vector.id) ? 'is-always-opaque' : ''}`}
               >
                 <title>{`${formatVectorSpokenName(vector.name)}は成分${coordinate}の1次元数ベクトル`}</title>
-                <line x1={originX} y1={axisY} x2={endX} y2={axisY} stroke={color} />
+                <line x1={originX} y1={axisY} x2={endX} y2={axisY} stroke={color} style={outline ? { strokeWidth: 9 } : undefined} />
                 {arrowHead ? (
-                  <polygon points={pointsToSvg(arrowHead)} fill={color} />
+                  <polygon points={pointsToSvg(arrowHead)} fill={outline ? 'var(--paper)' : color} stroke={outline ? color : undefined} strokeWidth={outline ? 3 : undefined} />
                 ) : (
                   <circle cx={originX} cy={axisY} r="8" fill={color} />
                 )}

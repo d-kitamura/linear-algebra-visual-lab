@@ -1,18 +1,24 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { analyzeEigenInput, analyzeEigenMap, type EigenInputAnalysis, type EigenMapAnalysis, type EigenIssue, type VectorValue } from '../../domain';
 import { LabActionControls } from '../../app/LabActionControls';
-import { VectorPlane2D, createAutoFitViewport, type PlaneViewport } from '../../visualization';
+import { VectorPlane2D, VectorLine1D, ZeroSpace0D, createAutoFitViewport, createAutoFitLineViewport, type PlaneViewport, type LineViewport } from '../../visualization';
 import type { PlaneVectorPresentation } from '../../visualization/VectorPlane2D';
 import { SvgVectorLabel } from '../../visualization/SvgVectorLabel';
 import { toSvgPoint } from '../../visualization/planeGeometry';
 import { formatMathNumber } from '../../ui';
 import { Column, Formula, MapValue, Scalar, Vector } from '../representation-matrix/representationMath';
-import { createEigenScene, createEigenSpaceGeometries, editEigenMatrix, parseEigenNumber, setEigenInput, snapEigenInput, type EigenScene } from './eigenScene';
+import { createEigenSpaceGeometries, editEigenMatrix, parseEigenNumber, setEigenInput, snapEigenInput, snapEigenSpaceInput, type EigenScene } from './eigenScene';
+import { createEigenWorkspace, resetEigenWorkspace, updateEigenSlot, type EigenSlot, type EigenView } from './eigenWorkspace';
 import './eigenspace.css';
 
 const TABS = [['values', '固有値'], ['space', '固有空間'], ['input', '入力と像'], ['equation', '固有方程式']] as const;
 type Tab = typeof TABS[number][0];
 const INPUT_COLOR = '#245b8d', IMAGE_COLOR = '#ce5135';
+const Space3D = lazy(() => import('../../visualization/VectorSpace3D').then((m) => ({ default: m.VectorSpace3D })));
+const EDITABLE_IDS = ['eigen-input'];
+const OPAQUE_IDS = ['eigen-input', 'eigen-image'];
+const EMPTY_VECTORS: readonly VectorValue[] = [];
+const NOOP = () => {};
 const ISSUES: Record<EigenIssue, string> = {
   'unresolved-cluster': '近い固有値を数値で区別できません。',
   'ambiguous-realness': '根が実数か確認できません。',
@@ -28,33 +34,65 @@ const ISSUES: Record<EigenIssue, string> = {
 
 /** 初期値だけをReset基準にする。Lab非表示でも確定教材状態は保持する。 */
 export function EigenspaceLab({ active, initialScene }: { readonly active: boolean; readonly initialScene?: EigenScene }) {
-  const [initial] = useState(() => initialScene ?? createEigenScene());
-  const [scene, setScene] = useState(initial);
+  const [initial] = useState(() => createEigenWorkspace(initialScene));
+  const [workspace, setWorkspace] = useState(initial);
+  const [revision, setRevision] = useState(0);
+  const dimension = workspace.dimension;
+  return <>
+    <div className="dimension-switcher eigen-dimensions"><div className="dimension-tablist" role="group" aria-label="固有値Labの次元">
+      {([0, 1, 2, 3] as const).map((n) => <button type="button" key={n} aria-pressed={dimension === n}
+        onClick={() => setWorkspace((w) => ({ ...w, dimension: n }))}>{n}D</button>)}
+    </div></div>
+    <EigenSceneView key={`${dimension}-${revision}`} active={active} slot={workspace.slots[dimension]}
+      onSlot={(change) => setWorkspace((w) => updateEigenSlot(w, dimension, change))}
+      onReset={() => { setWorkspace((w) => resetEigenWorkspace(w, initial)); setRevision((r) => r + 1); }} />
+  </>;
+}
+
+function EigenSceneView({ active, slot, onSlot, onReset }: { readonly active: boolean; readonly slot: EigenSlot;
+  readonly onSlot: (change: (slot: EigenSlot) => EigenSlot) => void; readonly onReset: () => void }) {
+  const { scene, view } = slot;
+  const dimension = scene.definition.dimension;
+  const setScene = (change: (scene: EigenScene) => EigenScene) => onSlot((s) => ({ ...s, scene: change(s.scene) }));
+  const setView = (change: Partial<EigenView>) => onSlot((s) => ({ ...s, view: { ...s.view, ...change } }));
+  const setManualViewport = (plane: PlaneViewport | null) => setView({ plane });
+  const manualViewport = view.plane;
   const [tab, setTab] = useState<Tab>('values');
-  const [resetKey, setResetKey] = useState(0);
-  const [manualViewport, setManualViewport] = useState<PlaneViewport | null>(null);
   const [dragViewport, setDragViewport] = useState<PlaneViewport | null>(null);
-  const [preview, setPreview] = useState<readonly [number, number] | null>(null);
-  const previewRef = useRef<readonly [number, number] | null>(null);
+  const [dragLine, setDragLine] = useState<LineViewport | null>(null);
+  const [preview, setPreview] = useState<readonly number[] | null>(null);
+  const previewRef = useRef<readonly number[] | null>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   // 入力のpreview・数値編集ではこの解析を繰り返さない。
   const analysis = useMemo(() => analyzeEigenMap(scene.definition), [scene.definition]);
   const current = preview ?? scene.input;
   const inputResult = useMemo(() => analyzeEigenInput(analysis, current), [analysis, current]);
-  const geometries = createEigenSpaceGeometries(analysis);
+  const geometries = useMemo(() => createEigenSpaceGeometries(analysis), [analysis]);
   const geometry = geometries[0];
   const vectors: VectorValue[] = [
     // 像を先に描き、編集できる入力ハンドルを常に手前に残す。
     ...(inputResult.imageVector ? [{ id: 'eigen-image', name: 'T(u)', coordinates: inputResult.imageVector }] : []),
     { id: 'eigen-input', name: 'u', coordinates: current },
   ];
-  const viewport = dragViewport ?? manualViewport ?? createAutoFitViewport(vectors);
-  const presentation = eigenVectorPresentation(current, inputResult.imageVector, viewport);
-  function cancelDrag() { previewRef.current = null; setPreview(null); setDragViewport(null); }
+  const viewport = dragViewport ?? manualViewport ?? createAutoFitViewport(dimension === 2 ? vectors : []);
+  const lineViewport = dragLine ?? view.line ?? createAutoFitLineViewport(dimension === 1 ? vectors.map((v) => v.coordinates[0]) : []);
+  const presentation = dimension === 2 ? eigenVectorPresentation(current, inputResult.imageVector, viewport) : undefined;
+  const dragging = preview !== null || dragViewport !== null || dragLine !== null;
+  function cancelDrag() { previewRef.current = null; setPreview(null); setDragViewport(null); setDragLine(null); }
   useEffect(() => { if (!active) cancelDrag(); }, [active]);
-  function reset() {
-    setScene(initial); setTab('values'); setManualViewport(null); cancelDrag(); setResetKey((v) => v + 1);
-  }
+  // Three.jsの構築入力は確定状態からのみ生成。ドラッグ中の像は専用previewで更新する。
+  const committedResult = useMemo(() => analyzeEigenInput(analysis, scene.input), [analysis, scene.input]);
+  const spaceVectors = useMemo(() => [
+    { id: 'eigen-image', name: 'T(u)', coordinates: committedResult.imageVector ?? [0, 0, 0] },
+    { id: 'eigen-input', name: 'u', coordinates: scene.input },
+  ], [committedResult.imageVector, scene.input]);
+  const spaceColors = useMemo(() => [IMAGE_COLOR, INPUT_COLOR], []);
+  const rootLabels = eigenRootLabels(analysis);
+  const spaceGroups = useMemo(() => geometries.map((g) => ({ vectors: g.vectors, rank: g.dimension,
+    label: eigenRootLabels(analysis)[g.index] + 'の固有空間' })), [geometries, analysis]);
+  const imagePreview = useMemo(() => preview || committedResult.imageVector === null ? {
+    vectorId: 'eigen-image', coordinates: inputResult.imageVector as readonly [number, number, number] | null,
+  } : null, [preview, committedResult.imageVector, inputResult.imageVector]);
   function tabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1
       : event.key === 'ArrowRight' ? (index + 1) % TABS.length : event.key === 'ArrowLeft' ? (index + TABS.length - 1) % TABS.length : null;
@@ -62,25 +100,34 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
     event.preventDefault(); setTab(TABS[next][0]); tabRefs.current[next]?.focus();
   }
   const colors = inputResult.imageVector ? [IMAGE_COLOR, INPUT_COLOR] : [INPUT_COLOR];
-  const rootLabels = eigenRootLabels(analysis);
   return <main className="lab-page eigenspace-lab" data-lab-id="eigenspace" aria-hidden={!active}>
     <section className="lab-intro" aria-labelledby="eigenspace-title">
-      <div><p className="panel-kicker">Eigenspace / 2D</p><h1 id="eigenspace-title">固有値と固有空間</h1>
+      <div><p className="panel-kicker">Eigenspace / {dimension}D</p><h1 id="eigenspace-title">固有値と固有空間</h1>
         <p>入力とその像を重ねて、固有値と固有空間の関係を調べます。</p></div>
-      <div><LabActionControls exportDisabled exportDescriptionId="eigen-share-help" onExport={() => {}} onReset={reset} />
+      <div><LabActionControls exportDisabled exportDescriptionId="eigen-share-help" onExport={NOOP} onReset={onReset} />
         <small id="eigen-share-help">このLabの共有は準備中です。</small></div>
     </section>
     <div className="lab-workspace eigen-workspace">
       <section className="plot-card eigen-plot" aria-labelledby="eigen-plot-title">
         <div className="card-heading"><div><p className="panel-kicker">Linear transformation</p>
-          <h2 id="eigen-plot-title">空間 <Scalar>U</Scalar> = ℝ<sup>2</sup></h2></div>
-          <button className="basis-fit-button" type="button" disabled={dragViewport !== null} onClick={() => setManualViewport(null)}>全体を表示</button></div>
+          <h2 id="eigen-plot-title">空間 <Scalar>U</Scalar> = {dimension === 0 ? <>{'{'}<Vector name="0" />{'}'}</> : <>ℝ<sup>{dimension}</sup></>}</h2></div>
+          {(dimension === 1 || dimension === 2) && <button className="basis-fit-button" type="button" disabled={dragging}
+            onClick={() => setView({ plane: null, line: null })}>全体を表示</button>}</div>
         <div className="eigen-selection">
-          <label className="eigen-show"><input type="checkbox" checked={scene.showEigenspace} disabled={!geometry || dragViewport !== null}
+          <label className="eigen-show"><input type="checkbox" checked={scene.showEigenspace} disabled={!geometry || dragging}
             onChange={(event) => setScene((s) => ({ ...s, showEigenspace: event.target.checked }))} />固有空間を表示</label>
         </div>
-        <VectorPlane2D idPrefix="eigen-plane" vectors={vectors} colors={colors} viewport={viewport}
-          editableVectorIds={['eigen-input']} alwaysOpaqueVectorIds={['eigen-input', 'eigen-image']}
+        {dimension === 0 && <ZeroSpace0D idPrefix="eigen-zero" spaceName="U" description="この空間にあるベクトルは零ベクトルだけです。成分はなく、空間の次元は0です。" />}
+        {dimension === 1 && <VectorLine1D idPrefix="eigen-line" vectors={vectors} colors={colors} viewport={lineViewport}
+          editableVectorIds={EDITABLE_IDS} alwaysOpaqueVectorIds={OPAQUE_IDS} showHelpText={false}
+          outlinedVectorIds={['eigen-image']} onViewportChange={(line) => setView({ line })}
+          showSpan={scene.showEigenspace && !!geometry} spanDimension={geometry ? 1 : 0} spanLabel="固有空間"
+          onVectorDragStart={() => { setDragLine(lineViewport); previewRef.current = scene.input; }}
+          onVectorChange={(_, coordinates) => { previewRef.current = coordinates; setPreview(coordinates); }}
+          onVectorDragEnd={() => { const input = previewRef.current; if (input) setScene((s) => setEigenInput(s, input)); cancelDrag(); }}
+          onVectorDragCancel={cancelDrag} />}
+        {dimension === 2 && <VectorPlane2D idPrefix="eigen-plane" vectors={vectors} colors={colors} viewport={viewport}
+          editableVectorIds={EDITABLE_IDS} alwaysOpaqueVectorIds={OPAQUE_IDS}
           vectorPresentation={presentation} onViewportChange={setManualViewport}
           showSpan={scene.showEigenspace && !!geometry} spanVectors={geometry?.vectors ?? []} spanDimension={geometry?.dimension ?? 0}
           spanLineDirections={geometries.filter((g) => g.dimension === 1).map((g) => ({
@@ -92,23 +139,37 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
             previewRef.current = snapped.coordinates; setPreview(snapped.coordinates);
           }}
           onVectorDragEnd={() => { const input = previewRef.current; if (input) setScene((s) => setEigenInput(s, input)); cancelDrag(); }}
-          onVectorDragCancel={cancelDrag} />
-        <p className="eigen-legend"><span style={{ color: INPUT_COLOR }}>● 入力 <Vector name="u" /></span>
-          <span style={{ color: IMAGE_COLOR }}>◇ 像 <MapValue name="u" /></span></p>
+          onVectorDragCancel={cancelDrag} />}
+        {dimension === 3 && active && <Suspense fallback={<p role="status">3D表示を準備しています。数値入力と解析は利用できます。</p>}>
+          <Space3D idPrefix="eigen-space" vectors={spaceVectors} colors={spaceColors} spanVectors={geometry?.vectors ?? EMPTY_VECTORS}
+            spanRank={geometry?.dimension ?? 0} spanGroups={spaceGroups} showSpan={scene.showEigenspace}
+            spanLabel="表示中の各固有空間" snapEditableVectorsToSpan editableVectorIds={EDITABLE_IDS} alwaysOpaqueVectorIds={OPAQUE_IDS}
+            vectorCoordinatePreview={imagePreview} linearCombinationVisible={false} linearCombinationTarget={null} linearCombinationCoefficients={null}
+            active={active} resetKey={0} camera={view.camera} onCameraChange={(camera) => setView({ camera })}
+            onVectorCoordinatesPreview={(_, coordinates) => setPreview(coordinates)}
+            onVectorCoordinatesCommit={(_, coordinates) => { setScene((s) => setEigenInput(s, coordinates)); cancelDrag(); }}
+            onVectorCoordinatesSnap={(_, coordinates, distance) => snapEigenSpaceInput(scene, analysis, coordinates, distance)}
+            onLinearCombinationTargetPlacement={NOOP} onLinearCombinationVisibility={NOOP}
+            showLinearCombinationControl={false} showHelpText={false} spaceTitle="入力と像"
+            assistiveDescription="入力と像を同じ3次元座標空間に表示します。固有値、各固有空間の次元と基底、入力と像の成分は解析タブで確認できます。"
+            unavailableFallbackDescription="行列・入力の数値編集と解析タブ、Resetはそのまま利用できます。" />
+        </Suspense>}
+        {dimension > 0 && <p className="eigen-legend"><span style={{ color: INPUT_COLOR }}>● 入力 <Vector name="u" /></span>
+          <span style={{ color: IMAGE_COLOR }}>◇ 像 <MapValue name="u" /></span></p>}
       </section>
       <div className="analysis-column">
         <section className="basis-candidate-card eigen-editor" aria-labelledby="eigen-edit-title">
           <p className="panel-kicker">Edit transformation</p><h2 id="eigen-edit-title">行列と入力</h2>
           <Formula><MapValue name="u" /> = <Vector name="A" /><Vector name="u" /></Formula>
-          <fieldset key={resetKey} disabled={dragViewport !== null}>
+          {dimension === 0 ? <p>零ベクトルだけの空間です。行列と入力の成分はありません。</p> : <fieldset disabled={dragging}>
             <legend className="visually-hidden">行列と入力の成分</legend>
-            <div className="eigen-editor-row"><Vector name="A" /> = <span className="linear-map-matrix-input">
+            <div className="eigen-editor-row"><Vector name="A" /> = <span className="linear-map-matrix-input" style={{ gridTemplateColumns: `repeat(${dimension}, minmax(0, 1fr))` }}>
               {scene.definition.matrix.flatMap((row, r) => row.map((v, c) => <EigenNumberInput key={`${r}-${c}`} value={v} label={`行列Aの第${r + 1}行第${c + 1}列`}
                 onValue={(value) => setScene((s) => editEigenMatrix(s, r, c, value))} />))}</span></div>
             <div className="eigen-editor-row" style={{ color: INPUT_COLOR }}><Vector name="u" /> = <span className="linear-map-vector-input">
               {scene.input.map((v, i) => <EigenNumberInput key={i} value={v} label={`入力uの第${i + 1}成分`}
-                onValue={(value) => setScene((s) => setEigenInput(s, i === 0 ? [value, s.input[1]] : [s.input[0], value]))} />)}</span></div>
-          </fieldset>
+                onValue={(value) => setScene((s) => setEigenInput(s, s.input.map((entry, index) => index === i ? value : entry)))} />)}</span></div>
+          </fieldset>}
         </section>
         <div className="inspector-tablist" role="tablist" aria-label="固有値Labの解析">
           {TABS.map(([id, label], i) => <button key={id} type="button" id={`eigen-tab-${id}`} role="tab" aria-selected={tab === id}
@@ -155,6 +216,13 @@ export function eigenVectorPresentation(input: readonly number[], image: readonl
 
 export function EigenPanel({ tab, analysis, input }: { readonly tab: Tab; readonly analysis: EigenMapAnalysis; readonly input: EigenInputAnalysis }) {
   // D-106: このLabの教材表示は丸めを含め等号で統一。内部の数値基準・保留は維持する。
+  if (analysis.definition.dimension === 0) return tab === 'equation' ? <>
+    <Formula><Scalar>g</Scalar>(<Scalar>λ</Scalar>) = det(<Vector name="A" /> − <Scalar>λ</Scalar><Vector name="E" />) = 1</Formula>
+    <p>0×0行列の行列式は1です。固有方程式に解はありません。</p>
+  </> : tab === 'input' ? <>
+    <Formula><Vector name="u" /> = <Vector name="0" />, <MapValue name="u" /> = <Vector name="0" /></Formula>
+    <p>零ベクトルは固有ベクトルではありません。</p>
+  </> : <p>0次元空間には非零ベクトルがないため、固有値も固有ベクトルも固有空間もありません。正の次元の零変換（固有値0）とは異なります。</p>;
   if (tab === 'values') return analysis.status === 'no-real-eigenvalues' ? <p>この線形変換には実固有値がありません。</p> : <>
     <p>実固有値{analysis.spectrumComplete ? `は${analysis.realEigenvalues.length}個です。` : 'の確認できた部分を示します。'}</p>
     <ul className="eigen-values">{analysis.realEigenvalues.map((value, i) => <li key={i}>

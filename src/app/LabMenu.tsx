@@ -27,7 +27,7 @@ const labs = [
   {
     id: 'eigenspace',
     name: '固有値・固有空間Lab',
-    description: '入力と像・実固有値・固有空間を調べる（2D）',
+    description: '入力と像・実固有値・固有空間を調べる（0〜3D）',
   },
 ] as const;
 

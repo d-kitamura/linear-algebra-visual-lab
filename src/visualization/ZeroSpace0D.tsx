@@ -2,6 +2,7 @@ export interface ZeroSpace0DProps {
   readonly idPrefix?: string;
   readonly spaceLabel?: string;
   readonly spaceName?: 'U' | 'V';
+  readonly description?: string;
 }
 
 /** 0Dを縮退した座標面ではなく、零ベクトルだけからなる一点の空間として示す。 */
@@ -9,6 +10,7 @@ export function ZeroSpace0D({
   idPrefix = 'zero-space',
   spaceLabel = '零ベクトル空間',
   spaceName = 'V',
+  description,
 }: ZeroSpace0DProps) {
   return (
     <figure
@@ -36,9 +38,9 @@ export function ZeroSpace0D({
         </g>
       </svg>
       <p id={`${idPrefix}-description`}>
-        この空間にあるベクトルは零ベクトルだけです。成分はなく、空間の次元は0です。
+        {description ?? <>この空間にあるベクトルは零ベクトルだけです。成分はなく、空間の次元は0です。
         空の組は一次独立で、この空間全体を生成し、rankは0です。
-        方向や長さを変える編集対象はなく、空の組がこの空間の基底です。
+        方向や長さを変える編集対象はなく、空の組がこの空間の基底です。</>}
       </p>
     </figure>
   );

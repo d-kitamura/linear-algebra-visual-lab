@@ -1,16 +1,20 @@
 import { analyzeEigenMap, type EigenMapAnalysis, type EigenMapDefinition, type VectorValue } from '../../domain';
-import { parallelSnapDistanceForViewWidth, snapTargetToSelectedSpan } from '../../state';
+import { parallelSnapDistanceForViewWidth, snapTargetToSelectedSpan, snapSpaceTargetToSelectedSpan } from '../../state';
 
-/** 12.3は数ベクトル2Dだけ。像や空間基底は保存せず数学APIから導出する。 */
+/** 像や固有空間の基底は保存せず数学APIから導出する。0Dの成分は空配列。 */
 export interface EigenScene {
-  readonly definition: EigenMapDefinition & { readonly dimension: 2 };
-  readonly input: readonly [number, number];
+  readonly definition: EigenMapDefinition;
+  readonly input: readonly number[];
   readonly showEigenspace: boolean;
 }
 export function createEigenScene(matrix: readonly (readonly number[])[] = [[4, 1], [0, 2]]): EigenScene {
-  const definition = { dimension: 2 as const, matrix: matrix.map((row) => [...row]) };
+  const definition = { dimension: matrix.length as EigenMapDefinition['dimension'], matrix: matrix.map((row) => [...row]) };
   analyzeEigenMap(definition); // 初期値の形状・成分を検証する。
-  return { definition, input: [2, 1], showEigenspace: false };
+  return { definition, input: definition.dimension === 2 ? [2, 1] : Array.from({ length: definition.dimension }, () => 1), showEigenspace: false };
+}
+export function createEigenSceneForDimension(dimension: EigenMapDefinition['dimension']): EigenScene {
+  const matrices = { 0: [], 1: [[-2]], 2: [[4, 1], [0, 2]], 3: [[2, 0, 0], [0, 2, 0], [0, 0, -1]] };
+  return createEigenScene(matrices[dimension]);
 }
 export function parseEigenNumber(text: string): number | null {
   if (!text.trim()) return null;
@@ -18,14 +22,14 @@ export function parseEigenNumber(text: string): number | null {
   return Number.isFinite(value) && Math.abs(value) <= 1_000_000 ? value : null;
 }
 export function editEigenMatrix(scene: EigenScene, row: number, column: number, value: number): EigenScene {
-  if (![0, 1].includes(row) || ![0, 1].includes(column) || parseEigenNumber(String(value)) === null) return scene;
+  if (![row, column].every((i) => Number.isInteger(i) && i >= 0 && i < scene.definition.dimension) || parseEigenNumber(String(value)) === null) return scene;
   if (scene.definition.matrix[row][column] === value) return scene;
   const definition = { ...scene.definition, matrix: scene.definition.matrix.map((entries, r) =>
     entries.map((entry, c) => r === row && c === column ? value : entry)) };
   return { ...scene, definition };
 }
-export function setEigenInput(scene: EigenScene, input: readonly [number, number]): EigenScene {
-  if (!input.every((v) => parseEigenNumber(String(v)) !== null)) return scene;
+export function setEigenInput(scene: EigenScene, input: readonly number[]): EigenScene {
+  if (input.length !== scene.definition.dimension || !input.every((v) => parseEigenNumber(String(v)) !== null)) return scene;
   return { ...scene, input: [...input] };
 }
 export function createEigenSpaceGeometries(analysis: EigenMapAnalysis) {
@@ -45,6 +49,20 @@ export function snapEigenInput(scene: EigenScene, analysis: EigenMapAnalysis, co
   for (const geometry of createEigenSpaceGeometries(analysis)) {
     const candidate = snapTargetToSelectedSpan(safe, geometry.vectors, geometry.dimension, distance);
     const move = Math.hypot(candidate.coordinates[0] - safe[0], candidate.coordinates[1] - safe[1]);
+    if (candidate.snapKind && move < bestDistance) { nearest = candidate; bestDistance = move; }
+  }
+  return nearest;
+}
+
+/** 共通3Dが渡す表示幅3%の距離を使用。異なる固有空間を合成して吸着しない。 */
+export function snapEigenSpaceInput(scene: EigenScene, analysis: EigenMapAnalysis, coordinates: readonly [number, number, number], maximumDistance: number) {
+  const safe = coordinates.map((v) => Math.max(-1_000_000, Math.min(1_000_000, v))) as [number, number, number];
+  const origin = snapSpaceTargetToSelectedSpan(safe, [], 0, maximumDistance);
+  if (origin.snapKind === 'origin' || !scene.showEigenspace) return origin;
+  let nearest = origin, bestDistance = Infinity;
+  for (const geometry of createEigenSpaceGeometries(analysis)) {
+    const candidate = snapSpaceTargetToSelectedSpan(safe, geometry.vectors, geometry.dimension, maximumDistance);
+    const move = Math.hypot(...candidate.coordinates.map((v, i) => v - safe[i]));
     if (candidate.snapKind && move < bestDistance) { nearest = candidate; bestDistance = move; }
   }
   return nearest;

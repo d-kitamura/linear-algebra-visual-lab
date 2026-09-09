@@ -51,6 +51,8 @@ interface VectorSpace3DProps {
   readonly showSpan: boolean;
   readonly spanLabel?: string;
   readonly spanColor?: string;
+  /** 複数の部分空間を別々に描画する場合。結合したspanには置き換えない。 */
+  readonly spanGroups?: readonly SpaceSpanGroup[];
   readonly editableVectorIds?: readonly string[];
   readonly alwaysOpaqueVectorIds?: readonly string[];
   readonly snapEditableVectorsToSpan?: boolean;
@@ -87,9 +89,16 @@ interface VectorSpace3DProps {
   readonly spaceHeading?: ReactNode;
 }
 
+export interface SpaceSpanGroup {
+  readonly vectors: readonly VectorValue[];
+  readonly rank: number;
+  readonly label: string;
+}
+
 interface VectorCoordinatePreview {
   readonly vectorId: string;
-  readonly coordinates: readonly [number, number, number];
+  /** 導出値の数値計算を保留した場合はnullで元の像も一時非表示にする。 */
+  readonly coordinates: readonly [number, number, number] | null;
 }
 
 interface ThreeSpaceRuntime {
@@ -175,6 +184,7 @@ export function VectorSpace3D({
   showSpan,
   spanLabel,
   spanColor = SPAN_COLOR,
+  spanGroups,
   editableVectorIds,
   alwaysOpaqueVectorIds = EMPTY_VECTOR_IDS,
   snapEditableVectorsToSpan = false,
@@ -203,6 +213,7 @@ export function VectorSpace3D({
   const hostRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<ThreeSpaceRuntime | null>(null);
   const cameraRef = useRef(camera);
+  const vectorCoordinatePreviewRef = useRef(vectorCoordinatePreview);
   const onCameraChangeRef = useRef(onCameraChange);
   const onVectorCoordinatesCommitRef = useRef(onVectorCoordinatesCommit);
   const onVectorCoordinatesPreviewRef = useRef(onVectorCoordinatesPreview);
@@ -214,6 +225,7 @@ export function VectorSpace3D({
   const [interactionMessage, setInteractionMessage] = useState<string | null>(null);
 
   cameraRef.current = camera;
+  vectorCoordinatePreviewRef.current = vectorCoordinatePreview;
   onCameraChangeRef.current = onCameraChange;
   onVectorCoordinatesCommitRef.current = onVectorCoordinatesCommit;
   onVectorCoordinatesPreviewRef.current = onVectorCoordinatesPreview;
@@ -277,8 +289,11 @@ export function VectorSpace3D({
           }
         },
         (id, coordinates, distance) => onVectorCoordinatesSnapRef.current?.(id, coordinates, distance),
+        spanGroups,
       );
       runtimeRef.current = runtime;
+      // 形状・表示設定で再構築した場合も、保留中の像を一瞬の既定値へ戻さない。
+      runtime.setVectorCoordinatePreview(vectorCoordinatePreviewRef.current);
 
       return () => {
         disposed = true;
@@ -299,6 +314,7 @@ export function VectorSpace3D({
     linearCombinationVisible,
     showSpan,
     spanColor,
+    spanGroups,
     spanLabel,
     editableVectorIds,
     alwaysOpaqueVectorIds,
@@ -385,7 +401,7 @@ export function VectorSpace3D({
         className={`three-dimensional-render-frame ${errorMessage ? 'has-error' : ''}`}
         role="group"
         aria-describedby={`${idPrefix}-canvas-alternative`}
-        aria-label={`右手座標系の${spaceTitle}。${axisLabels.join('軸、')}軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `${spanLabel ?? '選択したベクトルが生成する空間'}を${describeSpaceSpan(spanRank)}として半透明の幾何形状で表示しています。` : '部分空間の幾何表示はオフです。'}${linearCombinationVisible ? linearCombinationTarget ? 'ターゲットvと一次結合の幾何表示があります。' : '一次結合モードでターゲットは未配置です。' : ''}`}
+        aria-label={`右手座標系の${spaceTitle}。${axisLabels.join('軸、')}軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `${spanGroups ? spanGroups.map((group) => `${group.label}：${describeSpaceSpan(group.rank)}`).join('。') : `${spanLabel ?? '選択したベクトルが生成する空間'}：${describeSpaceSpan(spanRank)}`}を個別の半透明の幾何形状で表示しています。` : '部分空間の幾何表示はオフです。'}${linearCombinationVisible ? linearCombinationTarget ? 'ターゲットvと一次結合の幾何表示があります。' : '一次結合モードでターゲットは未配置です。' : ''}`}
       >
         <div className="three-dimensional-render-host" ref={hostRef} />
         {interactionMessage ? (
@@ -450,6 +466,7 @@ function createThreeSpaceRuntime(
   onInteractionMessage: (message: string | null) => void,
   onError: (message: string) => void,
   snapVectorCoordinates?: (vectorId: string, coordinates: readonly [number, number, number], maximumDistance: number) => ReturnType<typeof snapDraggedSpaceVectorToDependentPosition> | ReturnType<typeof snapSpaceTargetToSelectedSpan> | undefined,
+  spanGroups?: readonly SpaceSpanGroup[],
 ): ThreeSpaceRuntime {
   host.replaceChildren();
 
@@ -507,7 +524,9 @@ function createThreeSpaceRuntime(
   addGrid(scene, extent);
   const spanGeometryGroup = new THREE.Group();
   if (showSpan) {
-    addSpanGeometry(spanGeometryGroup, spanVectors, spanRank, extent, spanLabel, spanColor);
+    if (spanGroups) {
+      for (const group of spanGroups) addSpanGeometry(spanGeometryGroup, group.vectors, group.rank, extent, group.label, spanColor);
+    } else addSpanGeometry(spanGeometryGroup, spanVectors, spanRank, extent, spanLabel, spanColor);
   }
   scene.add(spanGeometryGroup);
   const spanDragPreview = new THREE.Group();
@@ -608,6 +627,7 @@ function createThreeSpaceRuntime(
     rendered.object.visible = false;
     rendered.label.visible = false;
     rendered.tipIndicator.visible = false;
+    if (!preview.coordinates) { render(); return; }
     const tip = new THREE.Vector3(...preview.coordinates);
     const color = new THREE.Color(colors[vectorIndex % colors.length] ?? '#2f6690');
     addPreviewArrow(vectorCoordinatePreviewGroup, tip, color, extent, 1, 8);
@@ -868,6 +888,7 @@ function createThreeSpaceRuntime(
       extent,
       camera,
       null,
+      alwaysOpaqueVectorIds.includes(vector.id),
     );
     onInteractionMessage(`${vector.name} を画面に平行な面内で移動しています。`);
     render();
@@ -1023,6 +1044,7 @@ function createThreeSpaceRuntime(
       extent,
       camera,
       snapResult.snapKind,
+      alwaysOpaqueVectorIds.includes(activeVectorDrag.vector.id),
     );
     const snapDescription = snapEditableVectorsToSpan || 'basisVectorIds' in snapResult
       ? describeEditableVectorSpanSnap(snapResult.snapKind as SpaceTargetSnapKind, spanLabel)
@@ -1730,12 +1752,14 @@ function updateVectorScreenPlanePreview(
   extent: SpaceExtent,
   camera: THREE.Camera,
   snapKind: SpaceVectorSnapKind | SpaceTargetSnapKind,
+  opaque = false,
 ): void {
   clearObjectGroup(group);
   const vectorIndex = vectors.findIndex((candidate) => candidate.id === vector.id);
   const color = new THREE.Color(colors[Math.max(0, vectorIndex) % colors.length] ?? '#2f6690');
   addPreviewArrow(group, initialTip, color, extent, 0.22, 8);
-  addPreviewArrow(group, tip, color, extent, 0.86, 10);
+  addPreviewArrow(group, tip, color, extent, opaque ? 1 : 0.86, 10);
+  if (opaque) group.add(createVectorLabel(vector.name, color.getStyle(), tip, vectorIndex, false));
 
   addScreenPlaneDragGuides(
     group,
@@ -2170,7 +2194,16 @@ function createVectorLabel(
   const element = document.createElement('span');
   element.className = `space-label space-vector-label${muted ? ' is-span-unselected' : ''}`;
   element.style.setProperty('--space-vector-color', color);
-  const { base, subscript } = splitVectorName(name);
+  // 写像名Tはスカラー斜体、引数のベクトルだけ太字。通常のa_iラベルは従来どおり。
+  const mapped = /^T\(([^)]+)\)$/.exec(name);
+  const { base, subscript } = mapped ? splitVectorName(mapped[1]) : splitVectorName(name);
+  if (mapped) {
+    const mapSymbol = document.createElement('span');
+    mapSymbol.textContent = 'T';
+    mapSymbol.style.fontStyle = 'italic';
+    mapSymbol.style.fontWeight = '400';
+    element.append(mapSymbol, '(');
+  }
   const baseElement = document.createElement('span');
   baseElement.className = 'space-vector-label-base';
   baseElement.textContent = base;
@@ -2182,6 +2215,7 @@ function createVectorLabel(
     element.append(subscriptElement);
   }
 
+  if (mapped) element.append(')');
   const label = new CSS2DObject(element);
   label.position.copy(position);
   const [centerX, centerY] = VECTOR_LABEL_CENTERS[vectorIndex % VECTOR_LABEL_CENTERS.length];

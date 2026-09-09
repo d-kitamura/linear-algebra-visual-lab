@@ -97,8 +97,10 @@ describe('12.3 固有値Lab画面', () => {
   it('Reset、ドラッグの確定・取消し、範囲固定、キーボード・390px用構造を接続する', () => {
     const source = read('src/labs/eigenspace/EigenspaceLab.tsx');
     for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End']) expect(source).toContain(key);
-    expect(source).toContain('setScene(initial); setTab(\'values\'); setManualViewport(null)');
-    expect(source).toContain('dragViewport ?? manualViewport ?? createAutoFitViewport(vectors)');
+    expect(source).toContain('resetEigenWorkspace(w, initial)');
+    expect(source).toContain('key={`${dimension}-${revision}`}');
+    expect(source).toContain("useState<Tab>('values')");
+    expect(source).toContain('dragViewport ?? manualViewport ?? createAutoFitViewport(dimension === 2 ? vectors : [])');
     expect(source).toContain('analyzeEigenMap(scene.definition), [scene.definition]');
     expect(source).toContain('onVectorDragCancel={cancelDrag}');
     expect(read('src/visualization/VectorPlane2D.tsx')).toContain("event.type !== 'pointerup' && onVectorDragCancel");

@@ -18,6 +18,11 @@
 .eigenspace-lab #eigen-share-help { display: block; margin-top: 8px; color: var(--muted); }
 .eigenspace-lab .vector-arrow { pointer-events: none; }
 .eigenspace-lab .vector-drag-handle { pointer-events: all; }
+.eigen-dimensions { margin: 16px 0; }
+.eigen-dimensions button { min-width: 48px; min-height: 44px; }
+.eigen-dimensions button[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--line); box-shadow: 0 5px 15px rgba(18, 28, 36, 0.08); }
+.eigen-plot .three-dimensional-plot-card { padding: 0; border: 0; box-shadow: none; background: transparent; }
+.eigen-plot .three-dimensional-plot-card .panel-kicker { display: none; }
 @media (max-width: 640px) {
   .eigenspace-lab .eigen-plot { padding: 14px; }
   .eigen-plot h2 { font-size: 1.05rem; }
