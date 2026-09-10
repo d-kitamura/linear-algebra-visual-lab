@@ -17,7 +17,10 @@ describe('12.6 固有方程式・核・幾何の説明', () => {
     const html = render('space', [[4, 1], [0, 2]], [1, 2]);
     expect(html).toContain('2行2列。第1行 2、1。第2行 0、0'); // λ=2
     expect(html).toContain('2行2列。第1行 0、1。第2行 0、-2'); // λ=4
-    expect(plain(html)).toContain('W(λ; T) = Ker(T − λIU)');
+    expect(plain(html)).not.toContain('Ker(T');
+    expect(plain(html)).not.toContain('恒等変換');
+    expect(plain(html)).not.toContain('IU');
+    expect(html).toMatch(/<span class="representation-atom">[^]*? =<\/span><span class="linear-map-display-matrix"/);
     expect(plain(html)).toContain('⇔ (A − λE)u = 0');
     expect(plain(html).match(/W\(λ; T\) = span\(q1\)/g)).toHaveLength(2);
     expect(html).toContain('任意の一次結合');

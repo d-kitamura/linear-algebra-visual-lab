@@ -154,11 +154,8 @@ interface ActiveTargetScreenPlaneDrag {
 }
 
 const ORIGIN = new THREE.Vector3(0, 0, 0);
-const AXIS_COLORS = {
-  x: '#9c4f45',
-  y: '#3f756b',
-  z: '#3e6687',
-} as const;
+// 全Lab・数ベクトル／係数空間で共通。教材のベクトル色と座標軸を区別する。
+const AXIS_COLOR = '#000000';
 const SPAN_COLOR = '#737b82';
 const TARGET_COLOR = '#245b8d';
 const COMBINATION_HELPER_COLOR = '#596b78';
@@ -1515,14 +1512,14 @@ function addAxes(
 
 function addAxis(
   scene: THREE.Scene,
-  axis: keyof typeof AXIS_COLORS,
+  axis: 'x' | 'y' | 'z',
   label: string,
   direction: THREE.Vector3,
   length: number,
   headLength: number,
   headWidth: number,
 ): void {
-  const color = new THREE.Color(AXIS_COLORS[axis]);
+  const color = new THREE.Color(AXIS_COLOR);
   const negativeGeometry = new THREE.BufferGeometry().setFromPoints([
     direction.clone().multiplyScalar(-length),
     ORIGIN,
@@ -1531,8 +1528,6 @@ function addAxis(
     color,
     dashSize: length * 0.035,
     gapSize: length * 0.022,
-    transparent: true,
-    opacity: 0.72,
   });
   const negativeLine = new THREE.Line(negativeGeometry, negativeMaterial);
   negativeLine.computeLineDistances();

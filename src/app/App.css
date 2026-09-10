@@ -720,21 +720,10 @@
 }
 
 .axis-label {
+  color: #000000;
   font-family: Cambria, "Times New Roman", serif;
   font-style: italic;
   font-size: 1.05rem;
-}
-
-.axis-x {
-  color: #884138;
-}
-
-.axis-y {
-  color: #286a60;
-}
-
-.axis-z {
-  color: #2d5f87;
 }
 
 .origin-label {
@@ -2976,7 +2965,7 @@
 .site-footer-inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
 }
 

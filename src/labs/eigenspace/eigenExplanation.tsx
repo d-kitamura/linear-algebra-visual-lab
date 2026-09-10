@@ -11,11 +11,9 @@ function SpaceSymbol() {
 export function EigenKernelExplanation({ kind }: { readonly kind: EigenScene['kind'] }) {
   return <div className="eigen-kernel-explanation">
     <Formula><SpaceSymbol /> = {'{'}<Vector name="u" /> ∈ <Scalar>U</Scalar> | <MapValue name="u" /> = <Scalar>λ</Scalar><Vector name="u" />{'}'}</Formula>
-    <Formula><SpaceSymbol /> = Ker(<Scalar>T</Scalar> − <Scalar>λ</Scalar><Scalar>I</Scalar><sub><Scalar>U</Scalar></sub>)</Formula>
     <Formula><span className="representation-atom"><MapValue name="u" /> = <Scalar>λ</Scalar><Vector name="u" /></span>
       <span className="representation-atom"> ⇔ (<Vector name="A" /> − <Scalar>λ</Scalar><Vector name="E" />)<EigenCoordinateName kind={kind} /> = <Vector name="0" /></span></Formula>
-    <p><Scalar>I</Scalar><sub><Scalar>U</Scalar></sub> は恒等変換、<Vector name="E" /> は単位行列です。
-      {kind === 'polynomial' ? <>多項式の係数列が Ker(<Vector name="A" /> − <Scalar>λ</Scalar><Vector name="E" />) に属します。</>
+    <p>{kind === 'polynomial' ? <>多項式の係数列が Ker(<Vector name="A" /> − <Scalar>λ</Scalar><Vector name="E" />) に属します。</>
         : <>同次方程式の解全体 Ker(<Vector name="A" /> − <Scalar>λ</Scalar><Vector name="E" />) が固有空間です。</>}
       一次独立な解を最大本数選ぶと、固有空間の基底が得られます。</p>
   </div>;
@@ -27,8 +25,9 @@ export function EigenShiftedMatrix({ analysis, index, rootLabel }: {
 }) {
   const root = analysis.realEigenvalues[index];
   const shifted = analysis.definition.matrix.map((row, r) => row.map((value, c) => r === c ? value - root.value : value));
-  return <Formula><span className="representation-atom"><Vector name="A" /> − ({rootLabel})<Vector name="E" /></span>
-    <span className="representation-atom"> = <Matrix values={shifted} /></span></Formula>;
+  // 等号は左辺と同じ行内要素へ置き、行列をFormulaの独立したflex項目として中央にそろえる。
+  return <Formula><span className="representation-atom"><Vector name="A" /> − ({rootLabel})<Vector name="E" /> =</span>
+    <Matrix values={shifted} /></Formula>;
 }
 
 export function EigenSpaceSpan({ dimension }: { readonly dimension: number }) {

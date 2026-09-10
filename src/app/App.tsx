@@ -63,7 +63,6 @@ export function App() {
 
       <footer className="site-footer">
         <div className="site-footer-inner">
-          <p>{projectInfo.status} — 教材状態はLabごとに保持し、ResetもLabごとに行います。</p>
           <div className="site-footer-meta">
             <span>v{projectInfo.version}</span>
             <button type="button" onClick={handleOpenUsageDialog}>

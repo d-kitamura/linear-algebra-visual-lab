@@ -32,6 +32,8 @@ describe('共通アプリシェルとLab境界', () => {
     expect(appSource).toContain('<LinearMapLab active={activeLabId === \'linear-map\'} />');
     expect(appSource).toContain('className="site-header"');
     expect(appSource).toContain('className="site-footer"');
+    expect(appSource).not.toContain('教材状態はLabごとに保持し、ResetもLabごとに行います');
+    expect(appSource).not.toContain('{projectInfo.status}');
     expect(vectorLabSource).toContain('data-lab-id="vector-space"');
     expect(vectorLabSource).not.toContain('className="site-header"');
   });

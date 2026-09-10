@@ -12,6 +12,17 @@ const appSource = readFileSync(
 const cssSource = readFileSync(new URL('../../src/app/App.css', import.meta.url), 'utf8');
 
 describe('固定3D表示とカメラ操作', () => {
+  it('全Lab共通の座標軸・矢先と軸ラベルを黒にし、教材ベクトルの色は変えない', () => {
+    expect(componentSource).toContain("const AXIS_COLOR = '#000000'");
+    expect(componentSource).toContain('new THREE.Color(AXIS_COLOR)');
+    const axes = componentSource.split('function addAxis(')[1].split('function addOrigin(')[0];
+    expect(axes).toContain('new THREE.LineDashedMaterial({\n    color,');
+    expect(axes).toContain('length, color, headLength, headWidth');
+    expect(axes).not.toContain('opacity:');
+    expect(cssSource).toMatch(/\.axis-label\s*\{[^}]*color:\s*#000000;/);
+    expect(cssSource).not.toMatch(/\.axis-[xyz]\s*\{/);
+    expect(componentSource).toContain("const TARGET_COLOR = '#245b8d'");
+  });
   it('正投影カメラとオンデマンド描画を使う', () => {
     expect(componentSource).toContain('new THREE.OrthographicCamera');
     expect(componentSource).not.toContain('PerspectiveCamera');
