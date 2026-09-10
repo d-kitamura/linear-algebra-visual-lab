@@ -45,7 +45,7 @@ describe('12.1 固有値Labの契約', () => {
     expect(examples[0]).toEqual({ v: 1, lab: 'eigenspace', kind: 'coordinate', dim: 2,
       matrix: [[4, 1], [0, 2]], input: [1, 2], showEigenspace: false, camera: null });
     expect(examples[1]).toEqual({ v: 1, lab: 'eigenspace', dim: 0 });
-    expect(contract).toContain('12.7で実装');
+    expect(contract).toContain('12.7実装済み');
   });
 
   it('不確かな結果・零入力・選択空間外を取り違えない契約を持つ', () => {

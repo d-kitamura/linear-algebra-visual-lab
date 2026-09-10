@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoxLCJsYWIiOiJlaWdlbnNwYWNlIiwia2luZCI6InBvbHlub21pYWwiLCJkaW0iOjMsIm1hdHJpeCI6W1swLDEsMF0sWzAsMCwyXSxbMCwwLDBdXSwiaW5wdXQiOlsxLDIsM10sInNob3dFaWdlbnNwYWNlIjp0cnVlLCJjYW1lcmEiOnsiZGlyZWN0aW9uIjpbMCwtMSwwXSwidGFyZ2V0IjpbMSwtMiwwXSwidXAiOlswLDAsMV0sInpvb20iOjEuNX19",
+  "expectedState": {
+    "v": 1,
+    "lab": "eigenspace",
+    "kind": "polynomial",
+    "dim": 3,
+    "matrix": [
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "input": [
+      1,
+      2,
+      3
+    ],
+    "showEigenspace": true,
+    "camera": {
+      "direction": [
+        0,
+        -1,
+        0
+      ],
+      "target": [
+        1,
+        -2,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "zoom": 1.5
+    }
+  }
+}

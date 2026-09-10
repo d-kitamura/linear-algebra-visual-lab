@@ -21,7 +21,7 @@ describe('12.5 多項式の数式と係数空間', () => {
       expect(html).toContain('basis-script-symbol');
       expect(html).toContain('関数グラフではありません');
       expect(html).not.toContain('≈');
-      expect(html).toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
+      expect(html).not.toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
     }
   });
   it('多項式と像と基底の係数列を等置せず、対応を明示する', () => {

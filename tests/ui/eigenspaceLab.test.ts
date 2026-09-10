@@ -25,7 +25,7 @@ describe('12.3 固有値Lab画面', () => {
     expect(html.match(/role="tabpanel"[^>]*hidden=""/g)).toHaveLength(3);
     expect(html.match(/class="vector-drag-handle/g)).toHaveLength(1);
     expect(html).toContain('列ベクトル 5、4');
-    expect(html).toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
+    expect(html).not.toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
     expect(html).toContain('math-vector-subscript');
   });
   it('実固有値なしと判定保留を混同せず、不明な空間を描画しない', () => {
@@ -108,6 +108,6 @@ describe('12.3 固有値Lab画面', () => {
     expect(source).toContain('onVectorDragCancel={cancelDrag}');
     expect(read('src/visualization/VectorPlane2D.tsx')).toContain("event.type !== 'pointerup' && onVectorDragCancel");
     expect(read('src/labs/eigenspace/eigenspace.css')).toContain('@media (max-width: 640px)');
-    expect(source).not.toContain('ShareExportDialog');
+    expect(source).toContain('ShareExportDialog');
   });
 });

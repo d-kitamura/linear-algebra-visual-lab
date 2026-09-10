@@ -1,6 +1,9 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { analyzeEigenInput, analyzeEigenMap, type EigenInputAnalysis, type EigenMapAnalysis, type EigenIssue, type VectorValue } from '../../domain';
 import { LabActionControls } from '../../app/LabActionControls';
+import { ShareExportDialog } from '../../app/ShareExportDialog';
+import { buildShareUrl } from '../../sharing';
+import { createEigenInitialization, createEigenShareState } from './eigenSharing';
 import { VectorPlane2D, VectorLine1D, ZeroSpace0D, createAutoFitViewport, createAutoFitLineViewport, type PlaneViewport, type LineViewport } from '../../visualization';
 import type { PlaneVectorPresentation } from '../../visualization/VectorPlane2D';
 import { SvgVectorLabel } from '../../visualization/SvgVectorLabel';
@@ -23,6 +26,7 @@ const EDITABLE_IDS = ['eigen-input'];
 const OPAQUE_IDS = ['eigen-input', 'eigen-image'];
 const EMPTY_VECTORS: readonly VectorValue[] = [];
 const NOOP = () => {};
+const ReportInvalidDraft = createContext<(id: string, invalid: boolean) => void>(() => {});
 const POLYNOMIAL_AXES_2D = ['b₀', 'b₁'] as const;
 const POLYNOMIAL_AXES_3D = ['b₀', 'b₁', 'b₂'] as const;
 const ISSUES: Record<EigenIssue, string> = {
@@ -40,7 +44,10 @@ const ISSUES: Record<EigenIssue, string> = {
 
 /** 初期値だけをReset基準にする。Lab非表示でも確定教材状態は保持する。 */
 export function EigenspaceLab({ active, initialScene }: { readonly active: boolean; readonly initialScene?: EigenScene }) {
-  const [initial] = useState(() => createEigenWorkspace(initialScene));
+  const [initialization] = useState(() => initialScene
+    ? { initialWorkspace: createEigenWorkspace(initialScene), errorMessage: null }
+    : createEigenInitialization(typeof window === 'undefined' ? 'http://localhost/' : window.location.href));
+  const initial = initialization.initialWorkspace;
   const [workspace, setWorkspace] = useState(initial);
   const [revision, setRevision] = useState(0);
   const dimension = workspace.dimension;
@@ -55,14 +62,22 @@ export function EigenspaceLab({ active, initialScene }: { readonly active: boole
         onClick={() => setWorkspace((w) => selectEigenDimension(w, n))}>{n}D</button>)}
     </div></div>
   </>;
-  return <EigenSceneView key={`${kind}-${dimension}-${revision}`} active={active} slot={currentEigenSlot(workspace)} selectionControls={selectionControls}
+  return <EigenSceneView key={`${kind}-${dimension}-${revision}`} active={active} slot={currentEigenSlot(workspace)} selectionControls={selectionControls} loadError={initialization.errorMessage}
       onSlot={(change) => setWorkspace((w) => updateEigenSlot(w, dimension, change, kind))}
       onReset={() => { setWorkspace((w) => resetEigenWorkspace(w, initial)); setRevision((r) => r + 1); }} />
 }
 
-function EigenSceneView({ active, slot, onSlot, onReset, selectionControls }: { readonly active: boolean; readonly slot: EigenSlot; readonly selectionControls: ReactNode;
+function EigenSceneView({ active, slot, onSlot, onReset, selectionControls, loadError }: { readonly active: boolean; readonly slot: EigenSlot; readonly selectionControls: ReactNode; readonly loadError: string | null;
   readonly onSlot: (change: (slot: EigenSlot) => EigenSlot) => void; readonly onReset: () => void }) {
   const { scene, view } = slot;
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [exportError, setExportError] = useState('');
+  const [invalidDrafts, setInvalidDrafts] = useState<ReadonlySet<string>>(() => new Set());
+  const reportInvalid = useCallback((id: string, invalid: boolean) => setInvalidDrafts((current) => {
+    if (current.has(id) === invalid) return current;
+    const next = new Set(current); if (invalid) next.add(id); else next.delete(id); return next;
+  }), []);
+  useEffect(() => { if (!active) setShareUrl(null); }, [active]);
   const kind = scene.kind;
   const polynomial = kind === 'polynomial';
   const dimension = scene.definition.dimension;
@@ -114,13 +129,22 @@ function EigenSceneView({ active, slot, onSlot, onReset, selectionControls }: { 
     event.preventDefault(); setTab(TABS[next][0]); tabRefs.current[next]?.focus();
   }
   const colors = inputResult.imageVector ? [IMAGE_COLOR, INPUT_COLOR] : [INPUT_COLOR];
-  return <main className="lab-page eigenspace-lab" data-lab-id="eigenspace" aria-hidden={!active}>
+  function openShare() {
+    if (invalidDrafts.size || dragging) return;
+    try {
+      setShareUrl(buildShareUrl(window.location.href, createEigenShareState(slot)));
+      setExportError('');
+    } catch (error) { setExportError(error instanceof Error ? error.message : '共有URLを生成できませんでした。'); }
+  }
+  return <ReportInvalidDraft.Provider value={reportInvalid}><main className="lab-page eigenspace-lab" data-lab-id="eigenspace" aria-hidden={!active}>
     <section className="lab-intro" aria-labelledby="eigenspace-title">
       <div><p className="panel-kicker">Eigenspace / {polynomial ? 'Polynomial / ' : ''}{dimension}D</p><h1 id="eigenspace-title">固有値と固有空間</h1>
         <p>入力とその像を重ねて、固有値と固有空間の関係を調べます。</p></div>
-      <div><LabActionControls exportDisabled exportDescriptionId="eigen-share-help" onExport={NOOP} onReset={onReset} />
-        <small id="eigen-share-help">このLabの共有は準備中です。</small></div>
+      <div><LabActionControls exportDisabled={invalidDrafts.size > 0 || dragging} exportDescriptionId={invalidDrafts.size > 0 ? 'eigen-share-help' : undefined} onExport={openShare} onReset={onReset} /></div>
     </section>
+    {loadError && <p role={active ? 'alert' : undefined} className="representation-warning">共有状態を読み込めませんでした。初期例を表示しています。{loadError}</p>}
+    {exportError && <p role="alert" className="representation-warning">{exportError}</p>}
+    {invalidDrafts.size > 0 && <p role={active ? 'status' : undefined} id="eigen-share-help" className="representation-warning">入力エラーを修正してから共有してください。図と解析は直前の有効値を表示しています。</p>}
     {selectionControls}
     <div className="lab-workspace eigen-workspace">
       <section className="plot-card eigen-plot" aria-labelledby="eigen-plot-title">
@@ -214,7 +238,8 @@ function EigenSceneView({ active, slot, onSlot, onReset, selectionControls }: { 
         </section>)}
       </div>
     </div>
-  </main>;
+    {shareUrl && <ShareExportDialog key={shareUrl} url={shareUrl} onClose={() => setShareUrl(null)} />}
+  </main></ReportInvalidDraft.Provider>;
 }
 
 /** 丸め表示が衝突する根はnumberの全桁へ戻し、序数も併記して同じ根に見せない。 */
@@ -306,8 +331,10 @@ function EigenPolynomial({ coefficients }: { readonly coefficients: readonly num
 function EigenNumberInput({ value, label, onValue }: { readonly value: number; readonly label: string; readonly onValue: (value: number) => void }) {
   const [draft, setDraft] = useState(String(value));
   const errorId = useId();
+  const reportInvalid = useContext(ReportInvalidDraft);
   useEffect(() => setDraft(String(value)), [value]);
   const invalid = parseEigenNumber(draft) === null;
+  useEffect(() => { reportInvalid(errorId, invalid); return () => reportInvalid(errorId, false); }, [errorId, invalid, reportInvalid]);
   return <label className="representation-number"><input type="text" inputMode="decimal" value={draft} aria-label={label}
     aria-invalid={invalid} aria-describedby={invalid ? errorId : undefined} onChange={(event) => {
       setDraft(event.target.value); const next = parseEigenNumber(event.target.value); if (next !== null) onValue(next);

@@ -17,7 +17,6 @@
 .eigen-values { list-style: none; padding: 0; display: grid; gap: 12px; }
 .eigen-values li { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
 .eigen-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; font-size: 0.85rem; }
-.eigenspace-lab #eigen-share-help { display: block; margin-top: 8px; color: var(--muted); }
 .eigenspace-lab .vector-arrow { pointer-events: none; }
 .eigenspace-lab .vector-drag-handle { pointer-events: all; }
 .eigen-dimensions { margin: 16px 0; }

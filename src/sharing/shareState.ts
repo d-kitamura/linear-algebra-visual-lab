@@ -5,6 +5,7 @@ export const PREVIOUS_SHARE_STATE_VERSION = 2 as const;
 export const SHARE_STATE_VERSION = 4 as const;
 export const BASIS_DIMENSION_SHARE_STATE_VERSION = 2 as const;
 export const LINEAR_MAP_SHARE_STATE_VERSION = 2 as const;
+export const EIGENSPACE_SHARE_STATE_VERSION = 1 as const;
 export const MAX_SHARE_VECTORS = 8;
 export const MAX_SHARE_VECTOR_ID_LENGTH = 32;
 export const MAX_SHARE_VECTOR_NAME_LENGTH = 40;
@@ -144,7 +145,13 @@ export interface RepresentationMatrixShareState {
   readonly direction: 'B-to-C' | 'C-to-B' | null;
   readonly cameras: { readonly source: SharedCameraState | null; readonly target: SharedCameraState | null };
 }
-export type SharedState = ShareState | BasisDimensionShareState | LinearMapShareState | RepresentationMatrixShareState;
+/** 0Dは固定値を持たない独立した最小形式。余剰フィールドで状態を隠さない。 */
+export type EigenspaceShareState =
+  | { readonly v: 1; readonly lab: 'eigenspace'; readonly dim: 0 }
+  | { readonly v: 1; readonly lab: 'eigenspace'; readonly kind: BasisRepresentation; readonly dim: 1 | 2 | 3;
+      readonly matrix: readonly (readonly number[])[]; readonly input: readonly number[];
+      readonly showEigenspace: boolean; readonly camera: SharedCameraState | null };
+export type SharedState = ShareState | BasisDimensionShareState | LinearMapShareState | RepresentationMatrixShareState | EigenspaceShareState;
 
 export type ShareStateErrorCode =
   | 'EMPTY_ENCODED_STATE'
@@ -250,6 +257,7 @@ export function validateShareState(input: unknown): ShareState {
 }
 
 export function validateSharedState(input: unknown): SharedState {
+  if (requireRecord(input, '$').lab === 'eigenspace') return validateEigenspaceShareState(input);
   if (requireRecord(input, '$').lab === 'representation-matrix') return validateRepresentationMatrixShareState(input);
   const state = expandFixedState(requireRecord(input, '$'));
   if (state.lab === BASIS_DIMENSION_SHARE_LAB) {
@@ -259,6 +267,24 @@ export function validateSharedState(input: unknown): SharedState {
     return validateLinearMapShareState(state);
   }
   return validateShareState(state);
+}
+
+/** 数学的な保留は共有可能。形状・有限性だけを検証し、根や基底の計算はしない。 */
+export function validateEigenspaceShareState(input: unknown): EigenspaceShareState {
+  const s = requireRecord(input, '$');
+  if (s.v !== EIGENSPACE_SHARE_STATE_VERSION) throw new InvalidShareStateError('UNSUPPORTED_VERSION', '固有値Labの共有状態バージョンに対応していません。', '$.v');
+  if (s.lab !== 'eigenspace') throw invalidState('共有状態のLabが正しくありません。', '$.lab');
+  const dim = requireSpaceDimension(s.dim, '$.dim');
+  if (dim === 0) {
+    requireExactKeys(s, ['v', 'lab', 'dim'], '$');
+    return { v: 1, lab: 'eigenspace', dim: 0 };
+  }
+  requireExactKeys(s, ['v', 'lab', 'kind', 'dim', 'matrix', 'input', 'showEigenspace', 'camera'], '$');
+  if (s.kind !== 'coordinate' && s.kind !== 'polynomial') throw invalidState('空間の種類が正しくありません。', '$.kind');
+  if (typeof s.showEigenspace !== 'boolean') throw invalidState('固有空間の表示設定が正しくありません。', '$.showEigenspace');
+  return { v: 1, lab: 'eigenspace', kind: s.kind, dim,
+    matrix: requireShareMatrix(s.matrix, dim, dim, '$.matrix'), input: requireCoordinates(s.input, dim, '$.input'),
+    showEigenspace: s.showEigenspace, camera: requireDimensionCamera(s.camera, dim, '$.camera') };
 }
 
 export function validateBasisDimensionShareState(input: unknown): BasisDimensionShareState {
