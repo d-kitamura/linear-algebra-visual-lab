@@ -42,7 +42,7 @@
 
 ## 固定fixtureと変更手順
 
-- `tests/fixtures/share-url-eigenspace-v1.json`は多項式3D微分、入力[1,2,3]、固有空間表示と3Dカメラを含む第五LabのURLを固定する。`tests/sharing/eigenSharing.test.ts`で同一URL再生成・7場面・共有時Reset・既存4Labへの非干渉を確認する。授業用代表URL一覧は12.8で整理する。
+- `tests/fixtures/share-url-eigenspace-v1.json`は多項式3D微分、入力[1,2,3]、固有空間表示と3Dカメラを含む第五LabのURLを固定する。`tests/sharing/eigenSharing.test.ts`で同一URL再生成・7場面・共有時Reset・既存4Labへの非干渉を確認する。授業用代表URL18例は[固有値Lab授業資料](./EIGENSPACE_TEACHING_GUIDE.md)を参照（12.8・D-113）。
 
 - `tests/fixtures/share-url-representation-matrix-v1.json`は多項式微分3→2、基底順u3,u1,u2、3Dカメラを含む第四Labのv1 URLと期待状態を固定する。`tests/sharing/representationSharing.test.ts`で同一URL再生成・場面別Reset・既存3Labへの非干渉を確認する。
 - `tests/fixtures/share-url-v3.json`は、3本の3Dベクトル、全span選択、3Dカメラ、一次結合ターゲットを含むv3 URLと期待状態を固定する。

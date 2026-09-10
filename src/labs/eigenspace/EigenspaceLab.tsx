@@ -238,7 +238,10 @@ function EigenSceneView({ active, slot, onSlot, onReset, selectionControls, load
         </section>)}
       </div>
     </div>
-    {shareUrl && <ShareExportDialog key={shareUrl} url={shareUrl} onClose={() => setShareUrl(null)} />}
+    {shareUrl && <ShareExportDialog key={shareUrl} url={shareUrl} labName="固有値・固有空間Lab"
+      description={dimension === 0 ? '零ベクトルだけからなる0次元の場面を復元します。Resetは共有時の状態へ戻ります。'
+        : '現在の種類・次元・行列・入力・固有空間の表示設定と、3Dの視点を復元します。1D・2Dの表示範囲は全体表示になります。Resetは共有時の状態へ戻ります。'}
+      onClose={() => setShareUrl(null)} />}
   </main></ReportInvalidDraft.Provider>;
 }
 

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { createShareQrCodeDataUrl, createShareQrCodeFileName, createShareTextFileContents, createShareTextFileName } from '../sharing';
 
 /** URLは開いた瞬間のスナップショット。QR失敗時もコピー・テキスト保存を残す。 */
-export function ShareExportDialog({ url, onClose }: { readonly url: string; readonly onClose: () => void }) {
+export function ShareExportDialog({ url, onClose, labName = '表現行列Lab', description = '現在のモード・空間の種類・次元・写像・両基底の成分と順序・入力を復元します。基底変換の方向と3Dカメラも保存します。1D・2Dの表示範囲は全体が見えるように自動調整します。Resetは開いた共有時の状態へ戻ります。' }: {
+  readonly url: string; readonly onClose: () => void; readonly labName?: string; readonly description?: string;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const [qr, setQr] = useState('');
@@ -38,10 +40,10 @@ export function ShareExportDialog({ url, onClose }: { readonly url: string; read
     <div className="share-dialog-content">
       <p className="panel-kicker">Export current state</p>
       <h2 id="representation-share-title">共有URLをエクスポート</h2>
-      <p className="share-dialog-description" id="representation-share-description">現在のモード・空間の種類・次元・写像・両基底の成分と順序・入力を復元します。基底変換の方向と3Dカメラも保存します。1D・2Dの表示範囲は全体が見えるように自動調整します。Resetは開いた共有時の状態へ戻ります。</p>
+      <p className="share-dialog-description" id="representation-share-description">{description}</p>
       <section className={'share-qr-code' + (qrError ? ' has-error' : '')} aria-labelledby="representation-share-qr-title" aria-busy={!qr && !qrError}>
         <h3 id="representation-share-qr-title">共有URLのQRコード</h3>
-        <div className="share-qr-code-frame">{qr ? <img src={qr} alt="現在の表現行列Lab共有URLを表すQRコード" /> : <p role="status">{qrError || 'QRコードを生成しています。'}</p>}</div>
+        <div className="share-qr-code-frame">{qr ? <img src={qr} alt={`現在の${labName}共有URLを表すQRコード`} /> : <p role="status">{qrError || 'QRコードを生成しています。'}</p>}</div>
         {qrError && <p>URLのコピーまたはテキスト保存をご利用ください。</p>}
       </section>
       <label className="share-url-field"><span>共有URL</span><textarea ref={field} readOnly value={url} rows={5} spellCheck={false} aria-describedby="representation-share-description representation-share-feedback" /></label>
