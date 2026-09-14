@@ -6,10 +6,10 @@ const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta
 const plan = read('docs/EIGENSPACE_LAB_DESIGN.md');
 
 describe('フェーズ12の承認済み計画と12.1契約', () => {
-  it('12.8までの承認と12.9の棚卸し済み・最終確認待ちを区別する', () => {
+  it('12.9までの承認とフェーズ12完了を記録する', () => {
     const roadmap = read('ROADMAP.md');
     expect(roadmap).toContain('完了（11.1〜11.9・利用者確認・統合棚卸し済み、D-101）');
-    const phase12 = roadmap.split('## 13. フェーズ12')[1].split('## 14. 文書更新')[0];
+    const phase12 = roadmap.split('## 13. フェーズ12')[1].split('## 14. フェーズ13')[0];
     expect(phase12).toContain('全体方針D-102利用者承認済み');
     const contract = phase12.split('### 12.1 ')[1].split('### 12.2 ')[0];
     expect(contract).toContain('完了・利用者確認済み（D-103）');
@@ -43,9 +43,9 @@ describe('フェーズ12の承認済み計画と12.1契約', () => {
     expect(teaching.match(/- \[x\]/g)).toHaveLength(3);
     expect(teaching).toContain('- [x] **確認ゲート:**');
     const inventory = phase12.split('### 12.9 ')[1];
-    expect(inventory).toContain('利用者確認待ち（D-114');
-    expect(inventory.match(/- \[x\]/g)).toHaveLength(3);
-    expect(inventory).toContain('- [ ] **確認ゲート:**');
+    expect(inventory).toContain('利用者確認済み（D-114');
+    expect(inventory.match(/- \[x\]/g)).toHaveLength(4);
+    expect(inventory).toContain('- [x] **確認ゲート:**');
     expect(inventory).toContain('INVENTORY_PHASE12.md');
     for (let i = 1; i <= 9; i += 1) expect(phase12).toContain(`### 12.${i} `);
     expect(phase12.match(/\*\*確認ゲート:\*\*/g)).toHaveLength(9);
