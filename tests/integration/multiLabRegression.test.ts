@@ -32,10 +32,20 @@ import vectorSpaceFixture from '../fixtures/share-url-v3.json';
 import basisDimensionFixture from '../fixtures/share-url-basis-dimension-v1.json';
 import linearMapFixture from '../fixtures/share-url-linear-map-v1.json';
 import representationFixture from '../fixtures/share-url-representation-matrix-v1.json';
+import eigenFixture from '../fixtures/share-url-eigenspace-v1.json';
+import { EIGEN_TEACHING_SCENARIOS } from '../../src/teaching/eigenScenarios';
+import { createEigenInitialization, createEigenShareState } from '../../src/labs/eigenspace/eigenSharing';
+import { currentEigenSlot, resetEigenWorkspace, updateEigenSlot } from '../../src/labs/eigenspace/eigenWorkspace';
+import { setEigenInput } from '../../src/labs/eigenspace/eigenScene';
 
 const PRODUCTION_BASE_URL = 'https://d-kitamura.github.io/linear-algebra-visual-lab/';
 
 const fixtures = [
+  {
+    lab: 'eigenspace',
+    url: eigenFixture.url,
+    state: validateSharedState(eigenFixture.expectedState),
+  },
   {
     lab: 'representation-matrix',
     url: representationFixture.url,
@@ -58,7 +68,7 @@ const fixtures = [
   },
 ] as const;
 
-describe('フェーズ9.7・10.8・11.9 複数Lab統合回帰', () => {
+describe('フェーズ9.7・10.8・11.9・12.9 複数Lab統合回帰', () => {
   it('低次元の13共有例は対象Lab・次元だけを置換し、他のInitialStateを維持する', () => {
     const defaults = {
       vector: createAppInitialization(PRODUCTION_BASE_URL),
@@ -104,6 +114,13 @@ describe('フェーズ9.7・10.8・11.9 複数Lab統合回帰', () => {
         expect(source).toBe(lab === fixture.lab ? 'shared' : 'default');
       }
       const representation = createRepresentationInitialization(fixture.url);
+      const eigen = createEigenInitialization(fixture.url);
+      if (fixture.lab !== 'eigenspace') {
+        expect(eigen).toEqual(createEigenInitialization(PRODUCTION_BASE_URL));
+      } else {
+        expect(eigen.errorMessage).toBeNull();
+        expect(createEigenShareState(currentEigenSlot(eigen.initialWorkspace))).toEqual(fixture.state);
+      }
       if (fixture.lab !== 'representation-matrix') {
         expect(representation).toEqual(createRepresentationInitialization(PRODUCTION_BASE_URL));
       } else {
@@ -128,6 +145,15 @@ describe('フェーズ9.7・10.8・11.9 複数Lab統合回帰', () => {
         resetState = createLinearMapShareState(
           initialization.initialStates[initialization.activeShapeId],
         );
+      } else if (fixture.state.lab === 'eigenspace') {
+        const initial = createEigenInitialization(fixture.url).initialWorkspace;
+        // 第五Labも実際のReset経路を通し、共有時の入力・表示・カメラまで戻す。
+        const edited = updateEigenSlot(initial, initial.dimension, (slot) => ({
+          ...slot, scene: setEigenInput(slot.scene, slot.scene.input.map(() => 91)),
+          view: { ...slot.view, camera: null },
+        }));
+        const restored = resetEigenWorkspace(edited, initial);
+        resetState = createEigenShareState(currentEigenSlot(restored));
       } else {
         const initial = createRepresentationInitialization(fixture.url).initialWorkspace;
         // UIのResetと同じ経路で編集後に戻す。共有時の基底順序・視点も比較する。
@@ -141,14 +167,14 @@ describe('フェーズ9.7・10.8・11.9 複数Lab統合回帰', () => {
     });
   }
 
-  it('4つの固定共有URLをローカルでQRコードへ変換できる', async () => {
+  it('5つの固定共有URLをローカルでQRコードへ変換できる', async () => {
     for (const fixture of fixtures) {
       const qrCode = await createShareQrCodeDataUrl(fixture.url);
       expect(qrCode).toMatch(/^data:image\/png;base64,/u);
     }
   });
 
-  it('既存28例・低次元13例・第四Lab11例の計52例を維持し、他Labへ状態を漏らさない', () => {
+  it('既存52例と第五Lab18例の計70例を維持し、他Labへ状態を漏らさない', () => {
     const vectorSpaceScenarios = [
       ...TWO_DIMENSIONAL_TEACHING_SCENARIOS,
       ...LINEAR_COMBINATION_TEACHING_SCENARIOS,
@@ -172,14 +198,19 @@ describe('フェーズ9.7・10.8・11.9 複数Lab統合回帰', () => {
     const allFourLabs = [...includingLowDimensions, ...REPRESENTATION_MATRIX_TEACHING_SCENARIOS];
     expect(allFourLabs).toHaveLength(52);
     expect(new Set(allFourLabs.map((scenario) => scenario.id)).size).toBe(52);
-    // 代表例はMarkdownから開く。URLの他Labへの漏出を4つの初期化APIで検証する。
+    const allFiveLabs = [...allFourLabs, ...EIGEN_TEACHING_SCENARIOS];
+    expect(allFiveLabs).toHaveLength(70);
+    // 例のIDはLab内で一意。第五Labのzero-map等は既存LabのIDと共存できる。
+    expect(new Set(allFiveLabs.map((scenario) => `${scenario.state.lab}:${scenario.id}`)).size).toBe(70);
+    // 代表例はMarkdownから開く。URLの他Labへの漏出を5つの初期化APIで検証する。
     const initializers = {
       'vector-space': createAppInitialization,
       'basis-dimension': createBasisDimensionInitialization,
       'linear-map': createLinearMapInitialization,
       'representation-matrix': createRepresentationInitialization,
+      'eigenspace': createEigenInitialization,
     };
-    for (const scenario of allFourLabs) {
+    for (const scenario of allFiveLabs) {
       const url = buildShareUrl(PRODUCTION_BASE_URL, scenario.state);
       expect(readShareStateFromUrl(url)).toEqual({ status: 'success', state: validateSharedState(scenario.state) });
       for (const [lab, initialize] of Object.entries(initializers)) {

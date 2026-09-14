@@ -17,7 +17,10 @@ describe('授業配布・対応環境ガイド', () => {
     expect(guide).toContain('基準行列M');
     expect(guide).toContain('順序付き基底B・C');
     expect(guide).toContain('現在の場面だけ');
-    expect(guide).toContain('計52代表例');
+    expect(guide).toContain('計70代表例');
+    expect(guide).toContain('固有値Lab');
+    expect(guide).toContain('同じ基準基底');
+    expect(guide).toContain('BigInt');
   });
 
   it('主要機能と失敗時の代替導線を分離して案内する', () => {
