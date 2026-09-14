@@ -1,12 +1,12 @@
 # 対角化Lab 教材・数学API・状態契約（13.1）
 
-2026-09-14。全体方針D-115は利用者承認済み。**13.1具体契約はD-116確認待ち**。実装・操作確認後の見直しを認める。数値ソルバーは13.2、画面は13.3以降であり、本書の関数・共有形式はまだ利用できない。
+2026-09-14。全体方針D-115は利用者承認済み。**13.1具体契約はD-116承認済み**。実装・操作確認後の見直しを認める。13.2数学APIは実装済み・D-117確認待ち。関数は利用可能、画面は13.3以降、共有形式は13.6まで未接続。
 
 教材方針は[設計書](./DIAGONALIZATION_LAB_DESIGN.md)、工程は[ROADMAP](../ROADMAP.md)。ケイリー・ハミルトン・次数落とし・行列のべきの機能は作らない。既存5Labの数学API・共有形式は変更しない。
 
 ## 1. 入力と公開APIの責務
 
-予定する関数を次の3段階に分ける。以下は契約上の名前で、未実装関数を成功させる仮実装は置かない。
+実装した関数を次の3段階に分ける。公開窓口はsrc/domain/index.ts、型の正本はsrc/domain/diagonalizationTypes.ts。
 
 ```ts
 analyzeDiagonalization(definition: EigenMapDefinition): DiagonalizationAnalysis
@@ -53,7 +53,7 @@ analyzeDiagonalizationInput(analysis: DiagonalizationAnalysis, input: readonly n
 
 inversePは単位列をPの連立方程式として解いて作り、順序変更も再検算する。一般の逆行列公式の丸め値を使わない。既存表現行列APIの「導出値を入力上限で切らない」考え方を継承するが、微小値を整理する経路をそのまま再利用しない。固有値APIやD-009の既存動作を変更しない。
 
-## 4. 数値確認の初期採用値（D-116確認事項）
+## 4. 数値確認の採用値（D-116承認済み、13.2で変更なし）
 
 | 項目 | 初期値・理由 |
 |---|---|
@@ -136,10 +136,49 @@ orderは構成可能な場面で長さnの完全な置換、構成不能時はnu
 - 1DでA=[10^-200]、u=[10^-200]: 行列の対角化成功と、像の数値化が0へ落ちる失敗を区別する。
 - 高々2次の微分／平行移動: 実根の重複度3・空間次元1、不可。高々0次は1Dで可。
 
-## 8. 13.1の確認と次の作業
+## 8. 13.1の確認記録（以下は契約策定時点）
 
 D-116ではAPIの責務分離、数値基準、基底生成と共有列順、0D、描画上限、初期例を確認する。新しい数値基準は13.2で実際に検証してから画面へ接続する。D-115の承認は実装途中で再検討可能という利用者意向を維持する。
 
 13.1では契約文書・表記規則・独立した手計算例のテストまで。共有デコーダー、ソルバー、UIは未実装。次の13.2は既存固有値APIと安定した基底構成を結ぶため**「高」を推奨**する。
 
 検証記録: 文書関連12ファイル57テストと差分の空白検査に成功。新規`tests/documentation/diagonalizationContract.test.ts`は独立したP/D/Gの例、列順交換、共有予定JSON、責務境界を検証する。新規ソルバーの数値精度を検証済みとするものではない。
+
+## 9. 13.2実装記録・再開点（D-117確認待ち）
+
+2026-09-14。D-116承認を反映し13.1完了。3関数と型・入力エラーを実装し、domain/index.tsから公開した。数値の採用値は変更していない。状態・共有・UIは未接続。
+
+### 実装と呼び出し
+
+- `src/domain/diagonalization.ts`: 次元条件、P/Dの構成、列順交換、入力座標。既存analyzeEigenMapを再利用する。
+- `src/domain/diagonalizationTypes.ts`: 不変な結果型。statusがreadyの時だけbasis／coordinatesを持つ判別共用体。行配列と列配列の役割を型コメントへ記載した。
+- `src/domain/diagonalizationNumerics.ts`: 既存eigenExactの有理数算術で最大3次の部分ピボットLUと残差を計算。表現行列APIの微小値整理を通さず、同じピボット基準1e-10を使う。既存rank・固有値ソルバー・表示用cleanNumberは変更しない。
+
+```ts
+const result = analyzeDiagonalization({ dimension: 2, matrix: [[4, 1], [0, 2]] });
+if (result.status === 'ready') {
+  const { p, d, inverseP, order, conditionInfinity } = result.basis;
+  const input = analyzeDiagonalizationInput(result, [3, 2]);
+  // input.coordinates.inputCoordinates は [2,4]（丸め前の数値）。
+  const swapped = reorderDiagonalization(result, [1, 0]);
+  const after = analyzeDiagonalizationInput(swapped, [3, 2]);
+  // afterでは座標が[4,2]、像の基準座標は同じ[14,4]。
+}
+```
+
+入力解析は行列解析時のLU閉包をWeakMapから再利用し、分解も根探索も行わない。列順変更では同じ根解析と正規化済み基準列を使って再検算する。公開結果はデータだけで深くfreezeする。**後続2関数にはこのAPIが直接返した解析オブジェクトを渡す**。JSON復元・structuredCloneした解析はINVALID_ANALYSISで拒否する。数学結果は保存せず、保存した行列から再解析する既存の共有方針と一致する。
+
+入力行列・入力成分のエラーは既存InvalidEigenInputError。順序や解析オブジェクトの不正はInvalidDiagonalizationInputError（INVALID_ORDER／UNAVAILABLE_BASIS／INVALID_ANALYSIS）。これらを教材上の不可として表示しない。
+
+### 数値と境界の確認
+
+- binary64行列と近似固有基底を有理数として扱い、消去・残差比の中間演算による消失を避ける。比を作ってから数値化することで、13.1で要求した微小値・大きい値の残差の正規化を満たす。新規依存は追加していない。
+- 右辺の解や像は数値へ戻す段階で非零→0・非有限を検出。積のunderflowも失敗として返す。一方、正確な相殺による0は正常に保持する。演算上限は既存有理数の32768bitを引き継ぎ、例外はprecision-limitへ変換する。
+- 条件数1e8超の実例（第1行(1,1)、第2行(0,1+1.5e-8)）はcriterion=satisfied、status=inconclusive、basis=null。数学的な不可へ置換しない。
+- diag(1e-200,2e-200)は固有多項式の係数が数値化不能でも根・空間は確認できるためready。元のeigenAnalysisとissuesを残す。readyは固有値APIの全ての表示項目の成功を意味しない。
+- A=[1e-200]、u=[1e-200]では行列はready、入力解析はnumerical-failure、imageVector=null。座標経路だけの失敗なら計算済みの基準座標の像は残す。
+- 初期例、0D、1Dの零／負／微小スカラー、3D重根・非対称行列、非有理実根、多項式、列順の絶対的な置換、不正入力、不変性を検証。関数呼出しの計測で入力変更時の根再計算・再分解がないことも回帰する。
+
+テスト正本は`tests/domain/diagonalization.test.ts`と`tests/domain/diagonalizationNumerics.test.ts`（新規2ファイル36テスト）。既存固有値・表現行列・授業例・文書を含む関連19ファイル206テスト、型検査、差分の空白検査に成功。上限／未完状態の下流の区別は注入テスト、通常例と数値境界は実際の既存ソルバー経由で検証する。全入力・全端末の性能や厳密な実数計算を保証するものではない。全体テスト・全体ビルド・ブラウザ確認・コミット・プッシュは行っていない。
+
+次はD-117確認後、別途指示で13.3の数ベクトル2D画面へ接続する。既存2D・数式・編集部品への接続が中心のため**「中」を推奨**。コミット・プッシュ・ブラウザ・実機確認は利用者担当。

@@ -71,6 +71,10 @@ export type {
 
 export { analyzeRepresentationMatrix, analyzeBasisChange, analyzeBasisChangeRoundTrip } from './representationMatrix';
 export { analyzeEigenMap, analyzeEigenInput } from './eigen';
+export { analyzeDiagonalization, reorderDiagonalization, analyzeDiagonalizationInput } from './diagonalization';
+export { InvalidDiagonalizationInputError } from './diagonalizationTypes';
+export type { DiagonalizationAnalysis, DiagonalizationBasis, DiagonalizationCriterion, DiagonalizationCoordinates,
+  DiagonalizationInputAnalysis, DiagonalizationIssue } from './diagonalizationTypes';
 export { InvalidEigenInputError } from './eigenTypes';
 export type { EigenMapDefinition, EigenMapAnalysis, EigenSpace, RealEigenvalue, EigenInputAnalysis, EigenIssue, EigenValidationCode } from './eigenTypes';
 export type {

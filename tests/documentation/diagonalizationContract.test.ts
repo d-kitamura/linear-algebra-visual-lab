@@ -51,7 +51,7 @@ describe('13.1 対角化の具体契約', () => {
     const image = apply([[1e6, 0], [0, 1e6]], [1e6, 0]);
     expect(image).toEqual([1e12, 0]);
     expect(image[0]).toBeGreaterThan(1e6);
-    expect(contract).toContain('D-116確認待ち');
+    expect(contract).toContain('D-116承認済み');
     expect(read('math-writing-rules.txt')).toContain('対角化Labの採用記号（D-115承認');
   });
 });
