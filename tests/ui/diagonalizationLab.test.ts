@@ -123,8 +123,10 @@ describe('13.3 対角化Labの2D接続', () => {
     expect(source).toContain('onVectorDragCancel={cancelDrag}');
     expect(source).toContain('dragging && !referenceSafe && previewRef.current');
     expect(source).toContain('if (!active) cancelDrag()');
-    expect(source).toContain("setScene(initial); setViews(AUTO_VIEWS); setTab('condition')");
-    expect(source).toContain('preview ?? scene.input');
+    expect(source).toContain('resetDiagonalizationWorkspace(w, initial)');
+    expect(source).toContain('key={`${dimension}-${revision}`}');
+    expect(source).toContain("useState<DiagonalizationTab>('condition')");
+    expect(source).toContain('preview === null ? committed : analyzeDiagonalizationInput(analysis, preview)');
     expect(source).toContain('[scene.definition]');
     expect(source).toContain("event.key === 'Home'"); expect(source).toContain("event.key === 'End'");
     const css = read('src/labs/diagonalization/diagonalization.css');

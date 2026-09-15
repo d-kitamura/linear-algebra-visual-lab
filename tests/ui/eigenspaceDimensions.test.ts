@@ -61,7 +61,7 @@ describe('12.4 固有値Labの次元別画面', () => {
     expect(source).toContain('snapEigenSpaceInput(scene, analysis, coordinates, distance)');
     const common = read('src/visualization/VectorSpace3D.tsx');
     expect(common).toContain('for (const group of spanGroups) addSpanGeometry');
-    expect(common).toContain('if (!preview.coordinates) { render(); return; }');
+    expect(common).toContain('if (!preview.coordinates) continue;');
     expect(common).toContain('opaque ? 1 : 0.86');
     expect(common).toContain('clearObjectGroup(vectorCoordinatePreviewGroup)');
     expect(common).toContain('runtime.setVectorCoordinatePreview(vectorCoordinatePreviewRef.current)');

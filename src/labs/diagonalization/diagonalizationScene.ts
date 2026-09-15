@@ -1,13 +1,15 @@
 import type { DiagonalizationAnalysis, DiagonalizationInputAnalysis, VectorValue } from '../../domain';
 import { editEigenMatrix, setEigenInput, type EigenScene } from '../eigenspace/eigenScene';
 
-/** 13.3は数ベクトル2Dのみ。解析結果・下書き・表示範囲は教材状態と分離する。 */
+/** 解析結果・下書き・表示範囲は教材状態と分離する。 */
 export interface DiagonalizationScene extends EigenScene {
   readonly order: readonly number[] | null;
 }
-export function createDiagonalizationScene(): DiagonalizationScene {
-  return { kind: 'coordinate', definition: { dimension: 2, matrix: [[4, 1], [0, 2]] },
-    input: [1, 2], order: [0, 1], showEigenspace: false };
+export function createDiagonalizationScene(dimension: EigenScene['definition']['dimension'] = 2): DiagonalizationScene {
+  const matrices = { 0: [], 1: [[-2]], 2: [[4, 1], [0, 2]], 3: [[2, 0, 0], [0, 2, 0], [0, 0, -1]] };
+  return { kind: 'coordinate', definition: { dimension, matrix: matrices[dimension] },
+    input: dimension === 2 ? [1, 2] : Array.from({ length: dimension }, () => 1),
+    order: Array.from({ length: dimension }, (_, i) => i), showEigenspace: false };
 }
 export function editDiagonalizationMatrix(scene: DiagonalizationScene, row: number, column: number, value: number): DiagonalizationScene {
   const next = editEigenMatrix(scene, row, column, value);
@@ -23,9 +25,15 @@ export function resolvedDiagonalizationOrder(scene: DiagonalizationScene, analys
 }
 
 /** 導出値をクリップしない。図単位で判定し、数式・数値は上限を超えても保持する（D-116）。 */
-export function canPlotDiagonalization(vectors: readonly VectorValue[]): boolean {
-  return vectors.length > 0 && vectors.every((v) => v.coordinates.length === 2 &&
+export function canPlotDiagonalization(vectors: readonly VectorValue[], dimension = 2): boolean {
+  return vectors.length > 0 && vectors.every((v) => v.coordinates.length === dimension &&
     v.coordinates.every((n) => Number.isFinite(n) && Math.abs(n) <= 1_000_000));
+}
+
+/** 列の隣接交換。3Dも2Dと同じ絶対的な基準順の置換として保持する。 */
+export function swapDiagonalizationColumns(order: readonly number[], first: number, second: number): readonly number[] {
+  if (![first, second].every((i) => Number.isInteger(i) && i >= 0 && i < order.length)) return order;
+  const next = [...order]; [next[first], next[second]] = [next[second], next[first]]; return next;
 }
 export function diagonalizationPlotVectors(result: DiagonalizationInputAnalysis) {
   const reference: VectorValue[] = [

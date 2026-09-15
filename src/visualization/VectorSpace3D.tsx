@@ -56,7 +56,8 @@ interface VectorSpace3DProps {
   readonly editableVectorIds?: readonly string[];
   readonly alwaysOpaqueVectorIds?: readonly string[];
   readonly snapEditableVectorsToSpan?: boolean;
-  readonly vectorCoordinatePreview?: VectorCoordinatePreview | null;
+  /** 配列では同じフレームの複数の導出ベクトルをまとめて更新する。既存の単体指定も維持。 */
+  readonly vectorCoordinatePreview?: VectorCoordinatePreview | readonly VectorCoordinatePreview[] | null;
   readonly linearCombinationVisible: boolean;
   readonly linearCombinationTarget: readonly [number, number, number] | null;
   readonly linearCombinationCoefficients: readonly number[] | null;
@@ -97,7 +98,7 @@ export interface SpaceSpanGroup {
   readonly label: string;
 }
 
-interface VectorCoordinatePreview {
+export interface VectorCoordinatePreview {
   readonly vectorId: string;
   /** 導出値の数値計算を保留した場合はnullで元の像も一時非表示にする。 */
   readonly coordinates: readonly [number, number, number] | null;
@@ -108,7 +109,7 @@ interface ThreeSpaceRuntime {
   readonly applyCamera: (camera: SharedCameraState | null) => void;
   readonly fit: () => void;
   readonly resize: () => void;
-  readonly setVectorCoordinatePreview: (preview: VectorCoordinatePreview | null) => void;
+  readonly setVectorCoordinatePreview: (preview: VectorCoordinatePreview | readonly VectorCoordinatePreview[] | null) => void;
   readonly dispose: () => void;
 }
 
@@ -588,45 +589,45 @@ function createThreeSpaceRuntime(
     labelRenderer.render(scene, camera);
   };
 
-  let previewedVectorId: string | null = null;
-  const setVectorCoordinatePreview = (preview: VectorCoordinatePreview | null) => {
-    if (previewedVectorId) {
-      const previous = renderedVectors.get(previewedVectorId);
+  const previewedVectorIds = new Set<string>();
+  const setVectorCoordinatePreview = (value: VectorCoordinatePreview | readonly VectorCoordinatePreview[] | null) => {
+    for (const id of previewedVectorIds) {
+      const previous = renderedVectors.get(id);
       if (previous) {
         previous.object.visible = true;
         previous.label.visible = true;
         previous.tipIndicator.visible = true;
       }
     }
-    previewedVectorId = null;
+    previewedVectorIds.clear();
     clearObjectGroup(vectorCoordinatePreviewGroup);
-    if (!preview) {
-      render();
-      return;
+    // 旧プレビューを全て片付け、同じフレームの座標へ差し替えてから一度だけ描画。
+    const previews = value === null ? [] : 'vectorId' in value ? [value] : value;
+    for (const preview of previews) {
+      if (previewedVectorIds.has(preview.vectorId)) continue;
+      const vectorIndex = vectors.findIndex((vector) => vector.id === preview.vectorId);
+      const rendered = renderedVectors.get(preview.vectorId);
+      const vector = vectors[vectorIndex];
+      if (!rendered || !vector || vectorIndex < 0) {
+        continue;
+      }
+      previewedVectorIds.add(preview.vectorId);
+      rendered.object.visible = false;
+      rendered.label.visible = false;
+      rendered.tipIndicator.visible = false;
+      if (!preview.coordinates) continue;
+      const tip = new THREE.Vector3(...preview.coordinates);
+      const color = new THREE.Color(colors[vectorIndex % colors.length] ?? '#2f6690');
+      addPreviewArrow(vectorCoordinatePreviewGroup, tip, color, extent, 1, 8);
+      vectorCoordinatePreviewGroup.add(createVectorLabel(
+        vector.name,
+        color.getStyle(),
+        tip,
+        vectorIndex,
+        false,
+      ));
+      vectorCoordinatePreviewGroup.add(createVectorTipIndicator(tip, color, extent, false));
     }
-    const vectorIndex = vectors.findIndex((vector) => vector.id === preview.vectorId);
-    const rendered = renderedVectors.get(preview.vectorId);
-    const vector = vectors[vectorIndex];
-    if (!rendered || !vector || vectorIndex < 0) {
-      render();
-      return;
-    }
-    previewedVectorId = preview.vectorId;
-    rendered.object.visible = false;
-    rendered.label.visible = false;
-    rendered.tipIndicator.visible = false;
-    if (!preview.coordinates) { render(); return; }
-    const tip = new THREE.Vector3(...preview.coordinates);
-    const color = new THREE.Color(colors[vectorIndex % colors.length] ?? '#2f6690');
-    addPreviewArrow(vectorCoordinatePreviewGroup, tip, color, extent, 1, 8);
-    vectorCoordinatePreviewGroup.add(createVectorLabel(
-      vector.name,
-      color.getStyle(),
-      tip,
-      vectorIndex,
-      false,
-    ));
-    vectorCoordinatePreviewGroup.add(createVectorTipIndicator(tip, color, extent, false));
     render();
   };
 

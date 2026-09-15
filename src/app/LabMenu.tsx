@@ -32,7 +32,7 @@ const labs = [
   {
     id: 'diagonalization',
     name: '対角化Lab',
-    description: '同じ線形変換を固有ベクトルの基底で表す（2D）',
+    description: '同じ線形変換を固有ベクトルの基底で表す（0〜3D）',
   },
 ] as const;
 

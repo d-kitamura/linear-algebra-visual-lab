@@ -24,6 +24,13 @@
 .diagonalization-lab .vector-drag-handle { pointer-events: all; }
 .diagonalization-inspector details { margin-top: 16px; }
 .diagonalization-inspector summary { cursor: pointer; }
+.diagonalization-dimensions { margin: 16px 0; }
+.diagonalization-dimensions .dimension-tablist { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.diagonalization-dimensions button { min-width: 48px; min-height: 44px; }
+.diagonalization-dimensions button[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--line); box-shadow: 0 5px 15px rgba(18, 28, 36, 0.08); }
+.diagonalization-order-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+/* 共通3Dにもstickyがあるため、内側のカードも通常フローへ戻す。 */
+.diagonalization-plot .three-dimensional-plot-card { position: static; top: auto; padding: 0; border: 0; box-shadow: none; background: transparent; }
 @media (max-width: 760px) {
   .diagonalization-workspace { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .diagonalization-plot { padding: 14px; }
