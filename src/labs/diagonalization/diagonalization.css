@@ -1,0 +1,31 @@
+/* 2図は同じ対象の別座標表示。既存Labの見出し・入力・タブを共用する。 */
+.diagonalization-workspace { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.diagonalization-plot { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 24px; background: var(--paper); }
+.diagonalization-plot .card-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.diagonalization-plot h2 { margin: 0; font-size: clamp(1rem, 1.8vw, 1.45rem); }
+.diagonalization-plot .basis-fit-button { flex: 0 0 auto; white-space: nowrap; }
+.diagonalization-show { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: .8rem; }
+.diagonalization-show input { width: 18px; height: 18px; }
+.diagonalization-legend { display: flex; gap: 24px; justify-content: center; margin: 8px 0 0; }
+.diagonalization-editor, .diagonalization-inspector { grid-column: 1 / -1; min-width: 0; }
+.diagonalization-editor h2, .diagonalization-inspector h2 { margin-top: 0; }
+.diagonalization-editor fieldset { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 24px; max-width: 660px; min-width: 0; border: 0; margin: 0; padding: 0; }
+.diagonalization-editor-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 10px; }
+.diagonalization-inspector { display: grid; gap: 12px; }
+.diagonalization-root-list, .diagonalization-basis-columns { display: flex; flex-wrap: wrap; gap: 12px 32px; }
+.diagonalization-root-list > div, .diagonalization-basis-columns > div { min-width: 0; }
+.diagonalization-note { display: block; color: var(--muted); font-size: .8rem; line-height: 1.6; margin-top: 8px; }
+.diagonalization-plot .diagonalization-show { display: flex; margin: 0; }
+.diagonalization-success { color: #26746b; }
+.diagonalization-lab .vector-arrow { pointer-events: none; }
+.diagonalization-lab .vector-drag-handle { pointer-events: all; }
+.diagonalization-inspector details { margin-top: 16px; }
+.diagonalization-inspector summary { cursor: pointer; }
+@media (max-width: 760px) {
+  .diagonalization-workspace { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .diagonalization-plot { padding: 14px; }
+  .diagonalization-editor fieldset { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .diagonalization-editor-row { max-width: 360px; }
+  .diagonalization-editor .linear-map-vector-input { max-width: 120px; }
+  .diagonalization-inspector .inspector-tablist button { padding: 6px 3px; font-size: .72rem; }
+}

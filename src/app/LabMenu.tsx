@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-export type LabId = 'vector-space' | 'basis-dimension' | 'linear-map' | 'representation-matrix' | 'eigenspace';
+export type LabId = 'vector-space' | 'basis-dimension' | 'linear-map' | 'representation-matrix' | 'eigenspace' | 'diagonalization';
 
 const labs = [
   // 表示順は既存Labを維持し、追加単元は末尾へ置く。
@@ -28,6 +28,11 @@ const labs = [
     id: 'eigenspace',
     name: '固有値・固有空間Lab',
     description: '入力と像・実固有値・固有空間を調べる（0〜3D）',
+  },
+  {
+    id: 'diagonalization',
+    name: '対角化Lab',
+    description: '同じ線形変換を固有ベクトルの基底で表す（2D）',
   },
 ] as const;
 

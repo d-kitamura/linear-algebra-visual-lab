@@ -49,6 +49,7 @@ describe('12.8 固有値Labの読み上げと操作導線（実機は確認ゲ�
     expect(source).toContain('行列・入力の数値編集と解析タブ、Resetはそのまま利用できます');
     expect(read('src/labs/eigenspace/eigenspace.css')).toContain('@media (max-width: 640px)');
     expect(read('src/app/App.css')).toMatch(/\.representation-formula\s*\{[^}]*flex-wrap:\s*wrap;[^}]*max-width:\s*100%;[^}]*overflow-x:\s*auto;/s);
-    expect(source).toContain("...(same ? { hideArrow: true, label: null }");
+    expect(source).toContain('return inputImagePresentation(');
+    expect(read('src/visualization/inputImagePresentation.tsx')).toContain("...(same ? { hideArrow: true, label: null }");
   });
 });

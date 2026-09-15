@@ -8,6 +8,7 @@ describe('Labのページ見出し', () => {
     ['linear-map/LinearMapLab', 'linear-map-title', '線形写像'],
     ['representation-matrix/RepresentationMatrixLab', 'representation-title', '表現行列と基底の変換'],
     ['eigenspace/EigenspaceLab', 'eigenspace-title', '固有値と固有空間'],
+    ['diagonalization/DiagonalizationLab', 'diagonalization-title', '行列の対角化'],
   ])('%sは次元に依存しない指定の大見出しを使う', (path, id, title) => {
     const source = readFileSync(new URL('../../src/labs/' + path + '.tsx', import.meta.url), 'utf8');
     expect(source).toContain('<h1 id="' + id + '">' + title + '</h1>');

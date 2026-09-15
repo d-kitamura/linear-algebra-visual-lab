@@ -6,8 +6,7 @@ import { buildShareUrl } from '../../sharing';
 import { createEigenInitialization, createEigenShareState } from './eigenSharing';
 import { VectorPlane2D, VectorLine1D, ZeroSpace0D, createAutoFitViewport, createAutoFitLineViewport, type PlaneViewport, type LineViewport } from '../../visualization';
 import type { PlaneVectorPresentation } from '../../visualization/VectorPlane2D';
-import { SvgVectorLabel } from '../../visualization/SvgVectorLabel';
-import { toSvgPoint } from '../../visualization/planeGeometry';
+import { inputImagePresentation } from '../../visualization/inputImagePresentation';
 import { formatMathNumber } from '../../ui';
 import { Column, Formula, MapValue, Scalar, Vector } from '../representation-matrix/representationMath';
 import { createEigenSpaceGeometries, editEigenMatrix, parseEigenNumber, setEigenInput, snapEigenInput, snapEigenSpaceInput, type EigenScene } from './eigenScene';
@@ -251,23 +250,8 @@ export function eigenRootLabels(analysis: EigenMapAnalysis): string[] {
   return analysis.realEigenvalues.map((root, i) => `${i + 1}: λ = ${texts.filter((v) => v === texts[i]).length > 1 ? String(root.value).replaceAll('-', '−') : texts[i]}`);
 }
 export function eigenVectorPresentation(input: readonly number[], image: readonly number[] | null, viewport: PlaneViewport): Record<string, PlaneVectorPresentation> {
-  const same = image !== null && input.every((v, i) => v === image[i]);
-  const endpoint = toSvgPoint(input as readonly [number, number], viewport);
-  const imageEndpoint = image ? toSvgPoint(image as readonly [number, number], viewport) : null;
-  const close = imageEndpoint && Math.hypot(endpoint[0] - imageEndpoint[0], endpoint[1] - imageEndpoint[1]) < 85;
-  // 共通SVGはplot内でclipする。長い写像ラベルも表示端の内側に置く。
-  const offset = (point: readonly [number, number], right: boolean, width: number, dy: number): readonly [number, number] => {
-    const x = Math.max(viewport.padding + 8 + (right ? 0 : width),
-      Math.min(viewport.width - viewport.padding - 8 - (right ? width : 0), point[0] + (right ? 16 : -16)));
-    const y = Math.max(viewport.padding + 24, Math.min(viewport.height - viewport.padding - 8, point[1] + dy));
-    return [x - point[0], y - point[1]];
-  };
-  return {
-    'eigen-input': { strokeWidth: 5, labelOffset: offset(endpoint, input[0] >= 0, same ? 120 : 22, -18),
-      ...(same ? { label: <><SvgVectorLabel name="u" /><tspan> = </tspan><SvgVectorLabel name="T(u)" /></> } : {}) },
-    'eigen-image': { strokeWidth: 9, outline: true, ...(same ? { hideArrow: true, label: null }
-      : imageEndpoint ? { labelOffset: offset(imageEndpoint, image![0] >= 0, 65, close ? 30 : -18) } : {}) },
-  };
+  return inputImagePresentation({ id: 'eigen-input', name: 'u', coordinates: input },
+    image ? { id: 'eigen-image', name: 'T(u)', coordinates: image } : null, viewport);
 }
 
 export function EigenPanel({ tab, analysis, input, kind = 'coordinate' }: { readonly tab: Tab; readonly analysis: EigenMapAnalysis; readonly input: EigenInputAnalysis; readonly kind?: EigenScene['kind'] }) {
