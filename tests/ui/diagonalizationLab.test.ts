@@ -130,4 +130,13 @@ describe('13.3 対角化Labの2D接続', () => {
     const css = read('src/labs/diagonalization/diagonalization.css');
     expect(css).toContain('grid-column: 1 / -1'); expect(css).toContain('@media (max-width: 760px)');
   });
+  it('下段にカードが続く2図には共通デスクトップstickyを適用しない', () => {
+    const css = read('src/labs/diagonalization/diagonalization.css');
+    // 共通 .plot-card より詳細度を高くし、App.cssが後から読み込まれても解除する。
+    // CSS契約の回帰検査。実ブラウザのスクロール確認は利用者へ残す。
+    expect(css).toMatch(/\.diagonalization-lab \.diagonalization-plot\s*\{[^}]*position:\s*static;[^}]*top:\s*auto;/);
+    const html = render();
+    expect(html).toContain('class="lab-page diagonalization-lab"');
+    expect(html.match(/class="plot-card diagonalization-plot"/g)).toHaveLength(2);
+  });
 });
