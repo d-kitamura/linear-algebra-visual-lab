@@ -14,6 +14,14 @@ const read = (path: string) => readFileSync(new URL('../../' + path, import.meta
 const noop = () => {};
 
 describe('13.5 多項式の対角化', () => {
+  it('種類・次元の2組は共通最小幅を解除し、狭幅では縦に並べる', () => {
+    const css = read('src/labs/diagonalization/diagonalization.css');
+    const desktop = css.split('@media (max-width: 760px)')[0];
+    const mobile = css.split('@media (max-width: 760px)')[1];
+    expect(desktop).toMatch(/\.diagonalization-lab \.diagonalization-dimensions\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+    expect(desktop).toMatch(/\.diagonalization-dimensions \.dimension-tablist\s*\{[^}]*min-width:\s*0;[^}]*width:\s*100%/);
+    expect(mobile).toMatch(/\.diagonalization-lab \.diagonalization-dimensions\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  });
   it.each([1, 2, 3] as const)('%iDの初期状態は自己写像・標準係数と固有基底座標を対応させる', (n) => {
     const scene = createDiagonalizationPolynomialScene(n);
     const analysis = analyzeDiagonalization(scene.definition);
