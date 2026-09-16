@@ -25,6 +25,15 @@ describe('D-121 多項式全体をTの引数とする授業表記', () => {
   it('像の多項式もT(u)=T(f(x))と対応付ける', () => {
     expect(text(createElement(EigenPolynomialValue, { coefficients: [2, 6], mapped: true }))).toBe('T(u) = T(f(x)) = 2 + 6x');
   });
+  it.each(['derivative', 'degree', 'translation', 'twice', 'zero'] as const)('%sの右辺全体を一要素にまとめ、flexの文字間gapを防ぐ', (rule) => {
+    const html = renderToStaticMarkup(createElement(EigenPolynomialRule, { rule }));
+    expect(html).toContain(' = <span class="representation-atom">');
+    expect(html).toMatch(/<\/span><\/div>$/);
+    const result = text(createElement(EigenPolynomialRule, { rule }));
+    if (rule === 'degree') expect(result).toBe('T(f(x)) = xf′(x)');
+    if (rule === 'translation') expect(result).toBe('T(f(x)) = f(x + 1)');
+    if (rule === 'twice') expect(result).toBe('T(f(x)) = 2f(x)');
+  });
   for (const source of ['coordinate', 'polynomial'] as const) for (const target of ['coordinate', 'polynomial'] as const) {
     it(`${source}→${target}では引数を定義域の種類で決め、終域による後置(x)を付けない`, () => {
       const scene = createRepresentationScene(2, 2, source, target);

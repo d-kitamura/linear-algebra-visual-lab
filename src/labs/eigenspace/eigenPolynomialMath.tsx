@@ -21,9 +21,11 @@ export function EigenPolynomialCorrespondence({ dimension }: { readonly dimensio
 }
 export function EigenPolynomialRule({ rule }: { readonly rule: ReturnType<typeof eigenPolynomialRule> }) {
   if (!rule) return <p>この行列が標準単項式基底に関して定める線形変換です。</p>;
-  return <Formula><PolynomialMapValue /> = {rule === 'zero' ? '0' : rule === 'translation'
+  // Formulaはflexのgapを持つため、右辺を一つのインライン要素にまとめる。
+  // xf′(x)やf(x+1)の文字・括弧の間にレイアウト用の余白を入れない。
+  return <Formula><PolynomialMapValue /> = <span className="representation-atom">{rule === 'zero' ? '0' : rule === 'translation'
     ? <><Scalar>f</Scalar>(<Scalar>x</Scalar> + 1)</> : rule === 'twice' ? <>2<FunctionName name="f" /></>
-      : <>{rule === 'degree' && <Scalar>x</Scalar>}<Scalar>f</Scalar>′(<Scalar>x</Scalar>)</>}</Formula>;
+      : <>{rule === 'degree' && <Scalar>x</Scalar>}<Scalar>f</Scalar>′(<Scalar>x</Scalar>)</>}</span></Formula>;
 }
 export function EigenPolynomialBasisValue({ name, coefficients }: { readonly name: string; readonly coefficients: readonly number[] }) {
   return <><EigenPolynomialValue name={name} coefficients={coefficients} />
