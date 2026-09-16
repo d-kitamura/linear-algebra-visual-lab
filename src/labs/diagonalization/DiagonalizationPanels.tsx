@@ -2,6 +2,9 @@ import type { DiagonalizationAnalysis, DiagonalizationInputAnalysis } from '../.
 import { formatMathNumber } from '../../ui';
 import { BasisName, Column, CoordinateName, Formula, MapValue, Matrix, Scalar, Vector } from '../representation-matrix/representationMath';
 import { diagonalizationExplanation } from './diagonalizationScene';
+import type { DiagonalizationScene } from './diagonalizationScene';
+import { EigenCoordinateName, EigenPolynomialCorrespondence, EigenPolynomialValue } from '../eigenspace/eigenPolynomialMath';
+import { FunctionName, Polynomial, SpaceName } from '../representation-matrix/representationObjects';
 
 export const DIAGONALIZATION_TABS = [['condition', '対角化の条件'], ['basis', '固有ベクトルの基底'], ['coordinates', '座標と作用']] as const;
 export type DiagonalizationTab = typeof DIAGONALIZATION_TABS[number][0];
@@ -10,7 +13,8 @@ const BasisTuple = ({ dimension }: { readonly dimension: number }) => <span clas
   <span key={i}>{i > 0 && ', '}<Vector name={`p${i + 1}`} /></span>)})</span>;
 
 /** UIで丸めた値は計算へ戻さない。確認済みの等式だけを通常の等号で示す。 */
-export function DiagonalizationPanel({ tab, analysis, input, onSwap, disabled = false }: {
+export function DiagonalizationPanel({ tab, analysis, input, onSwap, disabled = false, kind = 'coordinate' }: {
+  readonly kind?: DiagonalizationScene['kind'];
   readonly tab: DiagonalizationTab;
   readonly analysis: DiagonalizationAnalysis;
   readonly input: DiagonalizationInputAnalysis;
@@ -19,6 +23,7 @@ export function DiagonalizationPanel({ tab, analysis, input, onSwap, disabled = 
 }) {
   const basis = analysis.basis;
   const dimension = analysis.definition.dimension;
+  const polynomial = kind === 'polynomial';
   if (dimension === 0) return <>
     {tab === 'condition' ? <><p>固有値・非零の固有ベクトルはありません。空の基底によって形式的に対角化できます。</p>
       <p>必要な基底の本数は0本です。正の次元の零変換（固有値0）とは区別します。</p></>
@@ -44,13 +49,14 @@ export function DiagonalizationPanel({ tab, analysis, input, onSwap, disabled = 
   if (tab === 'basis') return basis ? <>
     <Formula><BasisName name="B" /> = <BasisTuple dimension={dimension} /></Formula>
     <div className="diagonalization-basis-columns">{basis.order.map((canonicalIndex, i) => <div key={canonicalIndex}>
-      <Formula><Vector name={`p${i + 1}`} /> = <Column values={basis.canonicalColumns[canonicalIndex]} /></Formula>
+      {polynomial && <Formula><Vector name={`p${i + 1}`} /> = <FunctionName name={`f${i + 1}`} /> = <Polynomial coefficients={basis.canonicalColumns[canonicalIndex]} /></Formula>}
+      <Formula><EigenCoordinateName kind={kind} name={`p${i + 1}`} /> = <Column values={basis.canonicalColumns[canonicalIndex]} /></Formula>
       <Formula><MapValue name={`p${i + 1}`} /> = ({formatMathNumber(basis.d[i][i]).text})<Vector name={`p${i + 1}`} /></Formula>
     </div>)}</div>
     <div className="diagonalization-order-controls">{Array.from({ length: dimension - 1 }, (_, i) =>
       <button key={i} type="button" className="basis-fit-button" disabled={disabled} onClick={() => onSwap(i, i + 1)}>基底の{i + 1}番目と{i + 2}番目を交換</button>)}</div>
     <p>固有ベクトルの基底の一例です。基底の取り方は唯一ではありません。順序を変えると座標も変わりますが、入力とその像は変わりません。</p>
-    <Formula><Vector name="P" /> = <span className="representation-atom">[{Array.from({ length: dimension }, (_, i) => <span key={i}>{i > 0 && '　'}<Vector name={`p${i + 1}`} /></span>)}]</span> = <Matrix values={basis.p} /></Formula>
+    <Formula><Vector name="P" /> = <span className="representation-atom">[{Array.from({ length: dimension }, (_, i) => <span key={i}>{i > 0 && '　'}<EigenCoordinateName kind={kind} name={`p${i + 1}`} /></span>)}]</span> = <Matrix values={basis.p} /></Formula>
     <Formula><Vector name="D" /> = <Matrix values={basis.d} /></Formula>
     <Formula><Vector name="A" /><Vector name="P" /> = <Vector name="P" /><Vector name="D" /></Formula>
     <Formula><PInverse /><Vector name="A" /><Vector name="P" /> = <Vector name="D" /></Formula>
@@ -63,13 +69,18 @@ export function DiagonalizationPanel({ tab, analysis, input, onSwap, disabled = 
     </details>
   </> : <p className="representation-warning">{diagonalizationExplanation(analysis)} 完全な固有ベクトル基底・対角行列・逆行列は表示しません。</p>;
   return <>
-    <Formula><Vector name="u" /> = <Column values={input.inputVector} /></Formula>
-    <Formula><MapValue name="u" /> = <Vector name="A" /><Vector name="u" />{input.imageVector ? <> = <Column values={input.imageVector} /></> : '（像の数値計算を保留）'}</Formula>
+    {polynomial && <><Formula><Scalar>T</Scalar>: <SpaceName kind={kind} dimension={dimension} /> → <SpaceName kind={kind} dimension={dimension} /></Formula>
+      <EigenPolynomialCorrespondence dimension={dimension} /><EigenPolynomialValue coefficients={input.inputVector} />
+      {input.imageVector && <EigenPolynomialValue coefficients={input.imageVector} mapped />}</>}
+    <Formula><EigenCoordinateName kind={kind} /> = <Column values={input.inputVector} /></Formula>
+    <Formula><EigenCoordinateName kind={kind} mapped /> = <Vector name="A" /><EigenCoordinateName kind={kind} />{input.imageVector ? <> = <Column values={input.imageVector} /></> : '（像の数値計算を保留）'}</Formula>
     {input.status === 'ready' ? <>
       <Formula><Vector name="c" /> = <CoordinateName basis="B" object={<Vector name="u" />} /> = <Column values={input.coordinates.inputCoordinates} /></Formula>
       <Formula><Vector name="d" /> = <CoordinateName basis="B" object={<MapValue name="u" />} /> = <Vector name="D" /><Vector name="c" /> = <Column values={input.coordinates.imageCoordinatesViaDiagonal} /></Formula>
-      <Formula><Vector name="u" /> = <BasisTuple dimension={dimension} /><Vector name="c" /> = <Vector name="P" /><Vector name="c" /> = <Column values={input.coordinates.inputViaCoordinates} /></Formula>
-      <Formula><MapValue name="u" /> = <Vector name="A" /><Vector name="P" /><Vector name="c" /> = <Vector name="P" /><Vector name="D" /><Vector name="c" /> = <Column values={input.coordinates.imageViaCoordinates} /></Formula>
+      {/* 多項式の一次結合と、その基準係数列の等式を別行にする。 */}
+      <Formula><Vector name="u" /> = <BasisTuple dimension={dimension} /><Vector name="c" />{!polynomial && <> = <Vector name="P" /><Vector name="c" /> = <Column values={input.coordinates.inputViaCoordinates} /></>}</Formula>
+      {polynomial && <Formula><EigenCoordinateName kind={kind} /> = <Vector name="P" /><Vector name="c" /> = <Column values={input.coordinates.inputViaCoordinates} /></Formula>}
+      <Formula><EigenCoordinateName kind={kind} mapped /> = <Vector name="A" /><Vector name="P" /><Vector name="c" /> = <Vector name="P" /><Vector name="D" /><Vector name="c" /> = <Column values={input.coordinates.imageViaCoordinates} /></Formula>
       <p>左右は同じ入力と同じ像の別座標表示です。右図は固有ベクトルそのものの配置ではなく、基底 <BasisName name="B" /> に関する座標の図です。</p>
       <p>対角行列では、各座標が対応する固有値でそれぞれ定数倍されます。</p>
     </> : <p className="representation-warning">{analysis.status !== 'ready' ? diagonalizationExplanation(analysis) : '入力座標の計算・検算を数値的に確かめられないため保留しています。行列の対角化可能性とは別の結果です。'}</p>}

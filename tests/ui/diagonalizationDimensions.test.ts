@@ -18,7 +18,7 @@ const noop = () => {};
 describe('13.4 次元ごとの状態と対角化表示', () => {
   it('初期2Dを維持し、0〜3D選択を共通見出し・操作の下に置く', () => {
     const html = render(2);
-    expect(html.match(/aria-pressed=/g)).toHaveLength(4);
+    expect(html.match(/aria-pressed=/g)).toHaveLength(6);
     expect(html.indexOf('diagonalization-dimensions')).toBeGreaterThan(html.indexOf('</section>'));
     expect(html.indexOf('diagonalization-dimensions')).toBeLessThan(html.indexOf('diagonalization-workspace'));
     expect(html).toContain('列ベクトル 6、4');

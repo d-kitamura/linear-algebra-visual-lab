@@ -124,7 +124,7 @@ describe('13.3 対角化Labの2D接続', () => {
     expect(source).toContain('dragging && !referenceSafe && previewRef.current');
     expect(source).toContain('if (!active) cancelDrag()');
     expect(source).toContain('resetDiagonalizationWorkspace(w, initial)');
-    expect(source).toContain('key={`${dimension}-${revision}`}');
+    expect(source).toContain('key={`${kind}-${dimension}-${revision}`}');
     expect(source).toContain("useState<DiagonalizationTab>('condition')");
     expect(source).toContain('preview === null ? committed : analyzeDiagonalizationInput(analysis, preview)');
     expect(source).toContain('[scene.definition]');

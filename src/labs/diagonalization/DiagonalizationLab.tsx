@@ -4,17 +4,20 @@ import { analyzeDiagonalization, analyzeDiagonalizationInput, reorderDiagonaliza
 import { createAutoFitViewport, createAutoFitLineViewport, DEFAULT_PLANE_VIEWPORT, DEFAULT_LINE_VIEWPORT, VectorPlane2D, VectorLine1D, ZeroSpace0D, type PlaneViewport, type LineViewport } from '../../visualization';
 import { inputImagePresentation } from '../../visualization/inputImagePresentation';
 import { createEigenSpaceGeometries, parseEigenNumber, snapEigenInput } from '../eigenspace/eigenScene';
-import { MapValue, Vector } from '../representation-matrix/representationMath';
+import { Vector } from '../representation-matrix/representationMath';
+import { EigenCoordinateName, EigenPolynomialRule } from '../eigenspace/eigenPolynomialMath';
+import { EIGEN_POLYNOMIAL_EXAMPLES, eigenPolynomialRule, type EigenPolynomialExample } from '../eigenspace/eigenPolynomial';
 import { DIAGONALIZATION_TABS, DiagonalizationPanel, type DiagonalizationTab } from './DiagonalizationPanels';
-import { canPlotDiagonalization, createDiagonalizationScene, diagonalizationExplanation, diagonalizationPlotVectors,
+import { applyDiagonalizationPolynomialExample, canPlotDiagonalization, createDiagonalizationScene, diagonalizationExplanation, diagonalizationPlotVectors,
   editDiagonalizationMatrix, resolvedDiagonalizationOrder, setDiagonalizationInput, swapDiagonalizationColumns, type DiagonalizationScene } from './diagonalizationScene';
-import { createDiagonalizationWorkspace, resetDiagonalizationWorkspace, updateDiagonalizationSlot, type DiagonalizationSlot, type DiagonalizationView } from './diagonalizationWorkspace';
+import { createDiagonalizationWorkspace, diagonalizationCurrentSlot, selectDiagonalizationKind, selectDiagonalizationDimension, resetDiagonalizationWorkspace, updateDiagonalizationSlot, type DiagonalizationSlot, type DiagonalizationView } from './diagonalizationWorkspace';
 import './diagonalization.css';
 
 const INPUT_COLOR = '#245b8d', IMAGE_COLOR = '#ce5135';
 const EDITABLE = ['diagonal-input'], READ_ONLY: string[] = [];
 const OPAQUE = ['diagonal-input', 'diagonal-image', 'diagonal-c', 'diagonal-dc'];
 const COORDINATE_AXES: readonly [string, string] = ['c₁', 'c₂'];
+const POLYNOMIAL_AXES: readonly [string, string] = ['b₀', 'b₁'];
 type DragViews = { reference: PlaneViewport; eigenbasis: PlaneViewport; referenceLine: LineViewport; eigenbasisLine: LineViewport };
 const Space = lazy(() => import('./DiagonalizationSpace').then((m) => ({ default: m.DiagonalizationSpace })));
 
@@ -22,14 +25,18 @@ export function DiagonalizationLab({ active = true, initialScene }: { readonly a
   const [initial] = useState(() => createDiagonalizationWorkspace(initialScene ?? createDiagonalizationScene()));
   const [workspace, setWorkspace] = useState(initial);
   const [revision, setRevision] = useState(0);
-  const dimension = workspace.dimension;
+  const { dimension, kind } = workspace;
   const onSlot = useCallback((change: (slot: DiagonalizationSlot) => DiagonalizationSlot) =>
-    setWorkspace((w) => updateDiagonalizationSlot(w, dimension, change)), [dimension]);
-  const selectionControls = <div className="dimension-switcher diagonalization-dimensions"><div className="dimension-tablist" role="group" aria-label="対角化Labの次元">
-    {([0, 1, 2, 3] as const).map((n) => <button key={n} type="button" aria-pressed={dimension === n}
-      onClick={() => setWorkspace((w) => ({ ...w, dimension: n }))}>{n}D</button>)}
+    setWorkspace((w) => updateDiagonalizationSlot(w, dimension, change, kind)), [dimension, kind]);
+  const selectionControls = <div className="dimension-switcher diagonalization-dimensions">
+    <div className="dimension-tablist" role="group" aria-label="対角化Labの種類">
+      {([['coordinate', '数ベクトル'], ['polynomial', '多項式']] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={kind === id}
+        onClick={() => setWorkspace((w) => selectDiagonalizationKind(w, id))}>{label}</button>)}
+    </div><div className="dimension-tablist" role="group" aria-label="対角化Labの次元">
+    {(kind === 'polynomial' ? [1, 2, 3] as const : [0, 1, 2, 3] as const).map((n) => <button key={n} type="button" aria-pressed={dimension === n}
+      onClick={() => setWorkspace((w) => selectDiagonalizationDimension(w, n))}>{n}D</button>)}
   </div></div>;
-  return <DiagonalizationSceneView key={`${dimension}-${revision}`} active={active} slot={workspace.slots[dimension]} onSlot={onSlot}
+  return <DiagonalizationSceneView key={`${kind}-${dimension}-${revision}`} active={active} slot={diagonalizationCurrentSlot(workspace)} onSlot={onSlot}
     selectionControls={selectionControls} onReset={() => { setWorkspace((w) => resetDiagonalizationWorkspace(w, initial)); setRevision((r) => r + 1); }} />;
 }
 
@@ -38,6 +45,8 @@ function DiagonalizationSceneView({ active, slot, onSlot, onReset, selectionCont
   readonly onReset: () => void; readonly selectionControls: ReactNode }) {
   const { scene, views } = slot;
   const dimension = scene.definition.dimension;
+  const polynomial = scene.kind === 'polynomial';
+  const [editorRevision, setEditorRevision] = useState(0);
   const setScene = useCallback((change: (scene: DiagonalizationScene) => DiagonalizationScene) => onSlot((s) => ({ ...s, scene: change(s.scene) })), [onSlot]);
   const setView = (side: keyof DiagonalizationSlot['views'], change: Partial<DiagonalizationView>) =>
     onSlot((s) => ({ ...s, views: { ...s.views, [side]: { ...s.views[side], ...change } } }));
@@ -109,17 +118,19 @@ function DiagonalizationSceneView({ active, slot, onSlot, onReset, selectionCont
     {invalid.size > 0 && <p role={active ? 'status' : undefined} className="representation-warning">入力エラーを修正してください。図と解析は直前の有効値を表示しています。</p>}
     <div className="diagonalization-workspace">
       <section className="plot-card diagonalization-plot" aria-labelledby="diagonalization-reference-title">
-        <div className="card-heading"><h2 id="diagonalization-reference-title">基準基底での表示</h2>
+        <div className="card-heading"><h2 id="diagonalization-reference-title">{polynomial ? '標準単項式基底での係数' : '基準基底での表示'}</h2>
           {(dimension === 1 || dimension === 2) && <button className="basis-fit-button" type="button" disabled={dragging} onClick={() => setView('reference', { plane: null, line: null })}>全体を表示</button>}</div>
         {dimension > 0 && <label className="diagonalization-show"><input type="checkbox" checked={scene.showEigenspace} disabled={!geometries.length || dragging}
           onChange={(e) => setScene((s) => ({ ...s, showEigenspace: e.target.checked }))} />固有空間を表示</label>}
         {dimension === 0 && <ZeroSpace0D idPrefix="diagonalization-reference-zero" spaceName="U" description="零ベクトルだけの空間です。空の組が基底となり、成分や編集する矢先はありません。" />}
         {dimension === 1 && active && referenceSafe && <VectorLine1D idPrefix="diagonalization-reference-line" vectors={plots.reference}
+          axisLabel={polynomial ? 'b₀' : undefined}
           colors={plots.reference.length === 2 ? [IMAGE_COLOR, INPUT_COLOR] : [INPUT_COLOR]} viewport={referenceLine}
           editableVectorIds={invalid.size ? READ_ONLY : EDITABLE} alwaysOpaqueVectorIds={OPAQUE} outlinedVectorIds={['diagonal-image']} showHelpText={false}
           onViewportChange={(line) => setView('reference', { line })} showSpan={scene.showEigenspace && geometries.length > 0} spanDimension={1} spanLabel="固有空間"
           onVectorDragStart={startDrag} onVectorChange={(_, coordinates) => updatePreview(coordinates)} onVectorDragEnd={() => commitDrag()} onVectorDragCancel={cancelDrag} />}
         {dimension === 2 && active && referenceSafe && <VectorPlane2D idPrefix="diagonalization-reference" vectors={plots.reference}
+          axisLabels={polynomial ? POLYNOMIAL_AXES : undefined}
           colors={plots.reference.length === 2 ? [IMAGE_COLOR, INPUT_COLOR] : [INPUT_COLOR]} viewport={referenceView}
           vectorPresentation={presentation(plots.reference, referenceView)} editableVectorIds={invalid.size ? READ_ONLY : EDITABLE} alwaysOpaqueVectorIds={OPAQUE}
           onViewportChange={(plane) => setView('reference', { plane })}
@@ -138,7 +149,7 @@ function DiagonalizationSceneView({ active, slot, onSlot, onReset, selectionCont
           onCamera={(camera) => setView('reference', { camera })} onPreview={updatePreview} onCommit={commitDrag} /></Suspense>}
         {!referenceSafe && <PlotLimit />}
         {!result.imageVector && <p className="representation-warning">像の数値計算を保留しています。入力のみ表示します。</p>}
-        {dimension > 0 && <p className="diagonalization-legend"><span style={{ color: INPUT_COLOR }}>● <Vector name="u" /></span><span style={{ color: IMAGE_COLOR }}>◇ <MapValue name="u" /></span></p>}
+        {dimension > 0 && <p className="diagonalization-legend"><span style={{ color: INPUT_COLOR }}>● <EigenCoordinateName kind={scene.kind} /></span><span style={{ color: IMAGE_COLOR }}>◇ <EigenCoordinateName kind={scene.kind} mapped /></span></p>}
       </section>
       <section className="plot-card diagonalization-plot" aria-labelledby="diagonalization-eigenbasis-title">
         <div className="card-heading"><h2 id="diagonalization-eigenbasis-title">固有ベクトル基底での座標</h2>
@@ -161,12 +172,18 @@ function DiagonalizationSceneView({ active, slot, onSlot, onReset, selectionCont
       </section>
       <section className="basis-candidate-card diagonalization-editor" aria-labelledby="diagonalization-edit-title">
         <h2 id="diagonalization-edit-title">行列と入力</h2>
-        {dimension === 0 ? <p>行列は0×0の空行列、入力は零ベクトルです。成分の入力欄はありません。</p> : <fieldset disabled={dragging}><legend className="visually-hidden">行列と入力の成分</legend>
+        {polynomial && <><label>多項式の変換例 <select aria-label="多項式の変換例" value="" disabled={dragging} onChange={(e) => {
+          setScene((s) => applyDiagonalizationPolynomialExample(s, e.target.value as EigenPolynomialExample));
+          // 例の適用は不正な下書きも置き換える。入力値・視点・Reset基準は維持する。
+          setInvalid(new Set()); setEditorRevision((r) => r + 1);
+        }}><option value="" disabled>例を選択</option>{EIGEN_POLYNOMIAL_EXAMPLES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+          <EigenPolynomialRule rule={eigenPolynomialRule(scene)} /></>}
+        {dimension === 0 ? <p>行列は0×0の空行列、入力は零ベクトルです。成分の入力欄はありません。</p> : <fieldset key={editorRevision} disabled={dragging}><legend className="visually-hidden">行列と入力の成分</legend>
           <div className="diagonalization-editor-row"><Vector name="A" /><span>=</span><span className="linear-map-matrix-input" style={{ gridTemplateColumns: `repeat(${dimension}, minmax(0, 1fr))` }}>
             {scene.definition.matrix.flatMap((row, r) => row.map((value, c) => <NumberInput key={`${r}-${c}`} value={value} label={`行列Aの第${r + 1}行第${c + 1}列`}
               reportInvalid={reportInvalid} onValue={(v) => setScene((s) => editDiagonalizationMatrix(s, r, c, v))} />))}</span></div>
-          <div className="diagonalization-editor-row"><Vector name="u" /><span>=</span><span className="linear-map-vector-input">
-            {scene.input.map((value, i) => <NumberInput key={i} value={value} label={`入力uの第${i + 1}成分`} reportInvalid={reportInvalid}
+          <div className="diagonalization-editor-row"><EigenCoordinateName kind={scene.kind} /><span>=</span><span className="linear-map-vector-input">
+            {scene.input.map((value, i) => <NumberInput key={i} value={value} label={polynomial ? `入力多項式の係数b${i}` : `入力uの第${i + 1}成分`} reportInvalid={reportInvalid}
               onValue={(v) => setScene((s) => setDiagonalizationInput(s, s.input.map((n, j) => i === j ? v : n)))} />)}</span></div>
         </fieldset>}
       </section>
@@ -176,7 +193,7 @@ function DiagonalizationSceneView({ active, slot, onSlot, onReset, selectionCont
             tabIndex={tab === id ? 0 : -1} ref={(node) => { tabRefs.current[i] = node; }} onKeyDown={(event) => tabKey(event, i)} onClick={() => setTab(id)}>{label}</button>)}</div>
         {DIAGONALIZATION_TABS.map(([id, label]) => <section key={id} role="tabpanel" id={`diagonalization-panel-${id}`} aria-labelledby={`diagonalization-tab-${id}`}
           className="basis-result-card inspector-panel" hidden={tab !== id} tabIndex={0}><h2>{label}</h2>
-          <DiagonalizationPanel tab={id} analysis={analysis} input={result} onSwap={swap} disabled={dragging || invalid.size > 0} />
+          <DiagonalizationPanel tab={id} kind={scene.kind} analysis={analysis} input={result} onSwap={swap} disabled={dragging || invalid.size > 0} />
         </section>)}
       </div>
     </div>

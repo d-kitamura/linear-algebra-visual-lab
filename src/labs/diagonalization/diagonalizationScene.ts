@@ -1,9 +1,19 @@
 import type { DiagonalizationAnalysis, DiagonalizationInputAnalysis, VectorValue } from '../../domain';
 import { editEigenMatrix, setEigenInput, type EigenScene } from '../eigenspace/eigenScene';
+import { applyEigenPolynomialExample, createEigenPolynomialScene, type EigenPolynomialDimension, type EigenPolynomialExample } from '../eigenspace/eigenPolynomial';
 
 /** 解析結果・下書き・表示範囲は教材状態と分離する。 */
 export interface DiagonalizationScene extends EigenScene {
   readonly order: readonly number[] | null;
+}
+export function createDiagonalizationPolynomialScene(dimension: EigenPolynomialDimension): DiagonalizationScene {
+  return { ...createEigenPolynomialScene(dimension), input: Array.from({ length: dimension }, () => 1),
+    order: Array.from({ length: dimension }, (_, i) => i) };
+}
+export function applyDiagonalizationPolynomialExample(scene: DiagonalizationScene, example: EigenPolynomialExample): DiagonalizationScene {
+  const next = applyEigenPolynomialExample(scene, example);
+  // 例の変更でも入力を保存し、旧行列に対応する列順だけを破棄する。
+  return next === scene ? scene : { ...next, order: null };
 }
 export function createDiagonalizationScene(dimension: EigenScene['definition']['dimension'] = 2): DiagonalizationScene {
   const matrices = { 0: [], 1: [[-2]], 2: [[4, 1], [0, 2]], 3: [[2, 0, 0], [0, 2, 0], [0, 0, -1]] };

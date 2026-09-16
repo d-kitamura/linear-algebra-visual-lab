@@ -10,6 +10,7 @@ const EMPTY: readonly VectorValue[] = [];
 const READ_ONLY: string[] = [], EDITABLE = ['diagonal-input'];
 const OPAQUE = ['diagonal-input', 'diagonal-image', 'diagonal-c', 'diagonal-dc'];
 const RIGHT_AXES: readonly [string, string, string] = ['c₁', 'c₂', 'c₃'];
+const POLYNOMIAL_AXES: readonly [string, string, string] = ['b₀', 'b₁', 'b₂'];
 const NOOP = () => {};
 
 /** 確定値だけをThree.jsの構築入力に使い、ドラッグ中の導出値は差替え専用経路へ渡す。 */
@@ -45,15 +46,15 @@ export function DiagonalizationSpace({ side, scene, analysis, committed, current
     spanGroups={left ? groups : undefined} showSpan={left && scene.showEigenspace} spanLabel="固有空間"
     editableVectorIds={left && !invalid ? EDITABLE : READ_ONLY} alwaysOpaqueVectorIds={OPAQUE}
     snapEditableVectorsToSpan={left} vectorCoordinatePreview={preview}
-    axisLabels={left ? undefined : RIGHT_AXES} camera={camera} onCameraChange={onCamera} active resetKey={0}
+    axisLabels={left ? scene.kind === 'polynomial' ? POLYNOMIAL_AXES : undefined : RIGHT_AXES} camera={camera} onCameraChange={onCamera} active resetKey={0}
     onVectorCoordinatesPreview={left ? (_, coordinates) => onPreview(coordinates) : undefined}
     onVectorCoordinatesCommit={left ? (_, coordinates) => onCommit(coordinates) : NOOP}
     onVectorCoordinatesSnap={left ? (_, coordinates, distance) => snapEigenSpaceInput(scene, analysis.eigenAnalysis, coordinates, distance) : undefined}
     linearCombinationVisible={false} linearCombinationTarget={null} linearCombinationCoefficients={null}
     onLinearCombinationTargetPlacement={NOOP} onLinearCombinationVisibility={NOOP}
     showLinearCombinationControl={false} showHeading={false} showHelpText={false}
-    spaceTitle={left ? '基準基底での表示' : '固有ベクトル基底での座標'}
-    assistiveDescription={left ? '基準座標の入力と像。入力の矢先と数値入力から変更できます。' : '同じ入力と像の固有基底座標cとDc。矢先は編集せず、視点だけ変更できます。'}
+    spaceTitle={left ? scene.kind === 'polynomial' ? '標準単項式基底での係数' : '基準基底での表示' : '固有ベクトル基底での座標'}
+    assistiveDescription={left ? scene.kind === 'polynomial' ? '標準単項式基底に関する入力と像の係数空間。関数グラフではありません。入力の矢先と数値入力から変更できます。' : '基準座標の入力と像。入力の矢先と数値入力から変更できます。' : '同じ入力と像の固有基底座標cとDc。矢先は編集せず、視点だけ変更できます。'}
     unavailableFallbackDescription="3Dを利用できなくても、下の行列・入力編集、解析タブ、Resetは利用できます。" />;
 }
 

@@ -25,7 +25,8 @@
 .diagonalization-inspector details { margin-top: 16px; }
 .diagonalization-inspector summary { cursor: pointer; }
 .diagonalization-dimensions { margin: 16px 0; }
-.diagonalization-dimensions .dimension-tablist { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.diagonalization-dimensions .dimension-tablist { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-columns: none; }
+.diagonalization-editor select { max-width: 100%; min-height: 44px; }
 .diagonalization-dimensions button { min-width: 48px; min-height: 44px; }
 .diagonalization-dimensions button[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--line); box-shadow: 0 5px 15px rgba(18, 28, 36, 0.08); }
 .diagonalization-order-controls { display: flex; flex-wrap: wrap; gap: 8px; }
