@@ -12,7 +12,7 @@
 
 ## 処理の流れ
 
-1. D-030に従い、Codexが検証済みのローカル変更をコミットし、mainへpushする。
+1. 現在の分担D-120に従い、Codexが検証済みのローカル変更をコミットし、mainへpushする。Actionsと公開版の確認は利用者が行う。
 2. mainへのpushをGitHub Actionsが検知し、一時的なLinux実行環境でリポジトリを取得する。
 3. `package.json` の `packageManager` に従ってpnpm 11.19.0とNode.js 24を準備し、`pnpm install --frozen-lockfile` で `pnpm-lock.yaml` どおりに依存関係をインストールする。
 4. `pnpm test` を実行する。失敗した場合は公開しない。

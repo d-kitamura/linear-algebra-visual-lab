@@ -8,7 +8,7 @@
 
 12.8で[固有値Labの授業資料](./EIGENSPACE_TEACHING_GUIDE.md)に18例を追加し、5Lab・計70代表例となった。12.9で統合回帰済み。
 
-13.7で[対角化Labの授業資料](./DIAGONALIZATION_TEACHING_GUIDE.md)に18例を追加し、現在は6Lab・計88代表例。既存70例の内容・URLは不変。新18例は独立期待値・共有復元・Resetを回帰検証し、実機確認はD-123、6Lab全体の棚卸しは13.8で行う。
+13.7で[対角化Labの授業資料](./DIAGONALIZATION_TEACHING_GUIDE.md)に18例を追加し、現在は6Lab・計88代表例。既存70例の内容・URLは不変。新18例は独立期待値・共有復元・Resetを回帰検証し、D-123は利用者確認済み。13.8の[6Lab統合棚卸し](./INVENTORY_PHASE13.md)も実施済み・D-124確認待ち。
 
 フェーズ3〜9の統合確認と授業準備に共通して使える3つのLabの2D・3D代表例28件を定義する。掲載済みURLの版はベクトル空間Lab16件が`vector-space` v3、基底・次元Lab4件が`basis-dimension` v1、線形写像Lab8件が`linear-map` v1であり、現行デコーダーで読み込める。現在の再エクスポートと状態データからの新規生成はそれぞれv4・v2・v2で行う。リンクを開いた時点の状態が各Lab・各次元組のInitialStateとなるため、同じLab・次元組で操作後にResetすると同じ例へ戻る。
 

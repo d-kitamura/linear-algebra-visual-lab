@@ -17,7 +17,9 @@ describe('授業配布・対応環境ガイド', () => {
     expect(guide).toContain('基準行列M');
     expect(guide).toContain('順序付き基底B・C');
     expect(guide).toContain('現在の場面だけ');
-    expect(guide).toContain('計70代表例');
+    expect(guide).toContain('計88代表例');
+    expect(guide).toContain('対角化Lab');
+    expect(guide).toContain('列順と左右視点');
     expect(guide).toContain('固有値Lab');
     expect(guide).toContain('同じ基準基底');
     expect(guide).toContain('BigInt');

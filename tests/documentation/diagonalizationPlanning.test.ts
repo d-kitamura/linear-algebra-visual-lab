@@ -6,7 +6,7 @@ const plan = read('docs/DIAGONALIZATION_LAB_DESIGN.md');
 const roadmap = read('ROADMAP.md');
 
 describe('フェーズ13の実装・承認状況と利用者指定の範囲', () => {
-  it('13.6までの承認と13.7の確認待ち・13.8の未着手を区別する', () => {
+  it('13.7までの承認と13.8棚卸しの確認待ちを区別する', () => {
     expect(roadmap).toContain('完了（12.1〜12.9・利用者確認・統合棚卸し済み、D-114）');
     const phase13 = roadmap.split('## 14. フェーズ13')[1].split('## 15. 文書更新')[0];
     expect(phase13).toContain('詳細設計D-115は利用者承認済み');
@@ -35,13 +35,21 @@ describe('フェーズ13の実装・承認状況と利用者指定の範囲', ()
     expect(sharing.match(/- \[x\]/g)).toHaveLength(4);
     expect(sharing).toContain('- [x] **確認ゲート:**');
     const teaching = phase13.split('### 13.7 ')[1].split('### 13.8 ')[0];
-    expect(teaching).toContain('利用者確認待ち（D-123）');
-    expect(teaching.match(/- \[x\]/g)).toHaveLength(2);
-    expect(teaching).toContain('- [ ] **確認ゲート:**');
-    expect(phase13.split('### 13.8 ')[1]).not.toContain('- [x]');
+    expect(teaching).toContain('利用者確認済み（D-123）');
+    expect(teaching.match(/- \[x\]/g)).toHaveLength(3);
+    expect(teaching).toContain('- [x] **確認ゲート:**');
+    const inventory = phase13.split('### 13.8 ')[1];
+    expect(inventory).toContain('利用者確認待ち（D-124）');
+    expect(inventory.match(/- \[x\]/g)).toHaveLength(2);
+    expect(inventory).toContain('- [ ] **確認ゲート:**');
     for (let unit = 1; unit <= 8; unit++) expect(phase13).toContain(`### 13.${unit} `);
     expect(phase13.match(/\*\*確認ゲート:\*\*/g)).toHaveLength(8);
     expect(read('docs/DECISIONS.md')).toContain('### D-115');
+    expect(read('docs/DECISIONS.md')).toContain('### D-124');
+    expect(read('docs/INVENTORY_PHASE13.md')).toContain('109ファイル・1070テスト');
+    expect(read('README.md')).not.toContain('共有未接続');
+    expect(read('README.md')).toContain('INVENTORY_PHASE13.md');
+    expect(roadmap).not.toContain('D-090を優先し、Codexはローカル変更と文書更新まで');
   });
 
   it('次数落としを除外し、対角化だけの契約を提案する', () => {
