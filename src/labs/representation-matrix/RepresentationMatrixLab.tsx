@@ -6,7 +6,7 @@ import { analyzeRepresentationMatrix, analyzeVectorSet, polynomialCoefficientLab
 import { LabActionControls } from '../../app/LabActionControls';
 import { VectorPlane2D, VectorLine1D, createAutoFitLineViewport, createAutoFitViewport } from '../../visualization';
 import { Vector, Scalar, BasisName, Formula, Equals, Column, Matrix, Combination } from './representationMath';
-import { BasisElement, ObjectName, ObjectTuple, ReferenceCoordinates, ReferenceObject, SpaceName, StandardPolynomialBasis, GenericPolynomialCoordinates, Polynomial } from './representationObjects';
+import { BasisElement, ObjectName, ObjectTuple, ReferenceCoordinates, ReferenceObject, SpaceName, StandardPolynomialBasis, GenericPolynomialCoordinates, Polynomial, PolynomialMapValue } from './representationObjects';
 import { polynomialMapRule } from './representationPolynomialExamples';
 import { RepresentationPaths, BasisChangePanel } from './RepresentationCoordinatePanels';
 import { dragRepresentationVector, dragRepresentationLineVector, setRepresentationVector, snapRepresentationSpaceVector, editRepresentationValue, parseRepresentationNumber, moveRepresentationBasis, REPRESENTATION_DIMENSIONS, type RepresentationSpaceKind, type BasisSide, type RepresentationDimension, type RepresentationScene } from './representationMatrixState';
@@ -170,7 +170,7 @@ export function RepresentationSceneView({ active, committed, views, setScene, se
     </select></label>)}</div>}
     <p className="representation-fixed-note">基底を編集・並べ替えても、基準行列 <Vector name="M" /> と入力 <Vector name="w" /> は変わりません。グラフの軸は標準座標のままです。</p>
     {(scene.sourceKind === 'polynomial' || scene.targetKind === 'polynomial') && <p className="representation-fixed-note">多項式側の図は関数グラフではなく、昇べき順の基準係数空間です。矢印のラベルは各多項式の係数ベクトルを指します（<Vector name="w" />は入力多項式）。係数<Scalar>b</Scalar><sub>0</sub>, <Scalar>b</Scalar><sub>1</sub>, …と、選択した基底に関する座標<Vector name="c" />, <Vector name="d" />を区別してください。</p>}
-    {rule && <p className="representation-fixed-note">現在の基準行列が定める写像：<Scalar>T</Scalar>(<Scalar>f</Scalar>)(<Scalar>x</Scalar>) = {rule === 'derivative' ? <><Scalar>f</Scalar>′(<Scalar>x</Scalar>)（微分）</> : rule === 'multiply-x' ? <><Scalar>x</Scalar><Scalar>f</Scalar>(<Scalar>x</Scalar>)</> : rule === 'translation' ? <><Scalar>f</Scalar>(<Scalar>x</Scalar> + 1)</> : <><Scalar>f</Scalar>(<Scalar>x</Scalar>)（恒等写像）</>}。行列を編集すると、この規則も再判定します。</p>}
+    {rule && <p className="representation-fixed-note">現在の基準行列が定める写像：<PolynomialMapValue /> = {rule === 'derivative' ? <><Scalar>f</Scalar>′(<Scalar>x</Scalar>)（微分）</> : rule === 'multiply-x' ? <><Scalar>x</Scalar><Scalar>f</Scalar>(<Scalar>x</Scalar>)</> : rule === 'translation' ? <><Scalar>f</Scalar>(<Scalar>x</Scalar> + 1)</> : <><Scalar>f</Scalar>(<Scalar>x</Scalar>)（恒等写像）</>}。行列を編集すると、この規則も再判定します。</p>}
     <div className="linear-map-workspace">
       <div className="linear-map-diagram-grid">
         {(['source', 'target'] as const).map((side) => scene[side].dimension === 3 ? <Suspense key={side} fallback={<section className="plot-card">3Dグラフを読み込み中です。</section>}>

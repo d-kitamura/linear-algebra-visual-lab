@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { createPolynomialTerms, formatPolynomialExpression } from '../../domain';
 import { formatMathNumber, splitVectorName } from '../../ui';
 import type { BasisSide, RepresentationScene, RepresentationSpaceKind } from './representationMatrixState';
-import { Column, Equals, Formula, Scalar, Vector, Tuple } from './representationMath';
+import { Column, Equals, Formula, MapValue, Scalar, Vector, Tuple } from './representationMath';
 
 export function Polynomial({ coefficients }: { readonly coefficients: readonly number[] }) {
   return <span className="basis-polynomial" aria-label={formatPolynomialExpression(coefficients)}>{createPolynomialTerms(coefficients).map((term, i) =>
@@ -15,6 +15,10 @@ export function FunctionName({ name, argument = true }: { readonly name: string;
   const parts = splitVectorName(name);
   return <span className="representation-atom"><Scalar>{parts.base}</Scalar>{parts.subscript && <sub>{parts.subscript}</sub>}{argument && <>(<Scalar>x</Scalar>)</>}</span>;
 }
+/** 授業では多項式f(x)全体をTの引数に入れる。変換後に(x)を付けない。 */
+export function PolynomialMapValue({ name = 'f' }: { readonly name?: string }) {
+  return <span className="representation-atom"><Scalar>T</Scalar>(<FunctionName name={name} />)</span>;
+}
 export function BasisElement({ name, kind }: { readonly name: string; readonly kind: RepresentationSpaceKind }) {
   return kind === 'polynomial' ? <FunctionName name={name} /> : <Vector name={name} />;
 }
@@ -22,8 +26,9 @@ export function ObjectTuple({ scene, side, mapped = false }: { readonly scene: R
   return <Tuple basis={scene[side]} renderElement={(name) => mapped ? <ObjectName scene={scene} name={name} mapped /> : <BasisElement name={name} kind={side === 'source' ? scene.sourceKind : scene.targetKind} />} />;
 }
 export function ObjectName({ scene, mapped = false, name = 'w' }: { readonly scene: RepresentationScene; readonly mapped?: boolean; readonly name?: string }) {
-  const input = scene.sourceKind === 'polynomial' ? <FunctionName name={name === 'w' ? 'f' : name} argument={!mapped} /> : <Vector name={name} />;
-  return mapped ? <span className="representation-atom"><Scalar>T</Scalar>({input}){scene.targetKind === 'polynomial' && <>(<Scalar>x</Scalar>)</>}</span> : input;
+  // 引数の表記は定義域で決まる。終域が多項式でもT(w)の外に(x)は付けない。
+  if (scene.sourceKind === 'polynomial') return mapped ? <PolynomialMapValue name={name === 'w' ? 'f' : name} /> : <FunctionName name={name === 'w' ? 'f' : name} />;
+  return mapped ? <MapValue name={name} /> : <Vector name={name} />;
 }
 export function ReferenceCoordinates({ kind, side, children }: { readonly kind: RepresentationSpaceKind; readonly side: BasisSide; readonly children: ReactNode }) {
   return kind === 'polynomial' ? <span className="representation-atom">[{children}]<sub><span className="basis-script-symbol">ℰ</span><sub><Scalar>{side === 'source' ? 'U' : 'V'}</Scalar></sub></sub></span> : <>{children}</>;

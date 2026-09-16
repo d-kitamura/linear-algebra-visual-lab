@@ -1,5 +1,5 @@
 import { Column, Formula, MapValue, Scalar, Vector } from '../representation-matrix/representationMath';
-import { FunctionName, GenericPolynomialCoordinates, Polynomial, SpaceName, StandardPolynomialBasis } from '../representation-matrix/representationObjects';
+import { FunctionName, GenericPolynomialCoordinates, Polynomial, PolynomialMapValue, SpaceName, StandardPolynomialBasis } from '../representation-matrix/representationObjects';
 import type { EigenScene } from './eigenScene';
 import type { eigenPolynomialRule } from './eigenPolynomial';
 
@@ -8,7 +8,7 @@ export function EigenCoordinateName({ kind, name = 'u', mapped = false }: { read
   return kind === 'polynomial' ? <span className="representation-atom">[{object}]<sub><span className="basis-script-symbol">ℰ</span></sub></span> : object;
 }
 export function EigenPolynomialValue({ coefficients, name = 'u', mapped = false }: { readonly coefficients: readonly number[]; readonly name?: string; readonly mapped?: boolean }) {
-  return <Formula>{mapped ? <><MapValue name="u" /> = <Scalar>T</Scalar>(<Scalar>f</Scalar>)(<Scalar>x</Scalar>)</>
+  return <Formula>{mapped ? <><MapValue name="u" /> = <PolynomialMapValue /></>
     : <><Vector name={name} /> = <FunctionName name={name === 'u' ? 'f' : name} /></>} = <Polynomial coefficients={coefficients} /></Formula>;
 }
 export function EigenPolynomialCorrespondence({ dimension }: { readonly dimension: number }) {
@@ -21,7 +21,7 @@ export function EigenPolynomialCorrespondence({ dimension }: { readonly dimensio
 }
 export function EigenPolynomialRule({ rule }: { readonly rule: ReturnType<typeof eigenPolynomialRule> }) {
   if (!rule) return <p>この行列が標準単項式基底に関して定める線形変換です。</p>;
-  return <Formula><Scalar>T</Scalar>(<Scalar>f</Scalar>)(<Scalar>x</Scalar>) = {rule === 'zero' ? '0' : rule === 'translation'
+  return <Formula><PolynomialMapValue /> = {rule === 'zero' ? '0' : rule === 'translation'
     ? <><Scalar>f</Scalar>(<Scalar>x</Scalar> + 1)</> : rule === 'twice' ? <>2<FunctionName name="f" /></>
       : <>{rule === 'degree' && <Scalar>x</Scalar>}<Scalar>f</Scalar>′(<Scalar>x</Scalar>)</>}</Formula>;
 }
