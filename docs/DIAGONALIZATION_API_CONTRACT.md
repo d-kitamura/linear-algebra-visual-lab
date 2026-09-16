@@ -1,6 +1,6 @@
 # 対角化Lab 教材・数学API・状態契約（13.1）
 
-現在地（2026-09-16）: 13.7・D-123承認済み。13.8の[統合棚卸し](./INVENTORY_PHASE13.md)は実施済み・D-124確認待ち。以下の各実装節にある次工程・分担はその時点の記録。
+現在地（2026-09-16）: 13.7・D-123承認済み。13.8の[統合棚卸し](./INVENTORY_PHASE13.md)はD-124承認済みでフェーズ13完了。以下の各実装節にある次工程・分担はその時点の記録。
 
 2026-09-14。全体方針D-115は利用者承認済み。**13.1具体契約はD-116承認済み**。実装・操作確認後の見直しを認める。13.2数学API・D-117は承認済み。13.3・D-118は承認済み。13.4の0D・1D・3D画面はD-119承認済み。13.5の多項式1〜3DはD-120承認済み。13.6の共有は完了・D-122承認済み。
 
@@ -230,7 +230,7 @@ D-118は承認済み。次の13.4（0D・1D・3D）は3D操作・座標の意味
 - `diagonalizationSharing.ts`のcreateDiagonalizationShareStateは確定slotのみを保存。Aの変更直後の内部order=nullは解析に基づく基準順へ確定し、構成不能ならnull。restoreDiagonalizationWorkspaceは構造を再検証した後、対象Labだけで基底とorderの有無を照合し、不整合はエラーとする。createDiagonalizationInitializationが警告付き初期例へ戻す。
 - `DiagonalizationLab.tsx`は起動時の初期Workspaceを固定し、既存Resetを共用。共有ダイアログは共通部品を使用し、生成時snapshotとReset基準を混同しない。不正下書き・ドラッグ／preview中は生成不可。非表示、場面切替、Resetでダイアログを閉じる。
 - v1の再現規則は本書3節と6節を維持。固定fixtureは多項式3Dのdiag(0,1,2)、入力(1,2,3)、order=[2,0,1]、異なる左右カメラ。Pの行は(0,1,0),(0,0,1),(1,0,0)、D=diag(2,0,1)、c=(3,1,2)、Dc=(6,0,2)、像=(0,2,6)を独立した期待値とする。
-- 正本は`tests/sharing/diagonalizationSharing.test.ts`、`tests/ui/diagonalizationSharing.test.ts`、`tests/fixtures/share-url-diagonalization-v1.json`。数学API・描画・新規依存は変更なし。13.7の教材資料・静的アクセシビリティ点検はD-123承認済み。13.8棚卸しはD-124確認待ち。
+- 正本は`tests/sharing/diagonalizationSharing.test.ts`、`tests/ui/diagonalizationSharing.test.ts`、`tests/fixtures/share-url-diagonalization-v1.json`。数学API・描画・新規依存は変更なし。13.7の教材資料・静的アクセシビリティ点検はD-123承認済み。13.8棚卸しはD-124承認済み。
 
 ## 14. 13.7教材資料・操作導線の点検（D-123承認済み）
 

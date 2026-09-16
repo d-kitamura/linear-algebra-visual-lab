@@ -6,9 +6,9 @@ const plan = read('docs/DIAGONALIZATION_LAB_DESIGN.md');
 const roadmap = read('ROADMAP.md');
 
 describe('フェーズ13の実装・承認状況と利用者指定の範囲', () => {
-  it('13.7までの承認と13.8棚卸しの確認待ちを区別する', () => {
+  it('13.8までの承認とフェーズ13完了を記録する', () => {
     expect(roadmap).toContain('完了（12.1〜12.9・利用者確認・統合棚卸し済み、D-114）');
-    const phase13 = roadmap.split('## 14. フェーズ13')[1].split('## 15. 文書更新')[0];
+    const phase13 = roadmap.split('## 14. フェーズ13')[1].split('## 15. フェーズ14')[0];
     expect(phase13).toContain('詳細設計D-115は利用者承認済み');
     const contract = phase13.split('### 13.1 ')[1].split('### 13.2 ')[0];
     expect(contract).toContain('利用者確認済み（D-116）');
@@ -39,9 +39,9 @@ describe('フェーズ13の実装・承認状況と利用者指定の範囲', ()
     expect(teaching.match(/- \[x\]/g)).toHaveLength(3);
     expect(teaching).toContain('- [x] **確認ゲート:**');
     const inventory = phase13.split('### 13.8 ')[1];
-    expect(inventory).toContain('利用者確認待ち（D-124）');
-    expect(inventory.match(/- \[x\]/g)).toHaveLength(2);
-    expect(inventory).toContain('- [ ] **確認ゲート:**');
+    expect(inventory).toContain('利用者確認済み（D-124）');
+    expect(inventory.match(/- \[x\]/g)).toHaveLength(3);
+    expect(inventory).toContain('- [x] **確認ゲート:**');
     for (let unit = 1; unit <= 8; unit++) expect(phase13).toContain(`### 13.${unit} `);
     expect(phase13.match(/\*\*確認ゲート:\*\*/g)).toHaveLength(8);
     expect(read('docs/DECISIONS.md')).toContain('### D-115');
