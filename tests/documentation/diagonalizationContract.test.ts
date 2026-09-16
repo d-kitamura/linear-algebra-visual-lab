@@ -35,14 +35,14 @@ describe('13.1 対角化の具体契約', () => {
     expect(apply(swapped, apply(ds, [4, 2]))).toEqual(apply(a, [3, 2]));
   });
 
-  it('共有の予定JSONは列順を持ち、導出したP・Dを含めない', () => {
+  it('共有の採用JSONは列順を持ち、導出したP・Dを含めない', () => {
     const examples = [...contract.matchAll(/```json\n([^`]+)```/g)].map(match => JSON.parse(match[1]));
     expect(examples).toHaveLength(2);
     expect(examples[0]).toEqual({ v: 1, lab: 'diagonalization', kind: 'coordinate', dim: 2,
       matrix: [[4, 1], [0, 2]], input: [1, 2], order: [0, 1], showEigenspace: false,
       cameras: { reference: null, eigenbasis: null } });
     expect(examples[1]).toEqual({ v: 1, lab: 'diagonalization', dim: 0 });
-    expect(contract).toContain('13.6までは既存デコーダーへ追加しない');
+    expect(contract).toContain('13.6で独立v1として接続済み');
   });
 
   it('数値失敗・描画保留・不可を分け、初期基準の検証を13.2へ残す', () => {

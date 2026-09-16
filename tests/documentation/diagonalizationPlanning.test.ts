@@ -6,7 +6,7 @@ const plan = read('docs/DIAGONALIZATION_LAB_DESIGN.md');
 const roadmap = read('ROADMAP.md');
 
 describe('フェーズ13の実装・承認状況と利用者指定の範囲', () => {
-  it('13.4までの承認と13.5の確認待ち・13.6以降の未着手を区別する', () => {
+  it('13.5までの承認と13.6の確認待ち・13.7以降の未着手を区別する', () => {
     expect(roadmap).toContain('完了（12.1〜12.9・利用者確認・統合棚卸し済み、D-114）');
     const phase13 = roadmap.split('## 14. フェーズ13')[1].split('## 15. 文書更新')[0];
     expect(phase13).toContain('詳細設計D-115は利用者承認済み');
@@ -27,10 +27,14 @@ describe('フェーズ13の実装・承認状況と利用者指定の範囲', ()
     expect(dimensions.match(/- \[x\]/g)).toHaveLength(3);
     expect(dimensions).toContain('- [x] **確認ゲート:**');
     const polynomial = phase13.split('### 13.5 ')[1].split('### 13.6 ')[0];
-    expect(polynomial).toContain('利用者確認待ち（D-120）');
-    expect(polynomial.match(/- \[x\]/g)).toHaveLength(2);
-    expect(polynomial).toContain('- [ ] **確認ゲート:**');
-    expect(phase13.split('### 13.6 ')[1]).not.toContain('- [x]');
+    expect(polynomial).toContain('利用者確認済み（D-120）');
+    expect(polynomial.match(/- \[x\]/g)).toHaveLength(3);
+    expect(polynomial).toContain('- [x] **確認ゲート:**');
+    const sharing = phase13.split('### 13.6 ')[1].split('### 13.7 ')[0];
+    expect(sharing).toContain('利用者確認待ち（D-122）');
+    expect(sharing.match(/- \[x\]/g)).toHaveLength(3);
+    expect(sharing).toContain('- [ ] **確認ゲート:**');
+    expect(phase13.split('### 13.7 ')[1]).not.toContain('- [x]');
     for (let unit = 1; unit <= 8; unit++) expect(phase13).toContain(`### 13.${unit} `);
     expect(phase13.match(/\*\*確認ゲート:\*\*/g)).toHaveLength(8);
     expect(read('docs/DECISIONS.md')).toContain('### D-115');

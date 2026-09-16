@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoxLCJsYWIiOiJkaWFnb25hbGl6YXRpb24iLCJraW5kIjoicG9seW5vbWlhbCIsImRpbSI6MywibWF0cml4IjpbWzAsMCwwXSxbMCwxLDBdLFswLDAsMl1dLCJpbnB1dCI6WzEsMiwzXSwib3JkZXIiOlsyLDAsMV0sInNob3dFaWdlbnNwYWNlIjp0cnVlLCJjYW1lcmFzIjp7InJlZmVyZW5jZSI6eyJkaXJlY3Rpb24iOlswLC0xLDBdLCJ0YXJnZXQiOlsxLC0yLDBdLCJ1cCI6WzAsMCwxXSwiem9vbSI6MS41fSwiZWlnZW5iYXNpcyI6eyJkaXJlY3Rpb24iOlsxLDAsMF0sInRhcmdldCI6WzAsMSwyXSwidXAiOlswLDAsMV0sInpvb20iOjJ9fX0",
+  "expectedState": {
+    "v": 1,
+    "lab": "diagonalization",
+    "kind": "polynomial",
+    "dim": 3,
+    "matrix": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        2
+      ]
+    ],
+    "input": [
+      1,
+      2,
+      3
+    ],
+    "order": [
+      2,
+      0,
+      1
+    ],
+    "showEigenspace": true,
+    "cameras": {
+      "reference": {
+        "direction": [
+          0,
+          -1,
+          0
+        ],
+        "target": [
+          1,
+          -2,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ],
+        "zoom": 1.5
+      },
+      "eigenbasis": {
+        "direction": [
+          1,
+          0,
+          0
+        ],
+        "target": [
+          0,
+          1,
+          2
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ],
+        "zoom": 2
+      }
+    }
+  }
+}

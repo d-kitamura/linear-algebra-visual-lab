@@ -33,8 +33,8 @@ describe('13.3 対角化Labの2D接続', () => {
     expect(html).toContain('c₁'); expect(html).toContain('c₂');
     expect(html).not.toContain('Domain'); expect(html).not.toContain('Codomain');
     expect(html).not.toContain('≈');
-    expect(html).toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
-    expect(html).toContain('13.6で対応予定');
+    expect(html).not.toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
+    expect(html).not.toContain('13.6で対応予定');
   });
   it('既定で固有空間を隠し、オンで2直線を別々に描画する', () => {
     expect(render()).not.toContain('class="span-line"');

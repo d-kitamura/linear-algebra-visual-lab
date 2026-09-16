@@ -6,6 +6,7 @@ export const SHARE_STATE_VERSION = 4 as const;
 export const BASIS_DIMENSION_SHARE_STATE_VERSION = 2 as const;
 export const LINEAR_MAP_SHARE_STATE_VERSION = 2 as const;
 export const EIGENSPACE_SHARE_STATE_VERSION = 1 as const;
+export const DIAGONALIZATION_SHARE_STATE_VERSION = 1 as const;
 export const MAX_SHARE_VECTORS = 8;
 export const MAX_SHARE_VECTOR_ID_LENGTH = 32;
 export const MAX_SHARE_VECTOR_NAME_LENGTH = 40;
@@ -151,7 +152,14 @@ export type EigenspaceShareState =
   | { readonly v: 1; readonly lab: 'eigenspace'; readonly kind: BasisRepresentation; readonly dim: 1 | 2 | 3;
       readonly matrix: readonly (readonly number[])[]; readonly input: readonly number[];
       readonly showEigenspace: boolean; readonly camera: SharedCameraState | null };
-export type SharedState = ShareState | BasisDimensionShareState | LinearMapShareState | RepresentationMatrixShareState | EigenspaceShareState;
+/** 基底は再計算する。orderは正規化済み基準列への絶対的な置換、構成不能ならnull。 */
+export type DiagonalizationShareState =
+  | { readonly v: 1; readonly lab: 'diagonalization'; readonly dim: 0 }
+  | { readonly v: 1; readonly lab: 'diagonalization'; readonly kind: BasisRepresentation; readonly dim: 1 | 2 | 3;
+      readonly matrix: readonly (readonly number[])[]; readonly input: readonly number[];
+      readonly order: readonly number[] | null; readonly showEigenspace: boolean;
+      readonly cameras: { readonly reference: SharedCameraState | null; readonly eigenbasis: SharedCameraState | null } };
+export type SharedState = ShareState | BasisDimensionShareState | LinearMapShareState | RepresentationMatrixShareState | EigenspaceShareState | DiagonalizationShareState;
 
 export type ShareStateErrorCode =
   | 'EMPTY_ENCODED_STATE'
@@ -257,6 +265,7 @@ export function validateShareState(input: unknown): ShareState {
 }
 
 export function validateSharedState(input: unknown): SharedState {
+  if (requireRecord(input, '$').lab === 'diagonalization') return validateDiagonalizationShareState(input);
   if (requireRecord(input, '$').lab === 'eigenspace') return validateEigenspaceShareState(input);
   if (requireRecord(input, '$').lab === 'representation-matrix') return validateRepresentationMatrixShareState(input);
   const state = expandFixedState(requireRecord(input, '$'));
@@ -267,6 +276,31 @@ export function validateSharedState(input: unknown): SharedState {
     return validateLinearMapShareState(state);
   }
   return validateShareState(state);
+}
+
+/** この層では構造だけを検証。基底の有無との照合は対象Labの復元時に行う。 */
+export function validateDiagonalizationShareState(input: unknown): DiagonalizationShareState {
+  const s = requireRecord(input, '$');
+  if (s.v !== DIAGONALIZATION_SHARE_STATE_VERSION) throw new InvalidShareStateError('UNSUPPORTED_VERSION', '対角化Labの共有状態バージョンに対応していません。', '$.v');
+  if (s.lab !== 'diagonalization') throw invalidState('共有状態のLabが正しくありません。', '$.lab');
+  const dim = requireSpaceDimension(s.dim, '$.dim');
+  if (dim === 0) {
+    requireExactKeys(s, ['v', 'lab', 'dim'], '$');
+    return { v: 1, lab: 'diagonalization', dim: 0 };
+  }
+  requireExactKeys(s, ['v', 'lab', 'kind', 'dim', 'matrix', 'input', 'order', 'showEigenspace', 'cameras'], '$');
+  if (s.kind !== 'coordinate' && s.kind !== 'polynomial') throw invalidState('空間の種類が正しくありません。', '$.kind');
+  if (typeof s.showEigenspace !== 'boolean') throw invalidState('固有空間の表示設定が正しくありません。', '$.showEigenspace');
+  const order = s.order;
+  if (order !== null && (!Array.isArray(order) || order.length !== dim || new Set(order).size !== dim ||
+    !order.every((i) => Number.isInteger(i) && i >= 0 && i < dim))) throw invalidState('基底の列順は次元数と同じ長さの置換、またはnullである必要があります。', '$.order');
+  const cameras = requireRecord(s.cameras, '$.cameras');
+  requireExactKeys(cameras, ['reference', 'eigenbasis'], '$.cameras');
+  return { v: 1, lab: 'diagonalization', kind: s.kind, dim,
+    matrix: requireShareMatrix(s.matrix, dim, dim, '$.matrix'), input: requireCoordinates(s.input, dim, '$.input'),
+    order: order === null ? null : order.map(normalizeNegativeZero), showEigenspace: s.showEigenspace,
+    cameras: { reference: requireDimensionCamera(cameras.reference, dim, '$.cameras.reference'),
+      eigenbasis: requireDimensionCamera(cameras.eigenbasis, dim, '$.cameras.eigenbasis') } };
 }
 
 /** 数学的な保留は共有可能。形状・有限性だけを検証し、根や基底の計算はしない。 */

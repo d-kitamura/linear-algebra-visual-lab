@@ -1,5 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { LabActionControls } from '../../app/LabActionControls';
+import { ShareExportDialog } from '../../app/ShareExportDialog';
+import { buildShareUrl } from '../../sharing';
+import { createDiagonalizationInitialization, createDiagonalizationShareState } from './diagonalizationSharing';
 import { analyzeDiagonalization, analyzeDiagonalizationInput, reorderDiagonalization, type VectorValue } from '../../domain';
 import { createAutoFitViewport, createAutoFitLineViewport, DEFAULT_PLANE_VIEWPORT, DEFAULT_LINE_VIEWPORT, VectorPlane2D, VectorLine1D, ZeroSpace0D, type PlaneViewport, type LineViewport } from '../../visualization';
 import { inputImagePresentation } from '../../visualization/inputImagePresentation';
@@ -8,7 +11,7 @@ import { Vector } from '../representation-matrix/representationMath';
 import { EigenCoordinateName, EigenPolynomialRule } from '../eigenspace/eigenPolynomialMath';
 import { EIGEN_POLYNOMIAL_EXAMPLES, eigenPolynomialRule, type EigenPolynomialExample } from '../eigenspace/eigenPolynomial';
 import { DIAGONALIZATION_TABS, DiagonalizationPanel, type DiagonalizationTab } from './DiagonalizationPanels';
-import { applyDiagonalizationPolynomialExample, canPlotDiagonalization, createDiagonalizationScene, diagonalizationExplanation, diagonalizationPlotVectors,
+import { applyDiagonalizationPolynomialExample, canPlotDiagonalization, diagonalizationExplanation, diagonalizationPlotVectors,
   editDiagonalizationMatrix, resolvedDiagonalizationOrder, setDiagonalizationInput, swapDiagonalizationColumns, type DiagonalizationScene } from './diagonalizationScene';
 import { createDiagonalizationWorkspace, diagonalizationCurrentSlot, selectDiagonalizationKind, selectDiagonalizationDimension, resetDiagonalizationWorkspace, updateDiagonalizationSlot, type DiagonalizationSlot, type DiagonalizationView } from './diagonalizationWorkspace';
 import './diagonalization.css';
@@ -22,7 +25,9 @@ type DragViews = { reference: PlaneViewport; eigenbasis: PlaneViewport; referenc
 const Space = lazy(() => import('./DiagonalizationSpace').then((m) => ({ default: m.DiagonalizationSpace })));
 
 export function DiagonalizationLab({ active = true, initialScene }: { readonly active?: boolean; readonly initialScene?: DiagonalizationScene }) {
-  const [initial] = useState(() => createDiagonalizationWorkspace(initialScene ?? createDiagonalizationScene()));
+  const [initialization] = useState(() => initialScene ? { initialWorkspace: createDiagonalizationWorkspace(initialScene), errorMessage: null }
+    : createDiagonalizationInitialization(typeof window === 'undefined' ? 'http://localhost/' : window.location.href));
+  const initial = initialization.initialWorkspace;
   const [workspace, setWorkspace] = useState(initial);
   const [revision, setRevision] = useState(0);
   const { dimension, kind } = workspace;
@@ -37,13 +42,18 @@ export function DiagonalizationLab({ active = true, initialScene }: { readonly a
       onClick={() => setWorkspace((w) => selectDiagonalizationDimension(w, n))}>{n}D</button>)}
   </div></div>;
   return <DiagonalizationSceneView key={`${kind}-${dimension}-${revision}`} active={active} slot={diagonalizationCurrentSlot(workspace)} onSlot={onSlot}
+    loadError={initialization.errorMessage}
     selectionControls={selectionControls} onReset={() => { setWorkspace((w) => resetDiagonalizationWorkspace(w, initial)); setRevision((r) => r + 1); }} />;
 }
 
-function DiagonalizationSceneView({ active, slot, onSlot, onReset, selectionControls }: { readonly active: boolean;
+function DiagonalizationSceneView({ active, slot, onSlot, onReset, selectionControls, loadError }: { readonly active: boolean;
+  readonly loadError: string | null;
   readonly slot: DiagonalizationSlot; readonly onSlot: (change: (slot: DiagonalizationSlot) => DiagonalizationSlot) => void;
   readonly onReset: () => void; readonly selectionControls: ReactNode }) {
   const { scene, views } = slot;
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [exportError, setExportError] = useState('');
+  useEffect(() => { if (!active) setShareUrl(null); }, [active]);
   const dimension = scene.definition.dimension;
   const polynomial = scene.kind === 'polynomial';
   const [editorRevision, setEditorRevision] = useState(0);
@@ -105,17 +115,25 @@ function DiagonalizationSceneView({ active, slot, onSlot, onReset, selectionCont
   function commitDrag(coordinates: readonly number[] | null = previewRef.current) {
     if (coordinates) setScene((s) => setDiagonalizationInput(s, coordinates)); cancelDrag();
   }
+  function openShare() {
+    if (invalid.size > 0 || dragging || previewRef.current !== null) return;
+    try {
+      setShareUrl(buildShareUrl(window.location.href, createDiagonalizationShareState(slot)));
+      setExportError('');
+    } catch (error) { setExportError(error instanceof Error ? error.message : '共有URLを生成できませんでした。'); }
+  }
   const unavailable = diagonalizationExplanation(analysis);
 
   return <main className="lab-page diagonalization-lab" data-lab-id="diagonalization" aria-hidden={!active}>
     <section className="lab-intro" aria-labelledby="diagonalization-title">
       <div><p className="panel-kicker">Diagonalization / {dimension}D</p><h1 id="diagonalization-title">行列の対角化</h1>
         <p>同じ線形変換を、基準基底と固有ベクトルの基底で見比べます。</p></div>
-      <div><LabActionControls exportDisabled exportDescriptionId="diagonalization-share-help" onExport={() => {}} onReset={reset} />
-        <small id="diagonalization-share-help" className="diagonalization-note">このLabの共有機能は13.6で対応予定です。</small></div>
+      <div><LabActionControls exportDisabled={invalid.size > 0 || dragging} exportDescriptionId={invalid.size > 0 ? 'diagonalization-share-help' : undefined} onExport={openShare} onReset={reset} /></div>
     </section>
+    {loadError && <p role={active ? 'alert' : undefined} className="representation-warning">共有状態を読み込めませんでした。初期例を表示しています。{loadError}</p>}
+    {exportError && <p role={active ? 'alert' : undefined} className="representation-warning">{exportError}</p>}
     {selectionControls}
-    {invalid.size > 0 && <p role={active ? 'status' : undefined} className="representation-warning">入力エラーを修正してください。図と解析は直前の有効値を表示しています。</p>}
+    {invalid.size > 0 && <p id="diagonalization-share-help" role={active ? 'status' : undefined} className="representation-warning">入力エラーを修正してから共有してください。図と解析は直前の有効値を表示しています。</p>}
     <div className="diagonalization-workspace">
       <section className="plot-card diagonalization-plot" aria-labelledby="diagonalization-reference-title">
         <div className="card-heading"><h2 id="diagonalization-reference-title">{polynomial ? '標準単項式基底での係数' : '基準基底での表示'}</h2>
@@ -197,6 +215,10 @@ function DiagonalizationSceneView({ active, slot, onSlot, onReset, selectionCont
         </section>)}
       </div>
     </div>
+    {shareUrl && <ShareExportDialog key={shareUrl} url={shareUrl} labName="対角化Lab"
+      description={dimension === 0 ? '零ベクトルだけの0次元空間と空の基底を復元します。Resetは共有時の状態へ戻ります。'
+        : '現在の種類・次元・行列・入力・固有ベクトル基底の列順・固有空間の表示設定と左右の3D視点を復元します。1D・2Dは全体表示になります。Resetは開いた共有時の状態へ戻ります。'}
+      onClose={() => setShareUrl(null)} />}
   </main>;
 }
 

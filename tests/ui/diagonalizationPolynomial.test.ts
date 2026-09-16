@@ -37,7 +37,7 @@ describe('13.5 多項式の対角化', () => {
     expect(html).toContain('標準単項式基底での係数');
     expect(html).toContain('図は関数グラフではなく係数空間');
     expect(html).toContain(`入力多項式の係数b${n - 1}`);
-    expect(html).toContain('多項式の変換例'); expect(html).toContain('このLabの共有機能は13.6');
+    expect(html).toContain('多項式の変換例'); expect(html).not.toContain('このLabの共有機能は13.6');
     if (n < 3) { expect(html).toContain('b₀'); expect(html).toContain('c₁'); }
   });
   it.each([1, 2, 3] as const)('%iDの微分・xf′・平行移動は1D例外も含め独立した既知の作用を満たす', (n) => {
