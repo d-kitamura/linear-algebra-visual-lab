@@ -69,10 +69,11 @@ describe('14.1 内積・GSの具体契約', () => {
     }
   });
 
-  it('D-125の承認とD-126の確認待ち、実装しない境界を揃える', () => {
-    expect(contract).toContain('D-126確認待ち');
-    expect(contract).toContain('次の14.2は「高」推奨');
-    expect(contract).toContain('数学API・UI・共有デコーダーはまだ実装していない');
+  it('D-126承認とD-127確認待ち、UIに接続しない境界を揃える', () => {
+    expect(contract).toContain('D-125・D-126は利用者承認済み');
+    expect(contract).toContain('D-127確認待ち');
+    expect(contract).toContain('次の14.3は「中」推奨');
+    expect(contract).toContain('UI・共有デコーダーは未実装');
     expect(contract).toContain('basisOfAmbient');
     expect(contract).toContain('skipped-dependent');
     expect(contract).toContain('零ベクトルは任意のベクトルと内積0だが、角度90度とはしない');

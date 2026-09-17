@@ -72,6 +72,12 @@ export type {
 export { analyzeRepresentationMatrix, analyzeBasisChange, analyzeBasisChangeRoundTrip } from './representationMatrix';
 export { analyzeEigenMap, analyzeEigenInput } from './eigen';
 export { analyzeDiagonalization, reorderDiagonalization, analyzeDiagonalizationInput } from './diagonalization';
+export { createInnerProductMetric, analyzeInnerProductPair, analyzeGramSchmidt,
+  toInnerProductCoordinates, fromInnerProductCoordinates } from './innerProduct';
+export { InvalidInnerProductInputError } from './innerProductTypes';
+export type { MetricId, MetricDefinition, OrderedInput, ExactScalar, Value, StageKey, InnerProductMetric,
+  InnerProductIssue, InnerProductDiagnostics, ScalarResult, VectorResult, AngleResult, PairAnalysis,
+  ProjectionStep, AcceptedOrthogonalVector, GramSchmidtStep, GramSchmidtAnalysis } from './innerProductTypes';
 export { InvalidDiagonalizationInputError } from './diagonalizationTypes';
 export type { DiagonalizationAnalysis, DiagonalizationBasis, DiagonalizationCriterion, DiagonalizationCoordinates,
   DiagonalizationInputAnalysis, DiagonalizationIssue } from './diagonalizationTypes';

@@ -1,46 +1,8 @@
-/** 次数3以下の固有値解析専用。入力のbinary64を正確な有理数として保持する。 */
-export interface Rational { readonly n: bigint; readonly d: bigint }
-export class EigenPrecisionLimit extends Error {}
-const abs = (n: bigint) => n < 0n ? -n : n;
-function gcd(a: bigint, b: bigint): bigint {
-  while (b) [a, b] = [b, a % b];
-  return abs(a);
-}
-export function rat(n: bigint, d = 1n): Rational {
-  if (!d) throw new Error('Zero rational denominator');
-  if (!n) return ZERO;
-  const g = gcd(n, d) * (d < 0n ? -1n : 1n);
-  n /= g; d /= g;
-  if (abs(n).toString(2).length + d.toString(2).length > 32768) throw new EigenPrecisionLimit('Rational bit budget');
-  return { n, d };
-}
-export const ZERO: Rational = { n: 0n, d: 1n };
-export const ONE: Rational = { n: 1n, d: 1n };
-export const add = (a: Rational, b: Rational) => rat(a.n * b.d + b.n * a.d, a.d * b.d);
-export const neg = (a: Rational) => ({ n: -a.n, d: a.d });
-export const sub = (a: Rational, b: Rational) => add(a, neg(b));
-export const mul = (a: Rational, b: Rational) => rat(a.n * b.n, a.d * b.d);
-export const div = (a: Rational, b: Rational) => rat(a.n * b.d, a.d * b.n);
-export const compare = (a: Rational, b: Rational) => { const n = a.n * b.d - b.n * a.d; return n < 0n ? -1 : n > 0n ? 1 : 0; };
-export function fromNumber(value: number): Rational {
-  if (!Number.isFinite(value)) throw new Error('Finite number required');
-  if (!value) return ZERO;
-  const view = new DataView(new ArrayBuffer(8));
-  view.setFloat64(0, value);
-  const bits = view.getBigUint64(0);
-  const exponent = Number((bits >> 52n) & 2047n);
-  const fraction = bits & ((1n << 52n) - 1n);
-  const significand = (exponent ? (1n << 52n) | fraction : fraction) * (value < 0 ? -1n : 1n);
-  const shift = exponent ? exponent - 1075 : -1074;
-  return shift >= 0 ? rat(significand << BigInt(shift)) : rat(significand, 1n << BigInt(-shift));
-}
-export function toNumber(a: Rational): number {
-  if (!a.n) return 0;
-  const n = abs(a.n);
-  const sn = Math.max(0, n.toString(2).length - 54), sd = Math.max(0, a.d.toString(2).length - 54);
-  const exponent = sn - sd, first = Math.max(-1022, Math.min(1023, exponent));
-  return (a.n < 0n ? -1 : 1) * (Number(n >> BigInt(sn)) / Number(a.d >> BigInt(sd))) * 2 ** first * 2 ** (exponent - first);
-}
+/** 固有値専用処理。低水準算術は共通化し、従来の窓口・例外同一性を維持する。 */
+import { add, compare, div, mul, neg, ONE, rat, sub, toNumber, ZERO, type Rational } from './exactRational';
+export { add, compare, div, fromNumber, mul, neg, ONE, rat, sub, toNumber, ZERO,
+  RationalPrecisionLimit as EigenPrecisionLimit } from './exactRational';
+export type { Rational } from './exactRational';
 
 /** 多項式は昇べき。零多項式は[]。 */
 export type Polynomial = readonly Rational[];
