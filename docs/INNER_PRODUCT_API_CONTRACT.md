@@ -1,0 +1,200 @@
+# 内積・正規直交基底Lab 教材・数学API・状態契約（14.1）
+
+2026-09-17。全体方針D-125は利用者承認済み。**14.1具体契約はD-126確認待ち**。本文は14.2以降の実装契約であり、数学API・UI・共有デコーダーはまだ実装していない。
+
+[詳細設計](./INNER_PRODUCT_LAB_DESIGN.md)、[工程](../ROADMAP.md)、[判断](./DECISIONS.md)、[表記](../math-writing-rules.txt)を参照。既存6Lab・88授業例・共有形式を変更しない。フェーズ7は延期、ケイリー・ハミルトン・次数落としは対象外。
+
+## 1. 記号と入力の境界
+
+- 周囲の空間Vは数ベクトルのR^n（n=0〜3）、多項式のR[x]_(n−1)（n=1〜3）。生成空間W=span(S)とは区別する。
+- 入力の組は𝒜=(a_i₁,…,a_iₘ)、集合はS={a_i₁,…,a_iₘ}。aの添え字は固定ID、処理位置は別の序数。順序交換でa₁をa₂へ改名しない。出力は採用順の𝒬=(q₁,…,qᵣ)。
+- 正次元では0〜8本。IDは整数1〜8で重複不可、追加時は未使用の最小IDを使い末尾に追加、削除後は再利用可。並べ替えは現在のIDの完全な置換。元入力と出力の対応をsourceIdで保持する。
+- 入力成分は有限binary64、絶対値1e6以下、長さnの列成分配列。−0は0に統一。多項式の配列は標準単項式基底𝓔=(1,x,…,x^(n−1))の昇べき係数であり、多項式そのものと無条件に等置しない。
+- 入力行列Aはこれらを列に持つn×m行列。多項式の成分はb₀,b₁,b₂、選択した2入力はu=a_i、v=a_j（同じIDも可）。射影は「vをuの生成する空間へ」。射影p、残差r=v−p、GSの非零直交出力w_j、その正規化q_jを用いる。
+- 内積は山括弧、ノルムは二重縦棒。このLabでは生成空間はspan(S)とし、山括弧を生成空間の意味に併用しない。数値は小数、通常式は等号、ベクトル文字だけ太字斜体・数字添え字は立体。
+- 不正な次元・形・内積ID・成分・重複IDは入力エラー。数学的な零・従属と、正しい入力に対する計算保留は例外にしない。
+
+## 2. 数学APIの予定境界
+
+14.2の公開窓口はsrc/domain/index.ts、予定ファイルはinnerProductTypes.ts、innerProduct.ts、innerProductNumerics.ts。URL、React、視点、丸め表示、入力下書きは渡さない。型・関数はこの段階では文書だけに置く。
+
+```ts
+type MetricId = 'euclidean' | 'coefficient' | 'integral';
+type MetricDefinition = Readonly<{ dimension: 0 | 1 | 2 | 3; metric: MetricId }>;
+type OrderedInput = Readonly<{ id: number; components: readonly number[] }>;
+type ExactScalar = Readonly<{ numerator: bigint; denominator: bigint }>;
+type Value<T> =
+  | Readonly<{ status: 'ready'; value: T }>
+  | Readonly<{ status: 'unavailable'; reason: 'unrepresentable-result' | 'residual-too-large' }>;
+type StageKey =
+  | Readonly<{ inputId: number; phase: 'input' | 'residual' | 'normalize' | 'skip' | 'hold' }>
+  | Readonly<{ inputId: number; phase: 'projection'; count: number }>;
+
+createInnerProductMetric(definition: MetricDefinition): InnerProductMetric
+analyzeInnerProductPair(metric: InnerProductMetric, u: readonly number[], v: readonly number[]): PairAnalysis
+analyzeGramSchmidt(metric: InnerProductMetric, inputs: readonly OrderedInput[]): GramSchmidtAnalysis
+toInnerProductCoordinates(metric: InnerProductMetric, components: readonly number[]): Value<readonly number[]>
+fromInnerProductCoordinates(metric: InnerProductMetric, coordinates: readonly number[]): Value<readonly number[]>
+```
+
+- metricは不変snapshotとして、定義、正確な有理G、数値C／逆変換と軸名を持つ。euclideanは0〜3、coefficient／integralは1〜3のみ。数ベクトル／多項式の種別との照合は場面側で行う。
+- APIに渡すOrderedInputの配列順が処理順。行列は行配列、各input.componentsと出力vectorは列成分配列。計算結果も入力をコピーした不変snapshotとする。
+- ExactScalarは既約・分母正の内部計算結果。零は0/1。BigIntをUI／共有へ直接渡さず表示アダプターを介する。正確な有理数から入力した1/3や根号を推測復元する機能ではない。
+- PairAnalysisはexactな内積・ノルム二乗・射影係数／成分・残差と、各々独立したValueの数値表示を持つ。内積が数値化できなくてもノルムや射影が安全なら残す。未選択はLab側の状態であり、APIへ偽の零を渡さない。
+- ノルムはValue<number>、角度はready（度数値）／undefined-zero-vector／inconclusiveを区別。方向u=0はprojection.kind='zero-subspace'、p=0,r=v、係数はnull。u≠0はkind='line'、係数は正確な比。零ベクトルは任意のベクトルと内積0だが、角度90度とはしない。
+- PairAnalysis全体はcomplete／partial／numerical-failure。個別に残せる確定値をpartialで返す。演算上限以前に確定できた値のみ残し、未計算を0や空列にしない。
+
+## 3. 固定内積と表示座標
+
+euclidean／coefficientではG=C=E。integralは区間[-1,1]、G_ij=0（i+j奇数）、2/(i+j+1)（偶数）、添え字i,jは0始まり。Gは2/3をbinary64から有理数化せず、整数の比として構成する。
+
+3Dの行配列は次で固定し、1・2Dは左上小行列を使う。
+
+```text
+G = [[2,0,2/3], [0,2/3,0], [2/3,0,2/5]]
+C = [[√2,0,√2/3], [0,√(2/3),0], [0,0,√(8/45)]]
+z = C b,  CᵀC = G
+b₂ = z₃/√(8/45)
+b₁ = z₂/√(2/3)
+b₀ = z₁/√2 − b₂/3
+```
+
+低次元では存在しないb₂等を0とする。多項式の図は「内積を反映した座標」、積分時の軸はξ₁,ξ₂,ξ₃。固定表示基底(1/√2,√(3/2)x,√(5/8)(3x²−1))の座標であり、GSで得た𝒬と混同しない。係数内積では軸b₀,b₁,b₂、数ベクトルは既存のx,y,z。すべての軸と軸名は黒。
+
+往復APIは導出成分の1e6超過を数値エラーにしない。有限性・非零成分消失・往復残差を検査し、入力上限と描画上限はLab側で別途適用する。図から入力へ戻す時だけC逆変換後の元成分の上限を検査し、超過は確定せず理由を表示する。
+
+## 4. 正確なGS過程と結果
+
+元のa_iから各採用w_jへの係数α_ij=⟨a_i,w_j⟩/⟨w_j,w_j⟩、射影成分p_ij=α_ij w_jを正確な有理数で求める。p_iはそれらの和、残差r_i=a_i−p_i。画面で射影を一つずつ表示しても計算式の被射影ベクトルは元のa_iで固定する。
+
+GramSchmidtAnalysisはmetric定義、入力snapshot、steps、accepted、availableStages、status、issues、processedCount、basisOfSpan、basisOfAmbientを持つ。
+
+| 項目 | 契約 |
+|---|---|
+| status=complete | 全入力を処理し、全ての採用列の正規化・検算が成功。空／全零もcomplete |
+| status=inconclusive | 正確な非零は分かったが数値化・正規化・検算を保証できず停止 |
+| status=numerical-failure | 有理数予算・非有限演算・内部整合の失敗で停止 |
+| step.outcome | accepted／skipped-zero-input／skipped-dependent／inconclusive／numerical-failure |
+| stepの情報 | sourceId、処理序数、以前の採用sourceId一覧、正確な各α/p、残差、ノルム二乗、数値Value、成功時のoutputIndexとq |
+| accepted | 確認済みのw（exact）・q（数値）・sourceId・1始まりoutputIndex。保留した列は含めない |
+| processedCount | 完了したaccepted／skippedの入力数。停止中の入力とそれ以降は数えない |
+| basisOfSpan | completeならtrue、それ以外はnull。保留の前までの組を全入力の基底と呼ばない |
+| basisOfAmbient | completeならaccepted.length===n、それ以外はnull。確定しないものをfalseにしない |
+
+- 正確に全成分零ならスキップして続行。非零残差が小さいだけではスキップしない。採用は検算後に確定し、次の計算には正規化した数値qではなくexactなwを使う。
+- 正規化は正のノルムで割るのみ。wが負向きならqも負向き。任意の符号統一をしない。
+- 保留／失敗した入力以降は未処理とする。正確な射影まで分かればその段階は残す。得られなかった後続の段階や完成基底を表示しない。
+- 正次元の空入力はS=空集合、span(S)={0}、空の正規直交基底、周囲の空間の基底ではない。0Dは入力配列[]固定、空基底が周囲の空間の基底でもある。
+
+### 段階キーと順序
+
+各入力はinput→projection(count=1,…,k)→residual→normalize（採用）またはskip（厳密零）。kはそれ以前に採用した本数。projectionは先頭count本の射影成分と累積残差を表示し、対応sourceIdも併記する。k=0ならprojection段階を作らない。
+
+停止時は計算済みの段階まで＋holdを返す（残差不明ならresidualも作らない）。normalizeは採用成功時のみ。空入力／0DのavailableStagesは[]、現在stage=null。末尾から次へは進めず、先頭から前へも進めない。各キーは一意で、URLの意味検証はavailableStagesとの完全一致を使う。
+
+## 5. 数値安全性の初期採用値（D-126）
+
+厳密な零判定にD-009の1e-10や吸着距離を使わない。入力は入力後のbinary64値そのものとして正確に扱う（10進数文字列の数学的な実数を復元するのではない）。
+
+| 境界 | 採用契約 |
+|---|---|
+| 有理数の大きさ | 既約分子の絶対値bit数＋分母bit数≤32768。既存eigenExactと同じ。演算前の積／和の一時整数は65536bit以下を保守的に見積もり、超える演算を始めない |
+| 演算回数 | API呼出しごとに有理数の生成・四則・比較の呼出しを合計20000回まで、GCDの剰余計算は合計200000回まで。時間による打切りは使わず同じ入力の再現性を守る |
+| 直交単位性 | 数値q列についてmax_ij|⟨q_i,q_j⟩−δ_ij|≤1e-12（Gの内積）。正規化後に再確認 |
+| 相対再構成 | 射影と残差、入力の採用基底による再構成は1e-12以下。相殺する小残差もexact値との相対検査を別に通す |
+| 正規化成分 | 数値qを正確な有理数へ戻し、厳密なw/‖w‖の方向・大きさとスケーリングして比較。各非零成分の相対誤差≤1e-12、厳密零の成分は数値も0 |
+| 座標往復 | b→Cb→C⁻¹Cbおよび逆向きの相対誤差≤1e-12。元の非零成分が消失したら失敗 |
+| cosの丸め補正 | 正規化したu,vからcosを求める。範囲[-1,1]のはみ出しが32×Number.EPSILON以下だけclamp。それ以上は角度保留 |
+| 描画 | 図に出す変換後の全成分の絶対値≤1e6、有限かつ必要な非零成分が失われていないこと。満たさなければ図だけ保留 |
+
+相対ベクトル誤差は‖actual−expected‖∞/(‖actual‖∞+‖expected‖∞)。再構成a=p+rは分母‖a‖∞+‖p‖∞+‖r‖∞。基底再構成の分母は元入力ノルム＋各一次結合項ノルムの総和。分母に一律の1を足さず、分母0は分子0の時だけ誤差0とする。underflow/overflowを避けるスケーリングまたはexactな比で比較する。大きな入力に対する相対誤差だけで微小残差の消失を見逃さない。
+
+normSquaredの数値化が0になっても、exact値が非零ならnorm=0とはしない。まずexactベクトルを最大絶対成分sで割り、d=w/sについて√⟨d,d⟩を求め、q=d/√⟨d,d⟩を作る。ノルムはsとの積を指数分離して求める。非零内積などの値がbinary64で表せなければ、そのValueだけunavailable。ノルム二乗の表示不能だけでGSを止めず、qと残差等の必要な経路が検算できる場合は続ける。正規化に必要な非零成分が消えればinconclusiveで止める。
+
+検算のqはbinary64を再度有理数化し、Gとの積をexactに比較できる。sqrtの方向・成分確認は二乗比と符号による確認を用い、丸め値を同じ経路で再計算しただけの自己一致を正しさの根拠にしない。実装時に定数と測定値をdiagnosticsへ残す。
+
+失敗理由はrational-budget、unrepresentable-result、residual-too-large、inconsistent-analysisを区別。数値が取得できない場合に0、Infinity、NaN、古い図を代入しない。演算予算はデバイス時間上限の保証ではないため、14.2で最大8本の負荷を測り、厳しすぎる／遅い場合は基準変更を再提案する。
+
+### 既存の有理数ヘルパーとの境界
+
+src/domain/eigenExact.tsのfromNumber／有理四則は再利用候補だが、固有多項式・根探索・核・固有ベクトル正規化は使わない。14.2では低水準演算をexactRational.tsへ抽出し、既存eigenExactの公開関数・EigenPrecisionLimitを互換ラッパー／再exportで維持する。GSだけ呼出し単位の予算を渡し、既存ソルバーの予算や挙動を変えない。抽出には固有値・対角化の回帰を必須とする。14.1では抽出しない。
+
+## 6. 教材状態と操作
+
+Workspaceはcoordinate:0/1/2/3とpolynomial:1/2/3の7slot。scene、view、起動時snapshotを分離する。
+
+- 正次元scene: kind, dimension, metric, inputs（ID＋成分、配列順）, mode（pair／gram-schmidt）, pair（[uId,vId]またはnull）, stage（StageKeyまたはnull）, showGeometry。
+- 0Dscene: dimension=0, modeのみ。暗黙にkind=coordinate、metric=euclidean、inputs=[]、pair/stage=null。0Dでのpair表示は暗黙のu=v=[]を解析し内積／ノルム0・角度未定義。入力0本の正次元とは異なる。
+- viewは次元対応の数直線／平面／3Dカメラ。タブ、折り畳み、編集中文字列、drag preview、共有ダイアログは一時UI状態。showGeometryは射影・残差・直角印や手順の補助図の一括ON/OFF、元入力は消さない。
+
+| 操作 | 契約 |
+|---|---|
+| 確定成分編集 | 元成分を更新して解析。存在するpairとstageは維持し、stageが消えたら先頭inputへ戻す。理由を操作領域の短い状態通知で示す |
+| 追加・削除・順序変更 | GSは先頭inputへ戻す。空ならstage=null。削除でpairの片方でも無効ならpair=null（別入力へ黙って置換しない）。追加してもpair未選択は維持 |
+| 内積変更 | 元入力・順序・pairを維持。stageは新解析に存在するなら維持、なければ先頭。変換された図を全体表示、3Dは向きを保持して距離／中心をfit |
+| モード変更 | 入力、pair、stage、内積、viewを維持。対応する解析タブへ移る。未選択・空でも勝手に入力を追加しない |
+| 種類・次元変更 | 別slotを復元。0Dから多項式は最後の多項式次元（初回2D）。一時状態を破棄 |
+| Reset | 現在slotのsceneとviewを起動時snapshotへ。モードも含む。他slotと起動時snapshotは変えず、共有／下書き／previewを破棄、対応タブへ |
+| 図のdrag | 元入力だけ編集。原点吸着優先、方向吸着なし（2D幅2%・3D幅3%）。previewの数学と図を同一snapshotから更新。取消しは確定状態へ |
+
+原点吸着はC変換後の図の座標で適用し、吸着成立時は元成分を厳密な零へ設定する。3Dは既存の画面平行面内dragと背景回転。1Dも原点吸着のみ、共通数直線の表示幅2%を採用する。q/p/rは直接編集不可。
+
+入力・順序・内積変更時だけGS解析を更新する。pairの選択変更はpair解析のみ、段階／タブ／カメラ変更では数学APIを再実行しない。showGeometryがオフでも数学値は同じ。ドラッグ中のstageが一時的に消えればpreview内で先頭に退避し、取消しで元stageを戻す。確定時に正式に検証する。
+
+## 7. 共有v1と意味検証（接続は14.7）
+
+正次元の例（全項目必須、未知項目は拒否）:
+
+```json
+{"v":1,"lab":"inner-product","kind":"coordinate","dim":2,"metric":"euclidean","inputs":[{"id":1,"components":[1,1]},{"id":2,"components":[1,0]}],"mode":"gram-schmidt","pair":[1,2],"stage":{"inputId":2,"phase":"projection","count":1},"showGeometry":true,"camera":null}
+```
+
+0Dはモードだけを追加した最小4項目で、kind、metric等は含めない:
+
+```json
+{"v":1,"lab":"inner-product","dim":0,"mode":"pair"}
+```
+
+- cameraは3Dで既存SharedCameraState必須、1/2Dはnull。初期3Dも既定値を保存。手動1/2D表示範囲は保存せず全体表示する。showGeometryはboolean。
+- pairはnullまたは現存ID2個（重複可）。部分選択は一時UIだけ。stageは非空入力で必須のStageKey、空入力でnull。pairモードでもstageを保存し、戻った時の手順を再現する。
+- 共有層は構造・数・列長・ID・内積とkindの組・phaseごとの項目・count整数1〜3・cameraを検証。そこでソルバーを呼ばない。
+- 対象Labの復元時に一度GSを解析し、stageがavailableStagesに存在するか照合する。存在しない／必要な処理が保留で再現できない段階なら、理由付きで復元失敗とする。別の段階へ黙って修正しない。保留入力のinput／holdなど再現可能な段階は共有可能。
+- 局所編集時の段階退避と、外部URL復元時の厳密な照合は意図して異なる。再現失敗時は既存の不正共有警告経路を使い、半端な入力を起動時snapshotへ適用しない。
+- p/r/q/G/C、解析・数値予算、他slot、タブ／折り畳み、下書き／previewは保存しない。入力ID・配列順・内積・数値基準・段階列挙はv1の再現条件。変更時はリリース前でも版変更の要否を記録する。
+- 現在のorigin/path、完全URL2048文字、共通QR／PNG／テキストを維持。長い8本の成分を丸めて押し込まず理由を表示。不正／未確定下書き・drag中の共有は停止。共有が成功してもReset基準を変更しない。
+- 復元されたslotだけ共有時snapshotを基準とし、他slotは既定値。共有時3DカメラをResetで復元し、1/2Dは共有入力の全体表示に戻す。
+
+## 8. 初期値と独立期待値
+
+全slotはpairモード、showGeometry=true、初期解析タブは内積・射影、全体表示／既定3Dカメラ。入力IDは1から、順序はそのまま、stageは先頭input（空ならnull）。正次元で2本以上のpairは[1,2]、1本は[1,1]。
+
+| 場面 | 元入力の列成分／多項式 | 内積・GSの独立期待値 |
+|---|---|---|
+| 数0D | [] | 暗黙u=v=[]、内積0・ノルム0・角度なし、空基底がVの基底 |
+| 数1D | [1],[2] | 内積2、角0度、p=[2],r=[0]。q₁=[1]、2本目は従属 |
+| 数2D（起動時） | [1,1],[1,0] | 内積1、45度、p=[1/2,1/2],r=[1/2,−1/2]、q=( [1,1]/√2, [1,−1]/√2 ) |
+| 数3D | [1,1,0],[1,0,1],[0,1,1] | pair内積1・60度、p=[1/2,1/2,0],r=[1/2,−1/2,1]。w=( [1,1,0], [1/2,−1/2,1], [−2/3,2/3,2/3] ) |
+| 多項式1D | (1)、integral | pairは同じ1、内積2・ノルム√2・角0度、q₁=1/√2 |
+| 多項式2D | (1,x)、integral | 内積0・90度、射影0・残差x、q=(1/√2,√(3/2)x) |
+| 多項式3D | (1,x,x²)、integral | w=(1,x,x²−1/3)、最後のノルム二乗8/45。qは固定表示基底と一致 |
+
+14.2で追加する境界例:
+
+- (e₁,2e₁,e₂): 2番をskipして3番を採用、sourceIdは1,3、出力番号は1,2。
+- R³内の(e₁,e₂): Wの基底だがVの基底でない。空／全零もWの空基底。
+- 1Dの(−2,3): 最初のqは−1。零の先行入力は除算せずスキップ。
+- u=0,v≠0／u≠0,v=0: どちらも角度未定義、前者p=0,r=v、後者p=r=0。
+- 積分u=1,v=x²: 内積2/3、p=1/3、r=x²−1/3。係数内積では内積・射影0。
+- (e₁,[1,1e-200]): 正確な非零残差を採用しq₂=e₂。normSquaredのbinary64化が0でも従属としない。
+- 1Dでu=v=Number.MIN_VALUE: 内積の数値はunavailable、ノルムはMIN_VALUE、角度0、p=v,r=0、q=1が得られる。値の一部の表示不能で全体を偽の零にしない。
+- [Number.MIN_VALUE,1e6]: 正規化の非零成分が表せない場合は保留、黙ってe₂にしない。
+- 積分3D入力[1e6,0,1e6]: 変換後ξ₁>1e6なので図のみ保留、元入力は合法。内積・成分と共有は利用可能。
+- 予算の境界、逆変換相殺、近従属、内積変更／ID再利用／段階無効化／保留段階URL／0Dの両モードを回帰する。予算境界は内部テスト用budget注入で再現し、URLに予算設定は持たせない。
+
+## 9. 作業境界と確認
+
+14.1は契約、表記規則、文書の現在地、独立例の検算テストまで。14.2で低水準算術の抽出・数学API・境界検証、14.3以降で画面、14.7で共有を接続する。手計算例の文書テスト合格を、新ソルバーの精度や実機性能の検証済みとはしない。
+
+D-126では結果／保留の型、演算予算・精度基準、段階と編集・復元の相違、0Dモードを含む共有、7場面の初期値を確認する。数値基準は14.2で検証し変更が必要なら根拠付き再提案。**次の14.2は「高」推奨**。有理数演算の再利用と極小値の正規化・保留を実装し、既存固有値／対角化への回帰を確認するため。
+
+14.1検証記録: 文書関連14ファイル66テスト成功。独立した射影・直交化の期待値、C逆変換、underflow例、予定共有JSONと文書の現在地を検算した。全体111ファイル1079テストも成功。実機確認・ビルドは未実施であり、まだ存在しない新APIの計算精度・性能を検証済みとはしない。

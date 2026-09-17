@@ -4,13 +4,17 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const design = read('docs/INNER_PRODUCT_LAB_DESIGN.md');
 const roadmap = read('ROADMAP.md');
-describe('フェーズ14詳細設計（D-125提案・実装前）', () => {
-  it('承認済みフェーズ13と、未着手の14.1〜14.9を区別する', () => {
+describe('フェーズ14詳細設計（D-125承認・14.1契約策定）', () => {
+  it('14.1の確認待ちと未着手の14.2〜14.9を区別する', () => {
     const phase = roadmap.split('## 15. フェーズ14')[1].split('## 16. 文書更新')[0];
-    expect(phase).toContain('D-125提案・利用者確認待ち');
+    expect(phase).toContain('D-125承認済み');
+    expect(phase).toContain('D-126確認待ち');
     for (let i = 1; i <= 9; i++) expect(phase).toContain(`### 14.${i} `);
     expect(phase.match(/\*\*確認ゲート:\*\*/g)).toHaveLength(9);
-    expect(phase).not.toContain('- [x]');
+    const contractUnit = phase.split('### 14.1 ')[1].split('### 14.2 ')[0];
+    expect(contractUnit.match(/- \[x\]/g)).toHaveLength(3);
+    expect(contractUnit).toContain('- [ ] **確認ゲート:** D-126');
+    expect(phase.split('### 14.2 ')[1]).not.toContain('- [x]');
     expect(design).toContain('フェーズ13は完了');
     expect(design).toContain('実装は未着手');
     expect(read('docs/DECISIONS.md')).toContain('### D-125');
@@ -22,7 +26,7 @@ describe('フェーズ14詳細設計（D-125提案・実装前）', () => {
       '周囲の空間Vの正規直交基底と言えるのはr=nの場合だけ',
       '零ベクトルとの角度を90度とは表示しない', '小さい非零',
       '正規化前の直交化を有理数', '原点への吸着のみ',
-      '表示段階は教材状態として保存', '2048文字', '既存88例', '14.1は「高」推奨']) {
+      '表示段階は教材状態として保存', '2048文字', '既存88例', '14.2', '「高」推奨']) {
       expect(design).toContain(phrase);
     }
     expect(design).toContain('ケイリー・ハミルトン・次数落としは再導入しない');
