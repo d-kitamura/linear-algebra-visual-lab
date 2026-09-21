@@ -20,6 +20,13 @@ function ColumnValue({ value }: { readonly value: Value<readonly number[]> | nul
 function Product({ left, right }: { readonly left: string; readonly right: string }) {
   return <span className="representation-atom">〈<Vector name={left} />, <Vector name={right} />〉</span>;
 }
+/** 数2Dの標準内積。解析と同じpreviewの成分を使い、負の因子は括弧で囲む。 */
+function ComponentProductSum({ u, v }: { readonly u: readonly number[]; readonly v: readonly number[] }) {
+  const factor = (value: number) => value < 0 ? `(${innerProductNumber(value)})` : innerProductNumber(value);
+  return u.map((value, index) => <span className="representation-atom" key={index}>
+    {index > 0 ? '+ ' : ''}{factor(value)} × {factor(v[index])}
+  </span>);
+}
 function Norm({ name }: { readonly name: string }) { return <span className="representation-atom">‖<Vector name={name} />‖</span>; }
 function Fraction({ top, bottom }: { readonly top: ReactNode; readonly bottom: ReactNode }) {
   return <span className="inner-fraction"><span>{top}</span><span>{bottom}</span></span>;
@@ -29,7 +36,7 @@ export function InnerProductPanel({ tab, result, pair }: { readonly tab: InnerPr
   const projection = result.projection;
   return <>
     <Formula><Vector name="u" /> = <Vector name={`a${pair[0]}`} /><span>、</span><Vector name="v" /> = <Vector name={`a${pair[1]}`} /></Formula>
-    <Formula><Product left="u" right="v" /> = <NumberValue value={result.innerProduct?.numeric ?? null} /></Formula>
+    <Formula><Product left="u" right="v" /> = <ComponentProductSum u={result.u} v={result.v} /> = <NumberValue value={result.innerProduct?.numeric ?? null} /></Formula>
     <Formula><Norm name="u" /> = <NumberValue value={result.uNorm} /><span>、</span><Norm name="v" /> = <NumberValue value={result.vNorm} /></Formula>
     <Formula><Scalar>θ</Scalar> = {result.angle?.status === 'ready' ? <span>{innerProductNumber(result.angle.degrees)}°</span>
       : <span className="inner-unavailable">{result.angle?.status === 'undefined-zero-vector' ? '定義されません（零ベクトルを含む）' : '計算を保留'}</span>}</Formula>

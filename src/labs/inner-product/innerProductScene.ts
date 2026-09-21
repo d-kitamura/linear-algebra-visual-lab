@@ -12,7 +12,7 @@ export const INNER_PRODUCT_2D_METRIC = createInnerProductMetric({ dimension: 2, 
 export const INNER_PRODUCT_COLORS = ['#ce5135', '#00877e'] as const;
 export const PROJECTION_COLOR = '#2f6690', RESIDUAL_COLOR = '#8170bc';
 export function createInnerProductScene(): InnerProductScene {
-  return { inputs: [{ id: 1, components: [1, 1] }, { id: 2, components: [1, 0] }], pair: [1, 2], showGeometry: true };
+  return { inputs: [{ id: 1, components: [2, 2] }, { id: 2, components: [3, 0] }], pair: [1, 2], showGeometry: true };
 }
 export function editInnerProductInput(scene: InnerProductScene, id: number, coordinates: readonly number[]): InnerProductScene {
   if (!scene.inputs.some(input => input.id === id) || coordinates.length !== 2
