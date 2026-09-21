@@ -58,6 +58,10 @@ interface VectorSpace3DProps {
   readonly snapEditableVectorsToSpan?: boolean;
   /** 配列では同じフレームの複数の導出ベクトルをまとめて更新する。既存の単体指定も維持。 */
   readonly vectorCoordinatePreview?: VectorCoordinatePreview | readonly VectorCoordinatePreview[] | null;
+  /** 数学結果から作る読み取り専用の補助線。ドラッグ中もruntimeを作り直さない。 */
+  readonly auxiliarySegments?: readonly SpaceAuxiliarySegment[];
+  readonly visibleVectorCount?: number;
+  readonly vectorDragDescription?: string;
   readonly linearCombinationVisible: boolean;
   readonly linearCombinationTarget: readonly [number, number, number] | null;
   readonly linearCombinationCoefficients: readonly number[] | null;
@@ -102,7 +106,11 @@ export interface VectorCoordinatePreview {
   readonly vectorId: string;
   /** 導出値の数値計算を保留した場合はnullで元の像も一時非表示にする。 */
   readonly coordinates: readonly [number, number, number] | null;
+  readonly color?: string;
+  readonly outlined?: boolean;
+  readonly labelCenter?: readonly [number, number];
 }
+export interface SpaceAuxiliarySegment { readonly start: readonly [number, number, number]; readonly end: readonly [number, number, number]; readonly dashed?: boolean }
 
 interface ThreeSpaceRuntime {
   readonly applyPreset: (preset: CameraPreset) => void;
@@ -110,6 +118,7 @@ interface ThreeSpaceRuntime {
   readonly fit: () => void;
   readonly resize: () => void;
   readonly setVectorCoordinatePreview: (preview: VectorCoordinatePreview | readonly VectorCoordinatePreview[] | null) => void;
+  readonly setAuxiliarySegments: (segments: readonly SpaceAuxiliarySegment[]) => void;
   readonly dispose: () => void;
 }
 
@@ -162,6 +171,7 @@ const TARGET_COLOR = '#245b8d';
 const COMBINATION_HELPER_COLOR = '#596b78';
 const DEFAULT_AXIS_LABELS = ['x', 'y', 'z'] as const;
 const EMPTY_VECTOR_IDS: readonly string[] = [];
+const EMPTY_AUXILIARY_SEGMENTS: readonly SpaceAuxiliarySegment[] = [];
 const TARGET_TAP_MOVEMENT_THRESHOLD = 8;
 const VECTOR_LABEL_CENTERS = [
   [-0.42, 1.42],
@@ -189,6 +199,9 @@ export function VectorSpace3D({
   alwaysOpaqueVectorIds = EMPTY_VECTOR_IDS,
   snapEditableVectorsToSpan = false,
   vectorCoordinatePreview = null,
+  auxiliarySegments = EMPTY_AUXILIARY_SEGMENTS,
+  visibleVectorCount,
+  vectorDragDescription,
   linearCombinationVisible,
   linearCombinationTarget,
   linearCombinationCoefficients,
@@ -215,6 +228,8 @@ export function VectorSpace3D({
   const runtimeRef = useRef<ThreeSpaceRuntime | null>(null);
   const cameraRef = useRef(camera);
   const vectorCoordinatePreviewRef = useRef(vectorCoordinatePreview);
+  const auxiliarySegmentsRef = useRef(auxiliarySegments);
+  auxiliarySegmentsRef.current = auxiliarySegments;
   const onCameraChangeRef = useRef(onCameraChange);
   const onVectorCoordinatesCommitRef = useRef(onVectorCoordinatesCommit);
   const onVectorCoordinatesPreviewRef = useRef(onVectorCoordinatesPreview);
@@ -291,10 +306,12 @@ export function VectorSpace3D({
         },
         (id, coordinates, distance) => onVectorCoordinatesSnapRef.current?.(id, coordinates, distance),
         spanGroups,
+        vectorDragDescription,
       );
       runtimeRef.current = runtime;
       // 形状・表示設定で再構築した場合も、保留中の像を一瞬の既定値へ戻さない。
       runtime.setVectorCoordinatePreview(vectorCoordinatePreviewRef.current);
+      runtime.setAuxiliarySegments(auxiliarySegmentsRef.current);
 
       return () => {
         disposed = true;
@@ -324,6 +341,7 @@ export function VectorSpace3D({
     spanRank,
     spanVectors,
     vectors,
+    vectorDragDescription,
   ]);
 
   useEffect(() => {
@@ -342,6 +360,7 @@ export function VectorSpace3D({
   useEffect(() => {
     runtimeRef.current?.setVectorCoordinatePreview(vectorCoordinatePreview);
   }, [vectorCoordinatePreview]);
+  useEffect(() => { runtimeRef.current?.setAuxiliarySegments(auxiliarySegments); }, [auxiliarySegments]);
 
   return (
     <section className="three-dimensional-plot-card" aria-labelledby={showHeading ? `${idPrefix}-title` : undefined} aria-label={showHeading ? undefined : spaceTitle}>
@@ -390,7 +409,7 @@ export function VectorSpace3D({
         className={`three-dimensional-render-frame ${errorMessage ? 'has-error' : ''}`}
         role="group"
         aria-describedby={`${idPrefix}-canvas-alternative`}
-        aria-label={`右手座標系の${spaceTitle}。${axisLabels.join('軸、')}軸と${vectors.length}本のベクトルを表示しています。${showSpan ? `${spanGroups ? spanGroups.map((group) => `${group.label}：${describeSpaceSpan(group.rank)}`).join('。') : `${spanLabel ?? '選択したベクトルが生成する空間'}：${describeSpaceSpan(spanRank)}`}を個別の半透明の幾何形状で表示しています。` : '部分空間の幾何表示はオフです。'}${linearCombinationVisible ? linearCombinationTarget ? 'ターゲットvと一次結合の幾何表示があります。' : '一次結合モードでターゲットは未配置です。' : ''}`}
+        aria-label={`右手座標系の${spaceTitle}。${axisLabels.join('軸、')}軸と${visibleVectorCount ?? vectors.length}本のベクトルを表示しています。${showSpan ? `${spanGroups ? spanGroups.map((group) => `${group.label}：${describeSpaceSpan(group.rank)}`).join('。') : `${spanLabel ?? '選択したベクトルが生成する空間'}：${describeSpaceSpan(spanRank)}`}を個別の半透明の幾何形状で表示しています。` : '部分空間の幾何表示はオフです。'}${linearCombinationVisible ? linearCombinationTarget ? 'ターゲットvと一次結合の幾何表示があります。' : '一次結合モードでターゲットは未配置です。' : ''}`}
       >
         <div className="three-dimensional-render-host" ref={hostRef} />
         {interactionMessage ? (
@@ -456,6 +475,7 @@ function createThreeSpaceRuntime(
   onError: (message: string) => void,
   snapVectorCoordinates?: (vectorId: string, coordinates: readonly [number, number, number], maximumDistance: number) => ReturnType<typeof snapDraggedSpaceVectorToDependentPosition> | ReturnType<typeof snapSpaceTargetToSelectedSpan> | undefined,
   spanGroups?: readonly SpaceSpanGroup[],
+  vectorDragDescription?: string,
 ): ThreeSpaceRuntime {
   host.replaceChildren();
 
@@ -501,7 +521,7 @@ function createThreeSpaceRuntime(
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute(
     'aria-label',
-    `${spaceTitle}。${editableVectorIds.length > 0 ? `通常ベクトルの矢先をドラッグすると画面に平行な面内で移動し、${snapEditableVectorsToSpan ? `${spanLabel ?? '表示中の部分空間'}へ` : '平行または同一平面上へ'}吸着できます。` : '表示されるベクトルは導出値なので、矢先からは編集できません。'}${linearCombinationVisible ? `背景を短くクリックまたはタップするとターゲットvを配置できます。${linearCombinationTarget ? 'ターゲットvの矢先をドラッグすると一次結合の幾何表示とともに画面平行面内で移動し、選択したベクトルが生成する原点・直線・平面へ吸着できます。' : ''}` : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
+    `${spaceTitle}。${editableVectorIds.length > 0 ? vectorDragDescription ?? `通常ベクトルの矢先をドラッグすると画面に平行な面内で移動し、${snapEditableVectorsToSpan ? `${spanLabel ?? '表示中の部分空間'}へ` : '平行または同一平面上へ'}吸着できます。` : '表示されるベクトルは導出値なので、矢先からは編集できません。'}${linearCombinationVisible ? `背景を短くクリックまたはタップするとターゲットvを配置できます。${linearCombinationTarget ? 'ターゲットvの矢先をドラッグすると一次結合の幾何表示とともに画面平行面内で移動し、選択したベクトルが生成する原点・直線・平面へ吸着できます。' : ''}` : ''}背景のドラッグで視点を回転、ホイールまたはピンチで拡大縮小、右ドラッグまたは2本指ドラッグで表示位置を移動できます。`,
   );
   host.append(renderer.domElement);
 
@@ -546,6 +566,18 @@ function createThreeSpaceRuntime(
   const vectorCoordinatePreviewGroup = new THREE.Group();
   vectorCoordinatePreviewGroup.renderOrder = 9;
   scene.add(vectorCoordinatePreviewGroup);
+  const auxiliaryGroup = new THREE.Group();
+  scene.add(auxiliaryGroup);
+  const setAuxiliarySegments = (segments: readonly SpaceAuxiliarySegment[]) => {
+    clearObjectGroup(auxiliaryGroup);
+    for (const segment of segments) {
+      if (![...segment.start, ...segment.end].every(x => Number.isFinite(x) && Math.abs(x) <= 1e6)) continue;
+      const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...segment.start), new THREE.Vector3(...segment.end)]);
+      const material = segment.dashed ? new THREE.LineDashedMaterial({ color: '#7f8d94', transparent: true, opacity: .7, dashSize: extent.halfRange * .03, gapSize: extent.halfRange * .02 }) : new THREE.LineBasicMaterial({ color: '#56636a', transparent: true, opacity: .8 });
+      const line = new THREE.Line(geometry, material); line.computeLineDistances(); auxiliaryGroup.add(line);
+    }
+    render();
+  };
   const editableVectorIdSet = new Set(editableVectorIds);
   const editableVectors = vectors.filter((vector) => editableVectorIdSet.has(vector.id));
   const targetVectorGroup = new THREE.Group();
@@ -617,15 +649,17 @@ function createThreeSpaceRuntime(
       rendered.tipIndicator.visible = false;
       if (!preview.coordinates) continue;
       const tip = new THREE.Vector3(...preview.coordinates);
-      const color = new THREE.Color(colors[vectorIndex % colors.length] ?? '#2f6690');
-      addPreviewArrow(vectorCoordinatePreviewGroup, tip, color, extent, 1, 8);
-      vectorCoordinatePreviewGroup.add(createVectorLabel(
+      const color = new THREE.Color(preview.color ?? colors[vectorIndex % colors.length] ?? '#2f6690');
+      addPreviewArrow(vectorCoordinatePreviewGroup, tip, color, extent, 1, 8, preview.outlined);
+      const label = createVectorLabel(
         vector.name,
         color.getStyle(),
         tip,
         vectorIndex,
         false,
-      ));
+      );
+      if (preview.labelCenter) label.center.set(...preview.labelCenter);
+      vectorCoordinatePreviewGroup.add(label);
       vectorCoordinatePreviewGroup.add(createVectorTipIndicator(tip, color, extent, false));
     }
     render();
@@ -1239,6 +1273,7 @@ function createThreeSpaceRuntime(
     fit,
     resize,
     setVectorCoordinatePreview,
+    setAuxiliarySegments,
     dispose: () => {
       if (disposed) {
         return;
@@ -1888,6 +1923,7 @@ function addPreviewArrow(
   extent: SpaceExtent,
   opacity: number,
   renderOrder: number,
+  outlined = false,
 ): void {
   const length = tip.length();
   if (length === 0) {
@@ -1909,6 +1945,11 @@ function addPreviewArrow(
     headLength,
     Math.min(length * 0.16, headLength * 0.55),
   );
+  // 読み取り専用の導出値を元入力の塗りつぶし矢先と区別する。
+  if (outlined) {
+    const materials = Array.isArray(arrow.cone.material) ? arrow.cone.material : [arrow.cone.material];
+    materials.forEach(material => { if (material instanceof THREE.MeshBasicMaterial) material.wireframe = true; });
+  }
   applyForegroundAppearance(arrow, opacity, renderOrder);
   group.add(arrow);
 }

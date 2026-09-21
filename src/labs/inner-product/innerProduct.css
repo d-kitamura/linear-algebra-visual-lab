@@ -1,6 +1,10 @@
 /* 単一図と常設入力・1枚の解析パネル。図を固定せず、スクロールで重ならない通常フロー。 */
 .inner-product-workspace { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); align-items: start; gap: 18px; }
 .inner-product-lab .inner-product-plot { position: static; top: auto; min-width: 0; }
+.inner-product-lab .inner-dimensions { margin-bottom: 16px; }
+.inner-dimensions .dimension-tablist { min-width: 0; width: min(100%, 720px); }
+.inner-dimensions button[aria-pressed='true'] { color: var(--ink); border-color: var(--line); background: var(--paper); box-shadow: 0 5px 15px rgba(18, 28, 36, 0.08); }
+.inner-product-plot .three-dimensional-plot-card { padding: 0; border: 0; background: none; box-shadow: none; position: static; }
 .inner-product-plot h2 { margin: 0; font-size: clamp(1rem, 1.8vw, 1.45rem); }
 .inner-product-plot .basis-fit-button { flex: 0 0 auto; white-space: nowrap; }
 .inner-product-sidebar { min-width: 0; display: grid; gap: 16px; }

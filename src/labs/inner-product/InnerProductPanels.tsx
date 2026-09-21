@@ -20,7 +20,7 @@ export function ColumnValue({ value }: { readonly value: Value<readonly number[]
 export function Product({ left, right }: { readonly left: string; readonly right: string }) {
   return <span className="representation-atom">〈<Vector name={left} />, <Vector name={right} />〉</span>;
 }
-/** 数2Dの標準内積。解析と同じpreviewの成分を使い、負の因子は括弧で囲む。 */
+/** 数ベクトルの標準内積。解析と同じpreviewの成分を使い、負の因子は括弧で囲む。 */
 function ComponentProductSum({ u, v }: { readonly u: readonly number[]; readonly v: readonly number[] }) {
   const factor = (value: number) => value < 0 ? `(${innerProductNumber(value)})` : innerProductNumber(value);
   return u.map((value, index) => <span className="representation-atom" key={index}>
@@ -32,6 +32,12 @@ export function Fraction({ top, bottom }: { readonly top: ReactNode; readonly bo
   return <span className="inner-fraction"><span>{top}</span><span>{bottom}</span></span>;
 }
 export function InnerProductPanel({ result, pair }: { readonly result: PairAnalysis | null; readonly pair: readonly [number, number] | null }) {
+  if (result?.definition.dimension === 0) return <>
+    <Formula><Vector name="u" /> = <Vector name="v" /> = <Vector name="0" /></Formula>
+    <Formula><Product left="u" right="v" /> = 0<span>、</span><Norm name="u" /> = <Norm name="v" /> = 0</Formula>
+    <p>成分のない零ベクトルだけの空間です。角度は定義されません。</p>
+    <Formula><Vector name="p" /> = <Vector name="r" /> = <Vector name="0" /></Formula>
+  </>;
   if (!result || !pair) return <p>比較するベクトルを選択してください。未選択の内積を0とは表示しません。</p>;
   const projection = result.projection;
   return <>

@@ -2,23 +2,28 @@ import { analyzeInnerProductPair, createInnerProductMetric, type GramSchmidtAnal
 import { parallelSnapDistanceForViewWidth } from '../../state/vectorSnapping';
 import type { PlaneViewport } from '../../visualization/planeGeometry';
 
-/** 数2Dの教材状態。下書き・タブ・表示範囲はReact側へ分離する。 */
+export type InnerProductDimension = 0 | 1 | 2 | 3;
+/** 数0〜3Dの教材状態。下書き・タブ・表示範囲はReact側へ分離する。 */
 export interface InnerProductScene {
+  readonly dimension: InnerProductDimension;
   readonly inputs: readonly OrderedInput[];
   readonly pair: readonly [number, number] | null;
   readonly mode: 'pair' | 'gram-schmidt';
   readonly stage: StageKey | null;
   readonly showGeometry: boolean;
 }
-export const INNER_PRODUCT_2D_METRIC = createInnerProductMetric({ dimension: 2, metric: 'euclidean' });
+const METRICS = [0, 1, 2, 3].map(dimension => createInnerProductMetric({ dimension: dimension as InnerProductDimension, metric: 'euclidean' }));
+export const innerProductMetric = (dimension: InnerProductDimension) => METRICS[dimension];
+export const INNER_PRODUCT_2D_METRIC = innerProductMetric(2);
 export const INNER_PRODUCT_COLORS = ['#ce5135', '#00877e', '#8170bc', '#aa752a', '#327baa', '#aa5683', '#658238', '#647380'] as const;
 export const innerInputColor = (id: number) => INNER_PRODUCT_COLORS[(id - 1) % INNER_PRODUCT_COLORS.length];
 export const PROJECTION_COLOR = '#2f6690', RESIDUAL_COLOR = '#8170bc';
-export function createInnerProductScene(): InnerProductScene {
-  return { inputs: [{ id: 1, components: [2, 2] }, { id: 2, components: [3, 0] }], pair: [1, 2], mode: 'pair', stage: { inputId: 1, phase: 'input' }, showGeometry: true };
+export function createInnerProductScene(dimension: InnerProductDimension = 2): InnerProductScene {
+  const components = dimension === 0 ? [] : dimension === 1 ? [[1], [2]] : dimension === 2 ? [[2, 2], [3, 0]] : [[1, 1, 0], [1, 0, 1], [0, 1, 1]];
+  return { dimension, inputs: components.map((components, i) => ({ id: i + 1, components })), pair: dimension ? [1, 2] : null, mode: 'pair', stage: dimension ? { inputId: 1, phase: 'input' } : null, showGeometry: true };
 }
 export function editInnerProductInput(scene: InnerProductScene, id: number, coordinates: readonly number[]): InnerProductScene {
-  if (!scene.inputs.some(input => input.id === id) || coordinates.length !== 2
+  if (!scene.inputs.some(input => input.id === id) || coordinates.length !== scene.dimension
     || Array.from(coordinates).some(x => !Number.isFinite(x) || Math.abs(x) > 1e6)) return scene;
   return { ...scene, inputs: scene.inputs.map(input => input.id === id ? { ...input, components: coordinates.map(x => x === 0 ? 0 : x) } : input) };
 }
@@ -27,12 +32,13 @@ export function selectInnerProductPair(scene: InnerProductScene, side: 0 | 1, id
   return { ...scene, pair: side === 0 ? [id, scene.pair[1]] : [scene.pair[0], id] };
 }
 export function analyzeInnerProductScene(scene: InnerProductScene): PairAnalysis | null {
+  if (scene.dimension === 0) return analyzeInnerProductPair(innerProductMetric(0), [], []);
   if (!scene.pair) return null;
   const pair = scene.pair;
   const u = scene.inputs.find(input => input.id === pair[0]);
   const v = scene.inputs.find(input => input.id === pair[1]);
   if (!u || !v) throw new Error('Inner product pair must refer to existing inputs');
-  return analyzeInnerProductPair(INNER_PRODUCT_2D_METRIC, u.components, v.components);
+  return analyzeInnerProductPair(innerProductMetric(scene.dimension), u.components, v.components);
 }
 export function snapInnerProductInput(coordinates: readonly [number, number], viewWidth: number): readonly [number, number] {
   return Math.hypot(...coordinates) <= parallelSnapDistanceForViewWidth(viewWidth) ? [0, 0] : coordinates;
@@ -44,14 +50,14 @@ export function innerProductPlots(scene: InnerProductScene, result: PairAnalysis
   // 保留時は古い導出図を残さない。成分・式は値ごとの可否を別に表示する。
   const usable = result?.status !== 'numerical-failure' && projection?.vector.numeric.status === 'ready'
     && projection.residual.numeric.status === 'ready';
-  const derived: VectorValue[] = usable ? [
+  const derived: VectorValue[] = usable && scene.dimension > 0 ? [
     { id: 'inner-p', name: 'p', coordinates: projection.vector.numeric.status === 'ready' ? projection.vector.numeric.value : [] },
     { id: 'inner-r', name: 'r', coordinates: projection.residual.numeric.status === 'ready' ? projection.residual.numeric.value : [] },
   ] : [];
   const vectors = [...(scene.showGeometry ? derived : []), ...inputs];
-  const safe = vectors.every(v => v.coordinates.length === 2 && v.coordinates.every(x => Number.isFinite(x) && Math.abs(x) <= 1e6));
+  const safe = vectors.every(v => v.coordinates.length === scene.dimension && v.coordinates.every(x => Number.isFinite(x) && Math.abs(x) <= 1e6));
   return { vectors, inputs, safe, derivedAvailable: Boolean(usable),
-    colors: [...(scene.showGeometry && usable ? [PROJECTION_COLOR, RESIDUAL_COLOR] : []), ...scene.inputs.map(input => innerInputColor(input.id))],
+    colors: [...(scene.showGeometry && derived.length ? [PROJECTION_COLOR, RESIDUAL_COLOR] : []), ...scene.inputs.map(input => innerInputColor(input.id))],
     editableIds: inputs.map(v => v.id) };
 }
 /** 矢先とラベル、特にaとその射影のラベルを異なる側へ分ける。 */
@@ -72,10 +78,10 @@ export function resolveInnerProductStage(stage: StageKey | null, analysis: GramS
   return analysis.availableStages.find(item => stageId(item) === stageId(stage)) ?? analysis.availableStages[0] ?? null;
 }
 export function addInnerProductInput(scene: InnerProductScene): InnerProductScene {
-  if (scene.inputs.length >= 8) return scene;
+  if (scene.dimension === 0 || scene.inputs.length >= 8) return scene;
   const id = Array.from({ length: 8 }, (_, i) => i + 1).find(id => !scene.inputs.some(input => input.id === id))!;
   // 新しい入力は零から明示編集する。pair未選択を勝手に補完しない。
-  const inputs = [...scene.inputs, { id, components: [0, 0] }];
+  const inputs = [...scene.inputs, { id, components: Array<number>(scene.dimension).fill(0) }];
   return { ...scene, inputs, stage: firstStage(inputs) };
 }
 export function removeInnerProductInput(scene: InnerProductScene, id: number): InnerProductScene {

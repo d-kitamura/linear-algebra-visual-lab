@@ -108,10 +108,11 @@ describe('14.3 内積・射影の数ベクトル2D画面', () => {
     expect(source).toContain('analyzeInnerProductScene(displayScene)');
     expect(source).toContain('onVectorDragEnd={commitDrag} onVectorDragCancel={cancelDrag}');
     expect(source).toContain('if (!active) cancelDrag()');
-    expect(source).toContain('setScene(initial); setView(null); setInvalid(new Set())');
+    expect(source).toContain('resetInnerProductWorkspace(w, initial)');
+    expect(source).toContain('key={`${dimension}-${revision}`}');
     for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape']) expect(source).toContain(key);
     expect(source).toContain('直前の有効値');
-    expect(source).toContain('analyzeGramSchmidt(INNER_PRODUCT_2D_METRIC, displayScene.inputs), [displayScene.inputs]');
+    expect(source).toContain('analyzeGramSchmidt(innerProductMetric(scene.dimension), scene.inputs), [scene.inputs, scene.dimension]');
     const css = read('src/labs/inner-product/innerProduct.css');
     expect(css).toContain('position: static');
     expect(css).toContain('@media (max-width: 480px)');

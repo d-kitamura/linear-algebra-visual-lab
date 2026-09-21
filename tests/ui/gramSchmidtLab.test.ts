@@ -148,7 +148,8 @@ describe('14.4 数2Dグラム・シュミットの状態と段階表示', () => 
   });
   it('入力だけを依存に解析をメモ化し、段階は純粋なsnapshot参照にする', () => {
     const source = read('src/labs/inner-product/InnerProductLab.tsx');
-    expect(source).toContain('analyzeGramSchmidt(INNER_PRODUCT_2D_METRIC, displayScene.inputs), [displayScene.inputs]');
+    expect(source).toContain('analyzeGramSchmidt(innerProductMetric(scene.dimension), scene.inputs), [scene.inputs, scene.dimension]');
+    expect(source).toContain('[displayScene.inputs, committedGs]');
     expect(source).toContain('if (!preview && stageWasReset)');
     expect(source).toContain("setTab(mode === 'pair' ? 'pair' : 'steps')");
     expect(read('src/labs/inner-product/gramSchmidtPresentation.ts')).not.toContain('analyzeGramSchmidt(');

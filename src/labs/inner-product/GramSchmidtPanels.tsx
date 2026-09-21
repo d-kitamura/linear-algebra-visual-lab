@@ -25,7 +25,7 @@ export function GramSchmidtControls({ analysis, stage, disabled, onStage }: {
 
 export function GramSchmidtStepPanel({ analysis, stage }: { readonly analysis: GramSchmidtAnalysis; readonly stage: StageKey | null }) {
   const { step, projections, residual } = gramSchmidtFrame(analysis, stage);
-  if (!stage || !step) return <p>入力がありません。ベクトルを追加すると直交化の過程を確認できます。</p>;
+  if (!stage || !step) return <p>{analysis.definition.dimension === 0 ? '零ベクトル空間では空の組が正規直交基底です。直交化・正規化する入力や段階はありません。' : '入力がありません。ベクトルを追加すると直交化の過程を確認できます。'}</p>;
   const input = analysis.inputs.find(item => item.id === stage.inputId)!;
   const a = `a${input.id}`;
   return <>
@@ -64,7 +64,7 @@ export function GramSchmidtBasisPanel({ analysis }: { readonly analysis: GramSch
   return <>
     <p className="inner-note">全入力の解析結果です。グラフの表示段階とは別に確認できます。</p>
     <Formula><Scalar>S</Scalar> = {analysis.inputs.length ? <><span>{'{'}</span>{analysis.inputs.map((input, i) => <span className="representation-atom" key={input.id}>{i > 0 && ', '}<Vector name={`a${input.id}`} /></span>)}<span>{'}'}</span></> : '∅'}</Formula>
-    <Formula><Scalar>W</Scalar> = <span className="representation-atom">span(<Scalar>S</Scalar>)</span><span>、</span><Scalar>V</Scalar> = <span>ℝ<sup>2</sup></span></Formula>
+    <Formula><Scalar>W</Scalar> = <span className="representation-atom">span(<Scalar>S</Scalar>)</span><span>、</span><Scalar>V</Scalar> = <span>ℝ<sup>{analysis.definition.dimension}</sup></span></Formula>
     {complete ? <p>{count ? '入力が生成する空間Wの正規直交基底です。' : '入力が生成する空間は零空間です。空の組がその正規直交基底です。'}
       {analysis.basisOfAmbient ? '周囲の空間Vの正規直交基底でもあります。' : '周囲の空間V全体の基底ではありません。'}</p>
       : <p className="representation-warning">計算を保留しています。以下は確認済みの組だけであり、全入力が生成する空間の完成した基底とは断定しません。</p>}
