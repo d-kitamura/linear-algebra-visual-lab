@@ -4007,10 +4007,13 @@
   white-space: nowrap;
 }
 
-.linear-map-dimension-selectors select {
+/* Lab間で選択欄の外観を共用する。内積Labの入力選択・GS段階選択も同じ規則。 */
+.linear-map-dimension-selectors select,
+.inner-product-lab select {
   min-height: 38px;
   padding: 4px 20px 4px 10px;
   font: inherit;
+  font-size: 0.85rem;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--paper);

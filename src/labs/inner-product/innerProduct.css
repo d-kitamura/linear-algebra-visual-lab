@@ -13,7 +13,7 @@
 .inner-input-column input { width: 100%; min-width: 0; min-height: 44px; }
 .inner-pair-select { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; }
 .inner-pair-select label { display: flex; align-items: center; gap: 6px; }
-.inner-pair-select select { min-height: 44px; min-width: 64px; }
+.inner-pair-select select { min-width: 64px; max-width: 100%; }
 .inner-geometry-toggle { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: .82rem; }
 .inner-geometry-toggle input { width: 18px; height: 18px; }
 .inner-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
@@ -38,7 +38,7 @@
 .inner-stage-controls { min-width: 0; border: 1px solid var(--line); border-radius: 12px; margin: 16px 0 0; padding: 10px; font-size: .8rem; }
 .inner-stage-controls > div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
 .inner-stage-controls label { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.inner-stage-controls select { min-width: 0; max-width: 100%; min-height: 38px; }
+.inner-stage-controls select { min-width: 0; max-width: 100%; }
 .inner-stage-controls button { padding: 6px 16px; }
 .inner-input-item { min-width: 0; }
 .inner-input-actions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 8px; font-size: .7rem; }

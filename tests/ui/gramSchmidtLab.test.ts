@@ -18,6 +18,17 @@ const render = (scene: InnerProductScene) => renderToStaticMarkup(createElement(
 const text = (html: string) => html.replace(/<[^>]*>/g, '').replace(/\s/g, '');
 
 describe('14.4 数2Dグラム・シュミットの状態と段階表示', () => {
+  it('すべてのプルダウンを線形写像Labの次元選択と同じCSSで描画する', () => {
+    const shared = read('src/app/App.css');
+    const rule = shared.match(/\.linear-map-dimension-selectors select,\s*\.inner-product-lab select\s*\{([^}]+)\}/)?.[1];
+    expect(rule).toBeDefined();
+    for (const style of ['min-height: 38px', 'padding: 4px 20px 4px 10px', 'font-size: 0.85rem',
+      'border: 1px solid var(--line)', 'border-radius: 8px', 'background: var(--paper)', 'color: var(--ink)']) expect(rule).toContain(style);
+    const local = read('src/labs/inner-product/innerProduct.css');
+    const selectRules = [...local.matchAll(/[^{}]*select[^{}]*\{([^}]+)\}/g)].map(match => match[1]).join('');
+    expect(selectRules).not.toMatch(/min-height:|border:|background:|font:/);
+    expect(render(sceneFor([2, 2], [3, 0])).match(/<select/g)).toHaveLength(4);
+  });
   it('0〜8本、最小未使用IDと固定色、参照削除時の未選択を維持する', () => {
     let scene = createInnerProductScene();
     for (let i = 0; i < 6; i++) scene = addInnerProductInput(scene);
