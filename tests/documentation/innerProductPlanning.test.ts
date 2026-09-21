@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const design = read('docs/INNER_PRODUCT_LAB_DESIGN.md');
 const roadmap = read('ROADMAP.md');
-describe('フェーズ14詳細設計（D-127承認・14.3数2D画面実装）', () => {
-  it('14.3の確認待ちと未着手の14.4〜14.9を区別する', () => {
+describe('フェーズ14詳細設計（D-127承認・14.4数2DのGS接続）', () => {
+  it('14.4の確認待ちと未着手の14.5〜14.9を区別する', () => {
     const phase = roadmap.split('## 15. フェーズ14')[1].split('## 16. 文書更新')[0];
     expect(phase).toContain('D-125承認済み');
     expect(phase).toContain('D-127承認済み');
-    expect(phase).toContain('D-128確認待ち');
+    expect(phase).toContain('D-129確認待ち');
     for (let i = 1; i <= 9; i++) expect(phase).toContain(`### 14.${i} `);
     expect(phase.match(/\*\*確認ゲート:\*\*/g)).toHaveLength(9);
     const contractUnit = phase.split('### 14.1 ')[1].split('### 14.2 ')[0];
@@ -21,7 +21,10 @@ describe('フェーズ14詳細設計（D-127承認・14.3数2D画面実装）', 
     const uiUnit = phase.split('### 14.3 ')[1].split('### 14.4 ')[0];
     expect(uiUnit.match(/- \[x\]/g)).toHaveLength(2);
     expect(uiUnit).toContain('- [ ] **確認ゲート:** D-128');
-    expect(phase.split('### 14.4 ')[1]).not.toContain('- [x]');
+    const gsUnit = phase.split('### 14.4 ')[1].split('### 14.5 ')[0];
+    expect(gsUnit.match(/- \[x\]/g)).toHaveLength(2);
+    expect(gsUnit).toContain('- [ ] **確認ゲート:** D-129');
+    expect(phase.split('### 14.5 ')[1]).not.toContain('- [x]');
     expect(design).toContain('フェーズ13は完了');
     expect(design).toContain('実装は未着手');
     expect(read('docs/DECISIONS.md')).toContain('### D-125');

@@ -69,10 +69,11 @@ describe('14.1 内積・GSの具体契約', () => {
     }
   });
 
-  it('D-127承認とD-128確認待ち、GSと共有の未接続境界を揃える', () => {
+  it('D-127承認とD-129確認待ち、GS接続と共有の未接続境界を揃える', () => {
     expect(contract).toContain('D-125・D-126・D-127は利用者承認済み');
-    expect(contract).toContain('D-128確認待ち');
-    expect(contract).toContain('次の14.4は確定したGS');
+    expect(contract).toContain('D-129確認待ち');
+    expect(contract).toContain('次の14.5は段階別3D表示');
+    expect(contract).toContain('## 12. 14.4数2Dグラム・シュミット接続');
     expect(contract).toContain('共有デコーダーは未実装');
     expect(contract).toContain('basisOfAmbient');
     expect(contract).toContain('skipped-dependent');

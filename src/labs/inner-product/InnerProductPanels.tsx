@@ -9,15 +9,15 @@ export function innerProductNumber(value: number): string {
   // 共通の指数表記で微小な非零も残す。表示丸めを判定へ戻さない。
   return formatMathNumber(value).text;
 }
-function NumberValue({ value }: { readonly value: Value<number> | null }) {
+export function NumberValue({ value }: { readonly value: Value<number> | null }) {
   return value?.status === 'ready' ? <span>{innerProductNumber(value.value)}</span> : <span className="inner-unavailable">数値表示を保留</span>;
 }
-function ColumnValue({ value }: { readonly value: Value<readonly number[]> | null }) {
+export function ColumnValue({ value }: { readonly value: Value<readonly number[]> | null }) {
   return value?.status === 'ready' ? <span className="display-column-vector linear-map-column-vector" aria-label={`列ベクトル ${value.value.join('、')}`}>
     {value.value.map((x, i) => <span key={i}>{innerProductNumber(x)}</span>)}
   </span> : <span className="inner-unavailable">成分表示を保留</span>;
 }
-function Product({ left, right }: { readonly left: string; readonly right: string }) {
+export function Product({ left, right }: { readonly left: string; readonly right: string }) {
   return <span className="representation-atom">〈<Vector name={left} />, <Vector name={right} />〉</span>;
 }
 /** 数2Dの標準内積。解析と同じpreviewの成分を使い、負の因子は括弧で囲む。 */
@@ -27,12 +27,12 @@ function ComponentProductSum({ u, v }: { readonly u: readonly number[]; readonly
     {index > 0 ? '+ ' : ''}{factor(value)} × {factor(v[index])}
   </span>);
 }
-function Norm({ name }: { readonly name: string }) { return <span className="representation-atom">‖<Vector name={name} />‖</span>; }
-function Fraction({ top, bottom }: { readonly top: ReactNode; readonly bottom: ReactNode }) {
+export function Norm({ name }: { readonly name: string }) { return <span className="representation-atom">‖<Vector name={name} />‖</span>; }
+export function Fraction({ top, bottom }: { readonly top: ReactNode; readonly bottom: ReactNode }) {
   return <span className="inner-fraction"><span>{top}</span><span>{bottom}</span></span>;
 }
-export function InnerProductPanel({ tab, result, pair }: { readonly tab: InnerProductTab; readonly result: PairAnalysis; readonly pair: readonly [number, number] }) {
-  if (tab !== 'pair') return <p className="inner-note">{tab === 'steps' ? '直交化の段階操作' : '正規直交基底の表示'}は14.4で追加予定です。現在は「内積・射影」で2本のベクトルを調べられます。</p>;
+export function InnerProductPanel({ result, pair }: { readonly result: PairAnalysis | null; readonly pair: readonly [number, number] | null }) {
+  if (!result || !pair) return <p>比較するベクトルを選択してください。未選択の内積を0とは表示しません。</p>;
   const projection = result.projection;
   return <>
     <Formula><Vector name="u" /> = <Vector name={`a${pair[0]}`} /><span>、</span><Vector name="v" /> = <Vector name={`a${pair[1]}`} /></Formula>

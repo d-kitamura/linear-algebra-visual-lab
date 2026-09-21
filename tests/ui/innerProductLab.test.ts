@@ -46,7 +46,7 @@ describe('14.3 内積・射影の数ベクトル2D画面', () => {
   });
   it('負の内積なら鈍角と逆方向の射影、直交なら90度と零射影を示す', () => {
     const negative = editInnerProductInput(createInnerProductScene(), 2, [-1, 0]);
-    expect(analyzeInnerProductScene(negative).innerProduct?.numeric).toEqual({ status: 'ready', value: -2 });
+    expect(analyzeInnerProductScene(negative)!.innerProduct?.numeric).toEqual({ status: 'ready', value: -2 });
     expect(render(negative)).toContain('135°');
     expect(render(negative)).toContain('列ベクトル -0.5、-0.5');
     const perpendicular = editInnerProductInput(createInnerProductScene(), 2, [-1, 1]);
@@ -57,7 +57,7 @@ describe('14.3 内積・射影の数ベクトル2D画面', () => {
     expect(render(editInnerProductInput(createInnerProductScene(), 2, [0, 0]))).toContain('定義されません（零ベクトルを含む）');
     const scene = selectInnerProductPair(createInnerProductScene(), 1, 1);
     expect(scene.pair).toEqual([1, 1]);
-    expect(analyzeInnerProductScene(scene).angle).toMatchObject({ status: 'ready', degrees: 0 });
+    expect(analyzeInnerProductScene(scene)!.angle).toMatchObject({ status: 'ready', degrees: 0 });
     expect(selectInnerProductPair(scene, 0, 9)).toBe(scene);
   });
   it('元の入力・ID・順序を保持し、有効成分だけ更新する', () => {
@@ -111,7 +111,7 @@ describe('14.3 内積・射影の数ベクトル2D画面', () => {
     expect(source).toContain('setScene(initial); setView(null); setInvalid(new Set())');
     for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape']) expect(source).toContain(key);
     expect(source).toContain('直前の有効値');
-    expect(source).not.toContain('analyzeGramSchmidt(');
+    expect(source).toContain('analyzeGramSchmidt(INNER_PRODUCT_2D_METRIC, displayScene.inputs), [displayScene.inputs]');
     const css = read('src/labs/inner-product/innerProduct.css');
     expect(css).toContain('position: static');
     expect(css).toContain('@media (max-width: 480px)');

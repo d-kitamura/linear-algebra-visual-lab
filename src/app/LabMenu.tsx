@@ -37,7 +37,7 @@ const labs = [
   {
     id: 'inner-product',
     name: '内積・正規直交基底Lab',
-    description: '内積・ノルム・角度・射影を調べる（現在は数ベクトル2D）',
+    description: '内積・射影・グラム・シュミットの過程を調べる（現在は数ベクトル2D）',
   },
 ] as const;
 
