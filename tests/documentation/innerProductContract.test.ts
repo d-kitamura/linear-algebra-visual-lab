@@ -69,17 +69,17 @@ describe('14.1 内積・GSの具体契約', () => {
     }
   });
 
-  it('D-126承認とD-127確認待ち、UIに接続しない境界を揃える', () => {
-    expect(contract).toContain('D-125・D-126は利用者承認済み');
-    expect(contract).toContain('D-127確認待ち');
-    expect(contract).toContain('次の14.3は「中」推奨');
-    expect(contract).toContain('UI・共有デコーダーは未実装');
+  it('D-127承認とD-128確認待ち、GSと共有の未接続境界を揃える', () => {
+    expect(contract).toContain('D-125・D-126・D-127は利用者承認済み');
+    expect(contract).toContain('D-128確認待ち');
+    expect(contract).toContain('次の14.4は確定したGS');
+    expect(contract).toContain('共有デコーダーは未実装');
     expect(contract).toContain('basisOfAmbient');
     expect(contract).toContain('skipped-dependent');
     expect(contract).toContain('零ベクトルは任意のベクトルと内積0だが、角度90度とはしない');
     expect(read('math-writing-rules.txt')).toContain('内積・正規直交基底Labの採用記号（D-125承認');
     expect(read('docs/DECISIONS.md')).toContain('### D-126');
-    expect(read('src/app/App.tsx')).not.toContain('InnerProductLab');
+    expect(read('src/app/App.tsx')).toContain('InnerProductLab');
     expect(read('src/sharing/shareState.ts')).not.toContain("lab: 'inner-product'");
   });
 });

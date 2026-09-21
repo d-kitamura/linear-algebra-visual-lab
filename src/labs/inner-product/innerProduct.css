@@ -1,0 +1,39 @@
+/* 単一図と常設入力・1枚の解析パネル。図を固定せず、スクロールで重ならない通常フロー。 */
+.inner-product-workspace { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); align-items: start; gap: 18px; }
+.inner-product-lab .inner-product-plot { position: static; top: auto; min-width: 0; }
+.inner-product-plot h2 { margin: 0; font-size: clamp(1rem, 1.8vw, 1.45rem); }
+.inner-product-plot .basis-fit-button { flex: 0 0 auto; white-space: nowrap; }
+.inner-product-sidebar { min-width: 0; display: grid; gap: 16px; }
+.inner-product-editor { padding: 20px; min-width: 0; }
+.inner-product-editor h2 { margin: 0 0 18px; }
+.inner-product-editor fieldset { padding: 0; border: 0; margin: 0; min-width: 0; }
+.inner-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.inner-input-column { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 6px; min-width: 0; }
+.inner-input-column .linear-map-vector-input { min-width: 0; }
+.inner-input-column input { width: 100%; min-width: 0; min-height: 44px; }
+.inner-pair-select { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; }
+.inner-pair-select label { display: flex; align-items: center; gap: 6px; }
+.inner-pair-select select { min-height: 44px; min-width: 64px; }
+.inner-geometry-toggle { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: .82rem; }
+.inner-geometry-toggle input { width: 18px; height: 18px; }
+.inner-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+.inner-note { color: var(--muted); font-size: .8rem; line-height: 1.7; }
+.inner-product-lab .lab-intro #inner-share-help { margin: 10px 0 0; }
+.inner-product-inspector .inspector-panel { min-width: 0; margin-top: 14px; }
+.inner-product-inspector .representation-formula { gap: 6px; overflow-wrap: anywhere; }
+.inner-product-inspector h3 { font-size: 1rem; margin-top: 24px; }
+.inner-fraction { display: inline-flex; flex-direction: column; text-align: center; vertical-align: middle; gap: 2px; }
+.inner-fraction > span:first-child { border-bottom: 1px solid currentColor; padding: 0 3px 3px; }
+.inner-unavailable { font-size: .8rem; color: var(--muted); }
+.inner-projection-overlay line { stroke: #7f8d94; stroke-width: 1.5; stroke-dasharray: 6 5; }
+.inner-right-angle { fill: none; stroke: #56636a; stroke-width: 1.5; }
+.inner-product-lab .vector-arrow { pointer-events: none; }
+.inner-product-lab .vector-drag-handle { pointer-events: all; }
+@media (max-width: 900px) {
+  .inner-product-workspace { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  .inner-product-editor { padding: 16px; }
+  .inner-inputs { gap: 10px; }
+  .inner-product-inspector .inspector-tablist button { padding: 6px 3px; font-size: .7rem; }
+}

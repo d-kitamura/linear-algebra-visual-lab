@@ -5,6 +5,7 @@ import { RepresentationMatrixLab } from '../labs/representation-matrix/Represent
 import { VectorSpaceLab } from '../labs/vector-space/VectorSpaceLab';
 import { EigenspaceLab } from '../labs/eigenspace/EigenspaceLab';
 import { DiagonalizationLab } from '../labs/diagonalization/DiagonalizationLab';
+import { InnerProductLab } from '../labs/inner-product/InnerProductLab';
 import { LabMenu, type LabId } from './LabMenu';
 import { projectInfo } from './projectInfo';
 import { readShareStateFromUrl } from '../sharing';
@@ -64,6 +65,10 @@ export function App() {
 
       <div className="lab-host" hidden={activeLabId !== 'diagonalization'}>
         <DiagonalizationLab active={activeLabId === 'diagonalization'} />
+      </div>
+
+      <div className="lab-host" hidden={activeLabId !== 'inner-product'}>
+        <InnerProductLab active={activeLabId === 'inner-product'} />
       </div>
 
       <footer className="site-footer">

@@ -71,6 +71,9 @@ interface VectorPlane2DProps {
   readonly idPrefix?: string;
   readonly axisLabels?: readonly [string, string];
   readonly transformedGridSegments?: readonly LinearMapGridSegment[];
+  /** 呼出し側の数学結果に基づく補助図。共通座標変換を使い、操作面を遮らない。 */
+  readonly geometryOverlay?: ReactNode;
+  readonly geometryDescription?: string;
 }
 
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
@@ -107,6 +110,8 @@ export function VectorPlane2D({
   idPrefix = 'vector-plane',
   axisLabels = ['x', 'y'],
   transformedGridSegments = [],
+  geometryOverlay,
+  geometryDescription = '',
 }: VectorPlane2DProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportRef = useRef(viewport);
@@ -485,7 +490,7 @@ export function VectorPlane2D({
     >
       <title id={`${idPrefix}-title`}>2次元数ベクトルの座標表示</title>
       <desc id={`${idPrefix}-description`}>
-        {`${vectorDescription}${spanDescription}${targetDescription}${transformedGridDescription}`}
+        {`${vectorDescription}${spanDescription}${targetDescription}${transformedGridDescription}${geometryDescription}`}
       </desc>
       <defs>
         <clipPath id={plotClipId}>
@@ -599,6 +604,8 @@ export function VectorPlane2D({
           })}
         </g>
       ) : null}
+
+      {geometryOverlay && <g clipPath={`url(#${plotClipId})`} pointerEvents="none" aria-hidden="true">{geometryOverlay}</g>}
 
       <g className="coordinate-axes" aria-hidden="true">
         {showsXAxis ? (

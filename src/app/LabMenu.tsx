@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-export type LabId = 'vector-space' | 'basis-dimension' | 'linear-map' | 'representation-matrix' | 'eigenspace' | 'diagonalization';
+export type LabId = 'vector-space' | 'basis-dimension' | 'linear-map' | 'representation-matrix' | 'eigenspace' | 'diagonalization' | 'inner-product';
 
 const labs = [
   // 表示順は既存Labを維持し、追加単元は末尾へ置く。
@@ -33,6 +33,11 @@ const labs = [
     id: 'diagonalization',
     name: '対角化Lab',
     description: '同じ線形変換を固有ベクトルの基底で表す（0〜3D）',
+  },
+  {
+    id: 'inner-product',
+    name: '内積・正規直交基底Lab',
+    description: '内積・ノルム・角度・射影を調べる（現在は数ベクトル2D）',
   },
 ] as const;
 
