@@ -1,6 +1,6 @@
 # 共有URLの互換方針
 
-最終更新: 2026-09-16
+最終更新: 2026-09-22
 
 ## 目的
 
@@ -12,13 +12,14 @@
 - 既存3形式は0〜3次元と全16写像を扱う。0Dの固定状態や空行列はURLで省略し、復元時に正規形へ戻す。旧vector-space v1〜v3、basis-dimension v1、linear-map v1は定義済みの2D/3D状態として厳密検証して読み込む。
 - 第五の固有値Labは独立した`eigenspace` v1を追加した（D-112）。数ベクトル0〜3D／多項式1〜3Dの現在場面と3Dカメラを保存する。0D形式はv・lab・dimだけで、余剰フィールドを拒否する。
 - 第六の対角化Labは独立した`diagonalization` v1を追加した（D-122）。現在場面と基底列順・左右3Dカメラを保存し、P・Dは再計算する。0Dはv・lab・dimだけ。
-- 6形式は最初の正式リリースで保証対象になる候補として固定fixtureを用意している。
+- 第七の内積Labは独立した`inner-product` v1を追加した（D-132）。入力ID／順序・内積・意味キーによるGS段階と3Dカメラを保存。0Dだけはv・lab・dim・modeの4項目。
+- 7形式は最初の正式リリースで保証対象になる候補として固定fixtureを用意している。
 - 正式リリースと保証開始は、フェーズ7でプロジェクト所有者が明示的に承認する。それまではD-032どおり開発中URLの互換性を保証しない。
 - 状態には生成時期を示すフィールドがないため、正式リリース後に各`(lab, v)`を保証すると、現在までに生成された同形式の有効URLも同じデコーダーで保証対象になる。
 
 ## 正式リリース後の契約
 
-1. 現行の`vector-space` v4、`basis-dimension` v2、`linear-map` v2、`representation-matrix` v1、`eigenspace` v1、`diagonalization` v1を最初の保証対象候補とし（対象版は正式リリース時に再確認）、正式承認後は本アプリを提供している期間、固定の年数を設けず読み込みを維持する。
+1. 現行の`vector-space` v4、`basis-dimension` v2、`linear-map` v2、`representation-matrix` v1、`eigenspace` v1、`diagonalization` v1、`inner-product` v1を最初の保証対象候補とし（対象版は正式リリース時に再確認）、正式承認後は本アプリを提供している期間、固定の年数を設けず読み込みを維持する。
 2. 新しいURLは、その時点の現行スキーマだけで生成する。旧スキーマを選んで生成するUIは設けない。
 3. 将来さらに新しい版を導入しても、正式リリースで保証した全旧版を厳密に検証し、現行の`ShareState`へ移行してから利用する。
 4. 旧版のフィールドを推測で補完せず、版ごとに定義した既定値だけを追加する。未知フィールド、未知バージョン、不正値は安全に拒否する。
@@ -58,6 +59,14 @@
 - 互換fixtureのURLはコード整形、表示名変更、既定値変更を理由に更新しない。fixture自体が誤っていた場合だけ、理由を意思決定記録へ残して修正する。
 
 ## URL長との関係
+
+### inner-product v1の再現条件
+
+正次元は`v, lab, dim, kind, metric, inputs, mode, pair, stage, showGeometry, camera`を必須とする。inputsのIDは1〜8の重複しない整数、成分は次元数と一致し絶対値1e6以下。pairは現存する2入力ID（同一可）またはnull。stageはinputIdとphase、projectionのみcountを必須とする。未知項目はネスト内も拒否。非空入力のstageは必須、空ならnull。3Dカメラは必須、他次元はnull。
+
+構造検証はソルバーを実行しない。対象LabでGS解析を一度行い、共有段階がavailableStagesに完全一致することを確認する。無効段階を黙って先頭へ置き換えず、警告と既定例へ退避する。再現可能な数値保留のinput／holdは受理する。順序・内積・段階列挙や数値基準が変わる場合は版変更の要否を記録する。派生p/r/q・G/Cを保存しない。
+
+`tests/fixtures/share-url-inner-product-v1.json`と`tests/sharing/innerProductSharing.test.ts`で、独立期待値・既存6Labへの非干渉・現在場面だけのReset・完全URL2048文字境界・共通QRを検証する。既存88授業例は変更せず、内積の代表教材資料は14.8で追加する。
 
 ### diagonalization v1の再現条件
 

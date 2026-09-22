@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "url": "https://d-kitamura.github.io/linear-algebra-visual-lab/?state=eyJ2IjoxLCJsYWIiOiJpbm5lci1wcm9kdWN0IiwiZGltIjozLCJraW5kIjoicG9seW5vbWlhbCIsIm1ldHJpYyI6ImludGVncmFsIiwiaW5wdXRzIjpbeyJpZCI6MywiY29tcG9uZW50cyI6WzEsMCwwXX0seyJpZCI6MSwiY29tcG9uZW50cyI6WzAsMSwwXX0seyJpZCI6MiwiY29tcG9uZW50cyI6WzAsMCwxXX1dLCJtb2RlIjoiZ3JhbS1zY2htaWR0IiwicGFpciI6WzMsMl0sInN0YWdlIjp7ImlucHV0SWQiOjIsInBoYXNlIjoicHJvamVjdGlvbiIsImNvdW50IjoyfSwic2hvd0dlb21ldHJ5Ijp0cnVlLCJjYW1lcmEiOnsiZGlyZWN0aW9uIjpbMCwtMSwwXSwidGFyZ2V0IjpbMSwyLDNdLCJ1cCI6WzAsMCwxXSwiem9vbSI6MS41fX0",
+  "expectedState": {
+    "v": 1,
+    "lab": "inner-product",
+    "dim": 3,
+    "kind": "polynomial",
+    "metric": "integral",
+    "inputs": [
+      {
+        "id": 3,
+        "components": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": 1,
+        "components": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "id": 2,
+        "components": [
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "mode": "gram-schmidt",
+    "pair": [
+      3,
+      2
+    ],
+    "stage": {
+      "inputId": 2,
+      "phase": "projection",
+      "count": 2
+    },
+    "showGeometry": true,
+    "camera": {
+      "direction": [
+        0,
+        -1,
+        0
+      ],
+      "target": [
+        1,
+        2,
+        3
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "zoom": 1.5
+    }
+  }
+}

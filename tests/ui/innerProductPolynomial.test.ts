@@ -47,7 +47,7 @@ describe('14.6 多項式の内積・係数・幾何の一貫性', () => {
       expect(html.match(/type="text"/g)).toHaveLength(n * n);
       expect(html).not.toContain('>0D</button>'); expect(html).toContain('多項式の係数');
       expect(html).toContain('f1の係数b0'); expect(html).toContain('内積を反映した座標');
-      expect(html).toContain('14.7で対応予定'); expect(html).not.toContain('details open');
+      expect(html).not.toContain('14.7で対応予定'); expect(html).not.toContain('details open');
       expect(plain(html)).toContain(`V=ℝ[x]${n - 1}`);
     }
   });

@@ -21,8 +21,8 @@ describe('14.3 内積・射影の数ベクトル2D画面', () => {
     expect(html.match(/class="vector-drag-handle/g)).toHaveLength(2);
     expect(html.match(/role="tab"/g)).toHaveLength(3);
     expect(html.match(/role="tabpanel"[^>]*hidden=""/g)).toHaveLength(2);
-    expect(html).toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
-    expect(html).toContain('14.7で対応予定');
+    expect(html).not.toMatch(/disabled=""[^>]*>共有URLをエクスポート/);
+    expect(html).not.toContain('14.7で対応予定');
     expect(html).toContain('a₁');
     expect(html).not.toContain('≈');
     expect(render(undefined, false)).not.toContain('<svg');
@@ -107,7 +107,7 @@ describe('14.3 内積・射影の数ベクトル2D画面', () => {
     const source = read('src/labs/inner-product/InnerProductLab.tsx');
     expect(source).toContain('analyzeInnerProductScene(displayScene)');
     expect(source).toContain('onVectorDragEnd={commitDrag} onVectorDragCancel={cancelDrag}');
-    expect(source).toContain('if (!active) cancelDrag()');
+    expect(source).toContain('if (!active) { cancelDrag(); setShareUrl(null); }');
     expect(source).toContain('resetInnerProductWorkspace(w, initial)');
     expect(source).toContain('key={`${workspace.kind}-${dimension}-${revision}`}');
     for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape']) expect(source).toContain(key);

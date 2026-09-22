@@ -55,7 +55,7 @@ describe('14.1 内積・GSの具体契約', () => {
       '分母に一律の1を足さず', '固有値・対角化の回帰を必須', '図だけ保留']) expect(contract).toContain(phrase);
   });
 
-  it('共有予定JSONは入力の順序・段階を持ち、0Dでもモードを保持する', () => {
+  it('共有JSONは入力の順序・段階を持ち、0Dでもモードを保持する', () => {
     const examples = [...contract.matchAll(/```json\r?\n([^`]+)```/g)].map(m => JSON.parse(m[1]));
     expect(examples).toHaveLength(2);
     expect(examples[0]).toEqual({ v: 1, lab: 'inner-product', kind: 'coordinate', dim: 2,
@@ -69,20 +69,20 @@ describe('14.1 内積・GSの具体契約', () => {
     }
   });
 
-  it('D-130承認とD-131確認待ち、多項式接続と共有の未接続境界を揃える', () => {
+  it('D-131承認とD-132確認待ち、共有の構造・意味検証境界を揃える', () => {
     expect(contract).toContain('D-125・D-126・D-127は利用者承認済み');
-    expect(contract).toContain('D-131確認待ち');
-    expect(contract).toContain('次の14.7は段階の意味的復元');
+    expect(contract).toContain('D-132確認待ち');
+    expect(contract).toContain('次の14.8は教材資料');
     expect(contract).toContain('## 14. 14.6多項式と内積対応座標');
     expect(contract).toContain('## 13. 14.5数0D・1D・3D接続');
     expect(contract).toContain('## 12. 14.4数2Dグラム・シュミット接続');
-    expect(contract).toContain('共有デコーダーは未実装');
+    expect(contract).toContain('共有デコーダーと対象Labの意味検証を接続済み');
     expect(contract).toContain('basisOfAmbient');
     expect(contract).toContain('skipped-dependent');
     expect(contract).toContain('零ベクトルは任意のベクトルと内積0だが、角度90度とはしない');
     expect(read('math-writing-rules.txt')).toContain('内積・正規直交基底Labの採用記号（D-125承認');
     expect(read('docs/DECISIONS.md')).toContain('### D-126');
     expect(read('src/app/App.tsx')).toContain('InnerProductLab');
-    expect(read('src/sharing/shareState.ts')).not.toContain("lab: 'inner-product'");
+    expect(read('src/sharing/shareState.ts')).toContain("lab: 'inner-product'");
   });
 });

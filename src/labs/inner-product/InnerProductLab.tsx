@@ -1,5 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction, type ReactNode, type KeyboardEvent } from 'react';
 import { LabActionControls } from '../../app/LabActionControls';
+import { ShareExportDialog } from '../../app/ShareExportDialog';
+import { buildShareUrl } from '../../sharing';
+import { createInnerProductInitialization, createInnerProductShareState } from './innerProductSharing';
 import { analyzeGramSchmidt, type StageKey } from '../../domain';
 import { parseCoordinateInput } from '../../state/vectorEditing';
 import { createAutoFitViewport, createAutoFitLineViewport, VectorPlane2D, VectorLine1D, ZeroSpace0D, type LineViewport, type PlaneViewport } from '../../visualization';
@@ -13,7 +16,7 @@ import { InnerProductOverlay } from './InnerProductOverlay';
 import { GramSchmidtOverlay } from './GramSchmidtOverlay';
 import { GramSchmidtBasisPanel, GramSchmidtControls, GramSchmidtStepPanel } from './GramSchmidtPanels';
 import { gramSchmidtPlots } from './gramSchmidtPresentation';
-import { analyzeInnerProductScene, createInnerProductScene, editInnerProductInput, innerProductPlots, innerProductPresentation,
+import { analyzeInnerProductScene, editInnerProductInput, innerProductPlots, innerProductPresentation,
   inputPlotId, snapInnerProductInput, innerInputColor, innerProductMetric, addInnerProductInput, removeInnerProductInput,
   moveInnerProductInput, resolveInnerProductStage, stageId, type InnerProductScene } from './innerProductScene';
 import './innerProduct.css';
@@ -22,12 +25,15 @@ import { activeInnerSlot, createInnerProductWorkspace, resetInnerProductWorkspac
 const InnerProductSpace = lazy(() => import('./InnerProductSpace'));
 type DragPreview = { id: number; coordinates: readonly number[]; viewport?: PlaneViewport; line?: LineViewport };
 export function InnerProductLab({ active = true, initialScene }: { readonly active?: boolean; readonly initialScene?: InnerProductScene }) {
-  const [initial] = useState(() => createInnerProductWorkspace(initialScene ?? createInnerProductScene()));
+  const [initialization] = useState(() => initialScene ? { initialWorkspace: createInnerProductWorkspace(initialScene), errorMessage: null }
+    : createInnerProductInitialization(typeof window === 'undefined' ? 'https://example.invalid/' : window.location.href));
+  const initial = initialization.initialWorkspace;
   const [workspace, setWorkspace] = useState(initial);
   const [revision, setRevision] = useState(0);
   const dimension = workspace.dimension;
   // 教材と視点は次元別に保持。切替／Resetで未確定入力・ドラッグだけ破棄する。
   return <InnerProductSceneView key={`${workspace.kind}-${dimension}-${revision}`} active={active} slot={activeInnerSlot(workspace)}
+    loadError={initialization.errorMessage}
     setScene={next => setWorkspace(w => updateActiveInnerSlot(w, slot => ({ ...slot, scene: typeof next === 'function' ? next(slot.scene) : next })))}
     setView={patch => setWorkspace(w => updateActiveInnerSlot(w, slot => ({ ...slot, view: { ...slot.view, ...patch } })))}
     onReset={() => { setWorkspace(w => resetInnerProductWorkspace(w, initial)); setRevision(n => n + 1); }}
@@ -38,9 +44,10 @@ export function InnerProductLab({ active = true, initialScene }: { readonly acti
     </div></div></>} />;
 }
 
-function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimensionControls }: {
+function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimensionControls, loadError }: {
   readonly active: boolean; readonly slot: InnerProductSlot; readonly setScene: Dispatch<SetStateAction<InnerProductScene>>;
   readonly setView: (patch: Partial<InnerProductView>) => void; readonly onReset: () => void; readonly dimensionControls: ReactNode;
+  readonly loadError: string | null;
 }) {
   const { scene, view } = slot;
   const [preview, setPreview] = useState<DragPreview | null>(null);
@@ -49,6 +56,8 @@ function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimen
   const [tab, setTab] = useState<InnerProductTab>(scene.mode === 'pair' ? 'pair' : 'steps');
   const [pairDraft, setPairDraft] = useState<readonly [number | null, number | null]>(scene.pair ?? [null, null]);
   const [notice, setNotice] = useState('');
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [exportError, setExportError] = useState('');
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const displayScene = useMemo(() => preview ? editInnerProductInput(scene, preview.id, preview.coordinates) : scene, [scene, preview]);
   // 計算は入力・pairだけを依存とし、段階／モード／タブ／視点操作では再実行しない。
@@ -70,7 +79,7 @@ function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimen
     if (pending) setScene(s => editInnerProductInput(s, pending.id, pending.coordinates));
     cancelDrag();
   }
-  useEffect(() => { if (!active) cancelDrag(); }, [active, cancelDrag]);
+  useEffect(() => { if (!active) { cancelDrag(); setShareUrl(null); } }, [active, cancelDrag]);
   useEffect(() => {
     // previewの退避は一時的。取消なら元stageへ戻し、確定した編集だけsceneへ反映する。
     if (!preview && stageWasReset) {
@@ -88,6 +97,11 @@ function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimen
     const next = new Set(previous); if (bad) next.add(id); else next.delete(id); return next;
   }), []);
   function reset() { cancelDrag(); onReset(); }
+  function openShare() {
+    if (invalid.size > 0 || previewRef.current !== null) return;
+    try { setShareUrl(buildShareUrl(window.location.href, createInnerProductShareState(slot))); setExportError(''); }
+    catch (error) { setExportError(error instanceof Error ? error.message : '共有URLを生成できませんでした。'); }
+  }
   function startDrag(plotId: string) {
     const input = scene.inputs.find(v => inputPlotId(v.id) === plotId);
     if (input) { const next = { id: input.id, coordinates: input.components, viewport, line }; previewRef.current = next; setPreview(next); }
@@ -115,9 +129,11 @@ function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimen
   return <main className="lab-page inner-product-lab" data-lab-id="inner-product" data-inner-mode={scene.mode} aria-hidden={!active}>
     <section className="lab-intro" aria-labelledby="inner-product-title">
       <div><p className="panel-kicker">Inner product / {scene.dimension}D</p><h1 id="inner-product-title">内積と正規直交基底</h1><p>ベクトルを動かし、内積・射影・直交化を調べます。</p></div>
-      <div><LabActionControls exportDisabled exportDescriptionId="inner-share-help" onExport={() => {}} onReset={reset} />
-        <p id="inner-share-help" className="inner-note">このLabの共有機能は14.7で対応予定です。</p></div>
+      <div><LabActionControls exportDisabled={invalid.size > 0 || preview !== null} exportDescriptionId={invalid.size > 0 ? 'inner-share-help' : undefined} onExport={openShare} onReset={reset} /></div>
     </section>
+    {loadError && <p role={active ? 'alert' : undefined} className="representation-warning">共有URLを復元できませんでした。{loadError}</p>}
+    {exportError && <p role={active ? 'alert' : undefined} className="representation-warning">{exportError}</p>}
+    {invalid.size > 0 && <p id="inner-share-help" className="inner-note">入力エラーを修正してから共有してください。</p>}
     {dimensionControls}
     {scene.kind === 'polynomial' && <label className="inner-metric-select">内積<select aria-label="多項式の内積" value={scene.metric} disabled={preview !== null || invalid.size > 0}
       onChange={event => { const metric = event.target.value as 'integral' | 'coefficient'; setScene(s => ({ ...s, metric })); setView(fitInnerProductView(view)); setNotice('元の多項式を保ったまま内積を変更し、図を全体表示に戻しました。'); }}>
@@ -205,6 +221,9 @@ function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimen
         </div>
       </div>
     </div>
+    {shareUrl && <ShareExportDialog key={shareUrl} url={shareUrl} labName="内積・正規直交基底Lab"
+      description="現在の種類・次元・内積・入力の成分と順序・2本の選択・モード・計算段階・補助図・3D視点を復元します。1D・2Dは全体表示になります。Resetは開いた共有時の状態へ戻ります。"
+      onClose={() => setShareUrl(null)} />}
   </main>;
 }
 

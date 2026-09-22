@@ -1,4 +1,4 @@
-import type { VectorDimension, VectorSpaceDimension, VectorValue } from '../domain';
+import type { VectorDimension, VectorSpaceDimension, VectorValue, StageKey, OrderedInput, MetricId } from '../domain';
 
 export const LEGACY_SHARE_STATE_VERSION = 1 as const;
 export const PREVIOUS_SHARE_STATE_VERSION = 2 as const;
@@ -7,6 +7,7 @@ export const BASIS_DIMENSION_SHARE_STATE_VERSION = 2 as const;
 export const LINEAR_MAP_SHARE_STATE_VERSION = 2 as const;
 export const EIGENSPACE_SHARE_STATE_VERSION = 1 as const;
 export const DIAGONALIZATION_SHARE_STATE_VERSION = 1 as const;
+export const INNER_PRODUCT_SHARE_STATE_VERSION = 1 as const;
 export const MAX_SHARE_VECTORS = 8;
 export const MAX_SHARE_VECTOR_ID_LENGTH = 32;
 export const MAX_SHARE_VECTOR_NAME_LENGTH = 40;
@@ -159,7 +160,13 @@ export type DiagonalizationShareState =
       readonly matrix: readonly (readonly number[])[]; readonly input: readonly number[];
       readonly order: readonly number[] | null; readonly showEigenspace: boolean;
       readonly cameras: { readonly reference: SharedCameraState | null; readonly eigenbasis: SharedCameraState | null } };
-export type SharedState = ShareState | BasisDimensionShareState | LinearMapShareState | RepresentationMatrixShareState | EigenspaceShareState | DiagonalizationShareState;
+export type InnerProductShareState =
+  | { readonly v: 1; readonly lab: 'inner-product'; readonly dim: 0; readonly mode: 'pair' | 'gram-schmidt' }
+  | { readonly v: 1; readonly lab: 'inner-product'; readonly dim: 1 | 2 | 3; readonly kind: BasisRepresentation;
+      readonly metric: MetricId; readonly inputs: readonly OrderedInput[]; readonly mode: 'pair' | 'gram-schmidt';
+      readonly pair: readonly [number, number] | null; readonly stage: StageKey | null;
+      readonly showGeometry: boolean; readonly camera: SharedCameraState | null };
+export type SharedState = ShareState | BasisDimensionShareState | LinearMapShareState | RepresentationMatrixShareState | EigenspaceShareState | DiagonalizationShareState | InnerProductShareState;
 
 export type ShareStateErrorCode =
   | 'EMPTY_ENCODED_STATE'
@@ -265,6 +272,7 @@ export function validateShareState(input: unknown): ShareState {
 }
 
 export function validateSharedState(input: unknown): SharedState {
+  if (requireRecord(input, '$').lab === 'inner-product') return validateInnerProductShareState(input);
   if (requireRecord(input, '$').lab === 'diagonalization') return validateDiagonalizationShareState(input);
   if (requireRecord(input, '$').lab === 'eigenspace') return validateEigenspaceShareState(input);
   if (requireRecord(input, '$').lab === 'representation-matrix') return validateRepresentationMatrixShareState(input);
@@ -276,6 +284,59 @@ export function validateSharedState(input: unknown): SharedState {
     return validateLinearMapShareState(state);
   }
   return validateShareState(state);
+}
+
+/** 参照・形状だけを検証。GS段階の意味は対象Labで再解析して照合する。 */
+export function validateInnerProductShareState(input: unknown): InnerProductShareState {
+  const s = requireRecord(input, '$');
+  if (s.v !== INNER_PRODUCT_SHARE_STATE_VERSION) throw new InvalidShareStateError('UNSUPPORTED_VERSION', '内積Labの共有状態バージョンに対応していません。', '$.v');
+  if (s.lab !== 'inner-product') throw invalidState('共有状態のLabが正しくありません。', '$.lab');
+  const dim = requireSpaceDimension(s.dim, '$.dim');
+  if (s.mode !== 'pair' && s.mode !== 'gram-schmidt') throw invalidState('内積Labのモードが正しくありません。', '$.mode');
+  if (dim === 0) {
+    requireExactKeys(s, ['v', 'lab', 'dim', 'mode'], '$');
+    return { v: 1, lab: 'inner-product', dim: 0, mode: s.mode };
+  }
+  requireExactKeys(s, ['v', 'lab', 'dim', 'kind', 'metric', 'inputs', 'mode', 'pair', 'stage', 'showGeometry', 'camera'], '$');
+  if (s.kind !== 'coordinate' && s.kind !== 'polynomial') throw invalidState('空間の種類が正しくありません。', '$.kind');
+  if (!(s.kind === 'coordinate' ? s.metric === 'euclidean' : s.metric === 'integral' || s.metric === 'coefficient')) {
+    throw invalidState('空間の種類と内積が一致しません。', '$.metric');
+  }
+  if (!Array.isArray(s.inputs) || s.inputs.length > MAX_SHARE_VECTORS) throw invalidState('入力の組は0〜8本である必要があります。', '$.inputs');
+  const ids = new Set<number>();
+  const inputs = s.inputs.map((value, i) => {
+    const path = `$.inputs[${i}]`, item = requireRecord(value, path);
+    requireExactKeys(item, ['id', 'components'], path);
+    if (typeof item.id !== 'number' || !Number.isInteger(item.id) || item.id < 1 || item.id > 8 || ids.has(item.id)) {
+      throw invalidState('入力IDは重複しない1〜8の整数である必要があります。', `${path}.id`);
+    }
+    ids.add(item.id);
+    return { id: item.id, components: requireCoordinates(item.components, dim, `${path}.components`) };
+  });
+  const pair = s.pair;
+  if (pair !== null && (!Array.isArray(pair) || pair.length !== 2 || !pair.every(id => typeof id === 'number' && ids.has(id)))) {
+    throw invalidState('2本の選択には現存する入力ID、またはnullが必要です。', '$.pair');
+  }
+  let stage: StageKey | null = null;
+  if (inputs.length === 0) {
+    if (s.stage !== null) throw invalidState('空入力では段階はnullです。', '$.stage');
+  } else {
+    const key = requireRecord(s.stage, '$.stage');
+    if (typeof key.inputId !== 'number' || !ids.has(key.inputId)) throw invalidState('段階の入力IDが存在しません。', '$.stage.inputId');
+    if (key.phase === 'projection') {
+      requireExactKeys(key, ['inputId', 'phase', 'count'], '$.stage');
+      if (typeof key.count !== 'number' || !Number.isInteger(key.count) || key.count < 1 || key.count > 3) throw invalidState('射影の段階数は1〜3の整数です。', '$.stage.count');
+      stage = { inputId: key.inputId, phase: key.phase, count: key.count };
+    } else {
+      requireExactKeys(key, ['inputId', 'phase'], '$.stage');
+      if (key.phase !== 'input' && key.phase !== 'residual' && key.phase !== 'normalize' && key.phase !== 'skip' && key.phase !== 'hold') throw invalidState('計算段階が正しくありません。', '$.stage.phase');
+      stage = { inputId: key.inputId, phase: key.phase };
+    }
+  }
+  if (typeof s.showGeometry !== 'boolean') throw invalidState('補助図の表示設定が正しくありません。', '$.showGeometry');
+  return { v: 1, lab: 'inner-product', dim, kind: s.kind, metric: s.metric as MetricId, inputs, mode: s.mode,
+    pair: pair === null ? null : [pair[0], pair[1]], stage, showGeometry: s.showGeometry,
+    camera: requireDimensionCamera(s.camera, dim, '$.camera') };
 }
 
 /** この層では構造だけを検証。基底の有無との照合は対象Labの復元時に行う。 */
@@ -987,6 +1048,8 @@ function invalidState(message: string, path?: string): InvalidShareStateError {
 
 /** 固定0D教材値はURLから省き、内部の正規形へ復元するときだけ補う。 */
 function compactFixedState(state: SharedState): object {
+  // 内積0Dはmodeも教材状態。既存Labの固定0D形式と混同しない。
+  if (state.lab === 'inner-product') return state;
   if (state.lab === 'representation-matrix') return state;
   if (state.lab !== 'linear-map') {
     return state.dim === 0 ? { v: state.v, lab: state.lab, dim: 0 } : state;
