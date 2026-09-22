@@ -69,10 +69,11 @@ describe('14.1 内積・GSの具体契約', () => {
     }
   });
 
-  it('D-128・D-129承認とD-130確認待ち、次元拡張と共有の未接続境界を揃える', () => {
+  it('D-130承認とD-131確認待ち、多項式接続と共有の未接続境界を揃える', () => {
     expect(contract).toContain('D-125・D-126・D-127は利用者承認済み');
-    expect(contract).toContain('D-130確認待ち');
-    expect(contract).toContain('次の14.6は積分内積と図の座標');
+    expect(contract).toContain('D-131確認待ち');
+    expect(contract).toContain('次の14.7は段階の意味的復元');
+    expect(contract).toContain('## 14. 14.6多項式と内積対応座標');
     expect(contract).toContain('## 13. 14.5数0D・1D・3D接続');
     expect(contract).toContain('## 12. 14.4数2Dグラム・シュミット接続');
     expect(contract).toContain('共有デコーダーは未実装');

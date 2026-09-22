@@ -134,7 +134,7 @@ describe('14.5 数0D・1D・3Dの状態と表示', () => {
     expect(html).toContain('成分入力と解析タブ'); expect(html).toContain('3D視点プリセット');
     const source = read('src/labs/inner-product/InnerProductSpace.tsx');
     expect(source).toContain('[scene, committedGs, committedResult]');
-    expect(source).toContain('onVectorCoordinatesSnap={snapInnerSpaceInput}');
+    expect(source).toContain('createInnerSpaceDragGuard(scene, committedPlots.inputs)');
     const common = read('src/visualization/VectorSpace3D.tsx');
     expect(common).toContain('clearObjectGroup(vectorCoordinatePreviewGroup)');
     expect(common).toContain('clearObjectGroup(auxiliaryGroup)');

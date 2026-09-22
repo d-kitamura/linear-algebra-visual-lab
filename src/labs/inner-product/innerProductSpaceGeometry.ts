@@ -1,7 +1,8 @@
-import type { GramSchmidtAnalysis, PairAnalysis, StageKey, VectorValue } from '../../domain';
+import type { GramSchmidtAnalysis, PairAnalysis, StageKey, VectorValue, InnerProductMetric } from '../../domain';
+import { innerDisplayCoordinates, innerInputCoordinates } from './innerProductCoordinates';
 import type { SpaceAuxiliarySegment, VectorCoordinatePreview } from '../../visualization/VectorSpace3D';
 import { gramSchmidtFrame } from './gramSchmidtPresentation';
-import { PROJECTION_COLOR, RESIDUAL_COLOR } from './innerProductScene';
+import { PROJECTION_COLOR, RESIDUAL_COLOR, type InnerProductScene } from './innerProductScene';
 
 type Point = readonly [number, number, number];
 type Plots = { readonly vectors: readonly VectorValue[]; readonly colors: readonly string[] };
@@ -38,10 +39,32 @@ export function snapInnerSpaceInput(_id: string, coordinates: Point, maximumDist
     : { coordinates, snapKind: null, targetVectorIds: [] };
 }
 
+/** 拒否した逆変換を式にも矢印にも適用しない。取消／次のドラッグで前回の候補を再利用しない。 */
+export function createInnerSpaceDragGuard(scene: InnerProductScene, inputs: readonly VectorValue[]) {
+  const initial = inputs.map(v => [v.id, v.coordinates as Point] as const);
+  const positions = new Map(initial);
+  let rejected = false;
+  return {
+    get rejected() { return rejected; },
+    reset() { positions.clear(); initial.forEach(([id, value]) => positions.set(id, value)); rejected = false; },
+    snap(id: string, coordinates: Point, distance: number) {
+      const candidate = snapInnerSpaceInput(id, coordinates, distance);
+      rejected = innerInputCoordinates(scene, candidate.coordinates) === null;
+      if (rejected) return { coordinates: positions.get(id) ?? coordinates, snapKind: null, targetVectorIds: [] };
+      positions.set(id, candidate.coordinates); return candidate;
+    },
+  };
+}
+
 /** 解析済みの直交成分から補助辺を作る。移動経路の矢印ではなく、平行移動した細い辺。 */
-export function innerSpaceSegments(mode: 'pair' | 'gram-schmidt', result: PairAnalysis | null, gs: GramSchmidtAnalysis, stage: StageKey | null, scale: number): readonly SpaceAuxiliarySegment[] {
+export function innerSpaceSegments(mode: 'pair' | 'gram-schmidt', result: PairAnalysis | null, gs: GramSchmidtAnalysis, stage: StageKey | null, scale: number, metric?: InnerProductMetric): readonly SpaceAuxiliarySegment[] {
   const components: Point[] = [];
-  const take = (value: readonly number[] | undefined) => { if (value && safe(value) && Math.hypot(...value) > 0) components.push(point(value)); };
+  let available = true;
+  const take = (value: readonly number[] | undefined) => {
+    const coordinates = value && metric ? innerDisplayCoordinates(metric, value) : value;
+    if (!coordinates || !safe(coordinates)) { available = false; return; }
+    if (Math.hypot(...coordinates) > 0) components.push(point(coordinates));
+  };
   if (mode === 'pair') {
     const p = result?.projection;
     if (p?.vector.numeric.status !== 'ready' || p.residual.numeric.status !== 'ready') return [];
@@ -53,7 +76,7 @@ export function innerSpaceSegments(mode: 'pair' | 'gram-schmidt', result: PairAn
     frame.projections.forEach(p => take(p.vector.numeric.status === 'ready' ? p.vector.numeric.value : undefined));
     take(frame.residual?.numeric.status === 'ready' ? frame.residual.numeric.value : undefined);
   }
-  if (components.length < 2 || components.length > 3) return [];
+  if (!available || components.length < 2 || components.length > 3) return [];
   const lines: SpaceAuxiliarySegment[] = [];
   for (let mask = 1; mask < (1 << components.length); mask++) {
     const start = components.reduce<Point>((sum, p, i) => mask & (1 << i) ? add(sum, p) : sum, ORIGIN);

@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import type { PairAnalysis, Value } from '../../domain';
 import { formatMathNumber } from '../../ui';
 import { Formula, Scalar, Vector } from '../representation-matrix/representationMath';
+import { Polynomial } from '../representation-matrix/representationObjects';
+import { InnerIntegral, InnerObjectValue } from './innerProductPolynomialMath';
 
 export const INNER_PRODUCT_TABS = [['pair', '内積・射影'], ['steps', '直交化の手順'], ['basis', '正規直交基底']] as const;
 export type InnerProductTab = typeof INNER_PRODUCT_TABS[number][0];
@@ -40,9 +42,13 @@ export function InnerProductPanel({ result, pair }: { readonly result: PairAnaly
   </>;
   if (!result || !pair) return <p>比較するベクトルを選択してください。未選択の内積を0とは表示しません。</p>;
   const projection = result.projection;
+  const polynomial = result.definition.metric !== 'euclidean';
   return <>
     <Formula><Vector name="u" /> = <Vector name={`a${pair[0]}`} /><span>、</span><Vector name="v" /> = <Vector name={`a${pair[1]}`} /></Formula>
-    <Formula><Product left="u" right="v" /> = <ComponentProductSum u={result.u} v={result.v} /> = <NumberValue value={result.innerProduct?.numeric ?? null} /></Formula>
+    {polynomial && <><Formula><Vector name="u" /> = <Polynomial coefficients={result.u} /></Formula><Formula><Vector name="v" /> = <Polynomial coefficients={result.v} /></Formula></>}
+    <Formula><Product left="u" right="v" /> = {result.definition.metric === 'integral'
+      ? <InnerIntegral>(<Polynomial coefficients={result.u} />)(<Polynomial coefficients={result.v} />)</InnerIntegral>
+      : <ComponentProductSum u={result.u} v={result.v} />} = <NumberValue value={result.innerProduct?.numeric ?? null} /></Formula>
     <Formula><Norm name="u" /> = <NumberValue value={result.uNorm} /><span>、</span><Norm name="v" /> = <NumberValue value={result.vNorm} /></Formula>
     <Formula><Scalar>θ</Scalar> = {result.angle?.status === 'ready' ? <span>{innerProductNumber(result.angle.degrees)}°</span>
       : <span className="inner-unavailable">{result.angle?.status === 'undefined-zero-vector' ? '定義されません（零ベクトルを含む）' : '計算を保留'}</span>}</Formula>
@@ -52,8 +58,8 @@ export function InnerProductPanel({ result, pair }: { readonly result: PairAnaly
       <Vector name="u" /> = (<NumberValue value={projection.coefficient?.numeric ?? null} />)<Vector name="u" /></Formula>
       : projection?.kind === 'zero-subspace' ? <p>方向<Vector name="u" />が零なので直線は定まりません。零部分空間への射影は<Vector name="p" /> = <Vector name="0" />、残差は<Vector name="r" /> = <Vector name="v" />です。</p>
       : <p className="inner-unavailable">射影の計算を保留しています。</p>}
-    <Formula><Vector name="p" /> = <ColumnValue value={projection?.vector.numeric ?? null} /></Formula>
-    <Formula><Vector name="r" /> = <Vector name="v" /> − <Vector name="p" /> = <ColumnValue value={projection?.residual.numeric ?? null} /></Formula>
+    <Formula><Vector name="p" /> = <InnerObjectValue polynomial={polynomial} value={projection?.vector.numeric ?? null} /></Formula>
+    <Formula><Vector name="r" /> = <Vector name="v" /> − <Vector name="p" /> = <InnerObjectValue polynomial={polynomial} value={projection?.residual.numeric ?? null} /></Formula>
     {projection && result.status !== 'numerical-failure' && <>
       <Formula><Vector name="v" /> = <Vector name="p" /> + <Vector name="r" /><span>、</span><Product left="u" right="r" /> = 0</Formula>
       <p className="inner-note">残差は射影方向と直交します。零ベクトルとの内積も0ですが、角度は定義されません。</p>

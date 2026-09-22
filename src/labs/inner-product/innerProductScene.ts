@@ -1,10 +1,13 @@
-import { analyzeInnerProductPair, createInnerProductMetric, type GramSchmidtAnalysis, type StageKey, type OrderedInput, type PairAnalysis, type VectorValue } from '../../domain';
+import { analyzeInnerProductPair, createInnerProductMetric, type MetricId, type GramSchmidtAnalysis, type StageKey, type OrderedInput, type PairAnalysis, type VectorValue } from '../../domain';
 import { parallelSnapDistanceForViewWidth } from '../../state/vectorSnapping';
 import type { PlaneViewport } from '../../visualization/planeGeometry';
 
 export type InnerProductDimension = 0 | 1 | 2 | 3;
+export type InnerProductKind = 'coordinate' | 'polynomial';
 /** 数0〜3Dの教材状態。下書き・タブ・表示範囲はReact側へ分離する。 */
 export interface InnerProductScene {
+  readonly kind: InnerProductKind;
+  readonly metric: MetricId;
   readonly dimension: InnerProductDimension;
   readonly inputs: readonly OrderedInput[];
   readonly pair: readonly [number, number] | null;
@@ -13,14 +16,20 @@ export interface InnerProductScene {
   readonly showGeometry: boolean;
 }
 const METRICS = [0, 1, 2, 3].map(dimension => createInnerProductMetric({ dimension: dimension as InnerProductDimension, metric: 'euclidean' }));
-export const innerProductMetric = (dimension: InnerProductDimension) => METRICS[dimension];
+const POLYNOMIAL_METRICS = Object.fromEntries((['integral', 'coefficient'] as const).map(metric => [metric, [1, 2, 3].map(dimension => createInnerProductMetric({ dimension: dimension as 1 | 2 | 3, metric }))]));
+export const innerProductMetric = (dimension: InnerProductDimension, metric: MetricId = 'euclidean') => {
+  if (metric !== 'euclidean' && dimension === 0) throw new Error('Polynomial space must have positive dimension');
+  return metric === 'euclidean' ? METRICS[dimension] : POLYNOMIAL_METRICS[metric][dimension - 1];
+};
 export const INNER_PRODUCT_2D_METRIC = innerProductMetric(2);
 export const INNER_PRODUCT_COLORS = ['#ce5135', '#00877e', '#8170bc', '#aa752a', '#327baa', '#aa5683', '#658238', '#647380'] as const;
 export const innerInputColor = (id: number) => INNER_PRODUCT_COLORS[(id - 1) % INNER_PRODUCT_COLORS.length];
 export const PROJECTION_COLOR = '#2f6690', RESIDUAL_COLOR = '#8170bc';
-export function createInnerProductScene(dimension: InnerProductDimension = 2): InnerProductScene {
-  const components = dimension === 0 ? [] : dimension === 1 ? [[1], [2]] : dimension === 2 ? [[2, 2], [3, 0]] : [[1, 1, 0], [1, 0, 1], [0, 1, 1]];
-  return { dimension, inputs: components.map((components, i) => ({ id: i + 1, components })), pair: dimension ? [1, 2] : null, mode: 'pair', stage: dimension ? { inputId: 1, phase: 'input' } : null, showGeometry: true };
+export function createInnerProductScene(dimension: InnerProductDimension = 2, kind: InnerProductKind = 'coordinate'): InnerProductScene {
+  if (kind === 'polynomial' && dimension === 0) throw new Error('Polynomial space must have positive dimension');
+  const components = kind === 'polynomial' ? Array.from({ length: dimension }, (_, i) => Array.from({ length: dimension }, (_, j) => i === j ? 1 : 0))
+    : dimension === 0 ? [] : dimension === 1 ? [[1], [2]] : dimension === 2 ? [[2, 2], [3, 0]] : [[1, 1, 0], [1, 0, 1], [0, 1, 1]];
+  return { kind, metric: kind === 'polynomial' ? 'integral' : 'euclidean', dimension, inputs: components.map((components, i) => ({ id: i + 1, components })), pair: components.length ? [1, components.length === 1 ? 1 : 2] : null, mode: 'pair', stage: dimension ? { inputId: 1, phase: 'input' } : null, showGeometry: true };
 }
 export function editInnerProductInput(scene: InnerProductScene, id: number, coordinates: readonly number[]): InnerProductScene {
   if (!scene.inputs.some(input => input.id === id) || coordinates.length !== scene.dimension
@@ -38,7 +47,7 @@ export function analyzeInnerProductScene(scene: InnerProductScene): PairAnalysis
   const u = scene.inputs.find(input => input.id === pair[0]);
   const v = scene.inputs.find(input => input.id === pair[1]);
   if (!u || !v) throw new Error('Inner product pair must refer to existing inputs');
-  return analyzeInnerProductPair(innerProductMetric(scene.dimension), u.components, v.components);
+  return analyzeInnerProductPair(innerProductMetric(scene.dimension, scene.metric), u.components, v.components);
 }
 export function snapInnerProductInput(coordinates: readonly [number, number], viewWidth: number): readonly [number, number] {
   return Math.hypot(...coordinates) <= parallelSnapDistanceForViewWidth(viewWidth) ? [0, 0] : coordinates;

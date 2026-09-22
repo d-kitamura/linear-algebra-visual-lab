@@ -4,6 +4,10 @@ import { analyzeGramSchmidt, type StageKey } from '../../domain';
 import { parseCoordinateInput } from '../../state/vectorEditing';
 import { createAutoFitViewport, createAutoFitLineViewport, VectorPlane2D, VectorLine1D, ZeroSpace0D, type LineViewport, type PlaneViewport } from '../../visualization';
 import { Vector } from '../representation-matrix/representationMath';
+import { Formula } from '../representation-matrix/representationMath';
+import { FunctionName, Polynomial } from '../representation-matrix/representationObjects';
+import { InnerPolynomialCoordinates, InnerMetricExplanation, InnerPolynomialSpace } from './innerProductPolynomialMath';
+import { innerInputCoordinates, innerDisplayPlots } from './innerProductCoordinates';
 import { InnerProductPanel, INNER_PRODUCT_TABS, type InnerProductTab } from './InnerProductPanels';
 import { InnerProductOverlay } from './InnerProductOverlay';
 import { GramSchmidtOverlay } from './GramSchmidtOverlay';
@@ -13,7 +17,7 @@ import { analyzeInnerProductScene, createInnerProductScene, editInnerProductInpu
   inputPlotId, snapInnerProductInput, innerInputColor, innerProductMetric, addInnerProductInput, removeInnerProductInput,
   moveInnerProductInput, resolveInnerProductStage, stageId, type InnerProductScene } from './innerProductScene';
 import './innerProduct.css';
-import { createInnerProductWorkspace, resetInnerProductWorkspace, updateInnerProductSlot, type InnerProductSlot, type InnerProductView } from './innerProductWorkspace';
+import { activeInnerSlot, createInnerProductWorkspace, resetInnerProductWorkspace, updateActiveInnerSlot, selectInnerScene, fitInnerProductView, type InnerProductSlot, type InnerProductView } from './innerProductWorkspace';
 
 const InnerProductSpace = lazy(() => import('./InnerProductSpace'));
 type DragPreview = { id: number; coordinates: readonly number[]; viewport?: PlaneViewport; line?: LineViewport };
@@ -23,13 +27,15 @@ export function InnerProductLab({ active = true, initialScene }: { readonly acti
   const [revision, setRevision] = useState(0);
   const dimension = workspace.dimension;
   // 教材と視点は次元別に保持。切替／Resetで未確定入力・ドラッグだけ破棄する。
-  return <InnerProductSceneView key={`${dimension}-${revision}`} active={active} slot={workspace.slots[dimension]}
-    setScene={next => setWorkspace(w => updateInnerProductSlot(w, dimension, slot => ({ ...slot, scene: typeof next === 'function' ? next(slot.scene) : next })))}
-    setView={patch => setWorkspace(w => updateInnerProductSlot(w, dimension, slot => ({ ...slot, view: { ...slot.view, ...patch } })))}
+  return <InnerProductSceneView key={`${workspace.kind}-${dimension}-${revision}`} active={active} slot={activeInnerSlot(workspace)}
+    setScene={next => setWorkspace(w => updateActiveInnerSlot(w, slot => ({ ...slot, scene: typeof next === 'function' ? next(slot.scene) : next })))}
+    setView={patch => setWorkspace(w => updateActiveInnerSlot(w, slot => ({ ...slot, view: { ...slot.view, ...patch } })))}
     onReset={() => { setWorkspace(w => resetInnerProductWorkspace(w, initial)); setRevision(n => n + 1); }}
-    dimensionControls={<div className="dimension-switcher inner-dimensions"><div className="dimension-tablist" role="group" aria-label="内積Labの次元">
-      {([0, 1, 2, 3] as const).map(d => <button type="button" key={d} aria-pressed={dimension === d} onClick={() => setWorkspace(w => ({ ...w, dimension: d }))}>{d}D</button>)}
-    </div></div>} />;
+    dimensionControls={<><div className="dimension-switcher inner-kinds"><div className="dimension-tablist" role="group" aria-label="内積Labの種類">
+      {(['coordinate', 'polynomial'] as const).map(kind => <button type="button" key={kind} aria-pressed={workspace.kind === kind} onClick={() => setWorkspace(w => selectInnerScene(w, kind))}>{kind === 'coordinate' ? '数ベクトル' : '多項式'}</button>)}
+    </div></div><div className="dimension-switcher inner-dimensions"><div className="dimension-tablist" role="group" aria-label="内積Labの次元">
+      {([0, 1, 2, 3] as const).filter(d => workspace.kind === 'coordinate' || d > 0).map(d => <button type="button" key={d} aria-pressed={dimension === d} onClick={() => setWorkspace(w => selectInnerScene(w, w.kind, d))}>{d}D</button>)}
+    </div></div></>} />;
 }
 
 function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimensionControls }: {
@@ -46,14 +52,15 @@ function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimen
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const displayScene = useMemo(() => preview ? editInnerProductInput(scene, preview.id, preview.coordinates) : scene, [scene, preview]);
   // 計算は入力・pairだけを依存とし、段階／モード／タブ／視点操作では再実行しない。
-  const committedResult = useMemo(() => analyzeInnerProductScene(scene), [scene.inputs, scene.pair, scene.dimension]);
-  const committedGs = useMemo(() => analyzeGramSchmidt(innerProductMetric(scene.dimension), scene.inputs), [scene.inputs, scene.dimension]);
+  const metric = innerProductMetric(scene.dimension, scene.metric);
+  const committedResult = useMemo(() => analyzeInnerProductScene(scene), [scene.inputs, scene.pair, metric]);
+  const committedGs = useMemo(() => analyzeGramSchmidt(metric, scene.inputs), [scene.inputs, metric]);
   const result = useMemo(() => preview ? analyzeInnerProductScene(displayScene) : committedResult, [displayScene.inputs, displayScene.pair, committedResult]);
-  const gs = useMemo(() => preview ? analyzeGramSchmidt(innerProductMetric(scene.dimension), displayScene.inputs) : committedGs, [displayScene.inputs, committedGs]);
+  const gs = useMemo(() => preview ? analyzeGramSchmidt(metric, displayScene.inputs) : committedGs, [displayScene.inputs, committedGs]);
   const stage = resolveInnerProductStage(displayScene.stage, gs);
   const stageWasReset = stageId(stage) !== stageId(displayScene.stage);
   const gsPlots = useMemo(() => gramSchmidtPlots(displayScene, gs, stage), [displayScene, gs, stage]);
-  const plots = useMemo(() => displayScene.mode === 'pair' ? innerProductPlots(displayScene, result) : gsPlots, [displayScene, result, gsPlots]);
+  const plots = useMemo(() => innerDisplayPlots(displayScene, displayScene.mode === 'pair' ? innerProductPlots(displayScene, result) : gsPlots), [displayScene, result, gsPlots]);
   const fitVectors = plots.safe ? plots.vectors : plots.inputs;
   const viewport = preview?.viewport ?? view.plane ?? createAutoFitViewport(scene.dimension === 2 ? fitVectors : []);
   const line = preview?.line ?? view.line ?? createAutoFitLineViewport(scene.dimension === 1 ? fitVectors.map(v => v.coordinates[0]) : []);
@@ -85,6 +92,12 @@ function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimen
     const input = scene.inputs.find(v => inputPlotId(v.id) === plotId);
     if (input) { const next = { id: input.id, coordinates: input.components, viewport, line }; previewRef.current = next; setPreview(next); }
   }
+  function previewCoordinates(id: number, coordinates: readonly number[]) {
+    const components = innerInputCoordinates(scene, coordinates);
+    if (!components) { setNotice('逆変換後の係数が入力上限（絶対値100万）を超えるか、安全に数値化できないため、直前の有効値を維持します。'); return; }
+    const next = { ...previewRef.current, id, coordinates: components, viewport, line };
+    previewRef.current = next; setPreview(next); setNotice('');
+  }
   function changeInputs(next: InnerProductScene) {
     setScene(next); setPairDraft(next.pair ?? [null, null]);
     setNotice('入力の組を変更し、直交化の表示段階を先頭へ戻しました。');
@@ -106,65 +119,72 @@ function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimen
         <p id="inner-share-help" className="inner-note">このLabの共有機能は14.7で対応予定です。</p></div>
     </section>
     {dimensionControls}
+    {scene.kind === 'polynomial' && <label className="inner-metric-select">内積<select aria-label="多項式の内積" value={scene.metric} disabled={preview !== null || invalid.size > 0}
+      onChange={event => { const metric = event.target.value as 'integral' | 'coefficient'; setScene(s => ({ ...s, metric })); setView(fitInnerProductView(view)); setNotice('元の多項式を保ったまま内積を変更し、図を全体表示に戻しました。'); }}>
+      <option value="integral">積分内積（−1から1）</option><option value="coefficient">係数内積</option>
+    </select></label>}
     <div className="inner-mode-switch" role="group" aria-label="内積Labのモード">
       {([['pair', '内積・射影'], ['gram-schmidt', 'グラム・シュミット']] as const).map(([mode, label]) => <button type="button" key={mode}
         aria-pressed={scene.mode === mode} disabled={preview !== null} onClick={() => { setScene(s => ({ ...s, mode })); setTab(mode === 'pair' ? 'pair' : 'steps'); }}>{label}</button>)}
     </div>
     <div className="inner-product-workspace">
       <section className="plot-card inner-product-plot" aria-labelledby="inner-plot-title">
-        <div className="card-heading"><h2 id="inner-plot-title">{['零ベクトル空間', '1次元数直線', '2次元座標平面', '3次元座標空間'][scene.dimension]}</h2>{(scene.dimension === 1 || scene.dimension === 2) && <button type="button" className="basis-fit-button" disabled={preview !== null} onClick={() => setView({ plane: null, line: null })}>全体を表示</button>}</div>
+        <div className="card-heading"><h2 id="inner-plot-title">{scene.kind === 'polynomial' ? <><InnerPolynomialSpace dimension={scene.dimension} />：内積を反映した座標</> : ['零ベクトル空間', '1次元数直線', '2次元座標平面', '3次元座標空間'][scene.dimension]}</h2>{(scene.dimension === 1 || scene.dimension === 2) && <button type="button" className="basis-fit-button" disabled={preview !== null} onClick={() => setView({ plane: null, line: null })}>全体を表示</button>}</div>
+        {scene.kind === 'polynomial' && <p className="inner-note">{scene.metric === 'integral' ? '積分内積に対応する固定座標です。標準単項式の係数軸や、今求めている正規直交基底の座標ではありません。' : '標準単項式の係数を座標とします。この図の直角・長さは係数内積に対応します。'}</p>}
         {scene.mode === 'gram-schmidt' && scene.dimension > 0 && <GramSchmidtControls analysis={gs} stage={stage} disabled={preview !== null || invalid.size > 0} onStage={chooseStage} />}
         {(notice || stageWasReset) && <p className="inner-note" role={active ? 'status' : undefined}>{stageWasReset ? '現在の段階がなくなったため、プレビューでは先頭を表示します。' : notice}</p>}
         {scene.dimension > 0 && <label className="inner-geometry-toggle"><input type="checkbox" checked={scene.showGeometry} disabled={preview !== null}
           onChange={event => setScene(s => ({ ...s, showGeometry: event.target.checked }))} />射影・残差の補助図を表示</label>}
         {active && scene.dimension === 0 && <ZeroSpace0D idPrefix="inner-product-zero" description="零ベクトルのみの空間です。成分はなく、空の組が正規直交基底です。" />}
         {plots.safe && active && scene.dimension === 1 && <VectorLine1D idPrefix="inner-product-line" vectors={plots.vectors} colors={plots.colors} viewport={line}
+          axisLabel={metric.axes[0]}
           showHelpText={false} showViewportControls={false} outlinedVectorIds={plots.vectors.filter(v => !plots.editableIds.includes(v.id)).map(v => v.id)}
           editableVectorIds={invalid.size ? [] : plots.editableIds} alwaysOpaqueVectorIds={scene.mode === 'pair' ? plots.vectors.map(v => v.id) : gsPlots.opaqueIds}
           onViewportChange={line => setView({ line })} onVectorDragStart={startDrag} onVectorChange={(_, coordinates) => {
             const pending = previewRef.current; if (!pending) return;
-            const next = { ...pending, coordinates }; previewRef.current = next; setPreview(next);
+            previewCoordinates(pending.id, coordinates);
           }} onVectorDragEnd={commitDrag} onVectorDragCancel={cancelDrag} />}
         {plots.safe && active && scene.dimension === 3 && <Suspense fallback={<p>3D表示を準備しています。</p>}><InnerProductSpace scene={scene} committedGs={committedGs} committedResult={committedResult}
-          plots={plots} gs={gs} stage={stage} result={result} camera={view.camera} disabled={invalid.size > 0}
+          plots={plots} gs={gs} stage={stage} result={result} camera={view.camera} disabled={invalid.size > 0} onRejected={() => setNotice('逆変換後の係数が入力上限を超えるか、安全に数値化できないため、直前の有効値を維持します。')}
           onCameraChange={camera => setView({ camera })} onPreview={(plotId, coordinates) => {
             if (!coordinates) { cancelDrag(); return; }
             const input = scene.inputs.find(v => inputPlotId(v.id) === plotId); if (!input) return;
-            const next = { id: input.id, coordinates }; previewRef.current = next; setPreview(next);
+            previewCoordinates(input.id, coordinates);
           }} onCommit={(plotId, coordinates) => {
             const input = scene.inputs.find(v => inputPlotId(v.id) === plotId);
-            if (input) setScene(s => editInnerProductInput(s, input.id, coordinates)); cancelDrag();
+            const components = innerInputCoordinates(scene, coordinates);
+            if (input && components) setScene(s => editInnerProductInput(s, input.id, components)); cancelDrag();
           }} /></Suspense>}
         {plots.safe && active && scene.dimension === 2 && <VectorPlane2D idPrefix="inner-product-plane" vectors={plots.vectors} colors={plots.colors} viewport={viewport}
+          axisLabels={metric.axes as readonly [string, string]}
           vectorPresentation={innerProductPresentation(plots.vectors, viewport)} alwaysOpaqueVectorIds={scene.mode === 'pair' ? plots.vectors.map(v => v.id) : gsPlots.opaqueIds}
           editableVectorIds={invalid.size ? [] : plots.editableIds} onViewportChange={plane => setView({ plane })}
           geometryDescription={scene.mode === 'gram-schmidt' ? '現在の入力と、この段階までの射影・残差・採用した正規直交ベクトルを表示します。' : scene.showGeometry && plots.derivedAvailable ? 'pはvのu方向への射影、rはvからpを引いた残差です。細い破線はpとrによる補助図です。' : ''}
-          geometryOverlay={scene.showGeometry && plots.derivedAvailable ? scene.mode === 'gram-schmidt' ? <GramSchmidtOverlay analysis={gs} stage={stage} viewport={viewport} /> : result ? <InnerProductOverlay result={result} viewport={viewport} /> : undefined : undefined}
+          geometryOverlay={scene.showGeometry && plots.derivedAvailable ? scene.mode === 'gram-schmidt' ? <GramSchmidtOverlay analysis={gs} stage={stage} viewport={viewport} metric={metric} /> : result ? <InnerProductOverlay result={result} viewport={viewport} metric={metric} /> : undefined : undefined}
           onVectorDragStart={startDrag}
           onVectorChange={(_, coordinates) => {
             const pending = previewRef.current;
             if (!pending) return;
-            const next = { ...pending, coordinates: snapInnerProductInput(coordinates, pending.viewport!.maxX - pending.viewport!.minX) };
-            previewRef.current = next; setPreview(next);
+            previewCoordinates(pending.id, snapInnerProductInput(coordinates, pending.viewport!.maxX - pending.viewport!.minX));
           }} onVectorDragEnd={commitDrag} onVectorDragCancel={cancelDrag} />}
-        {!plots.safe && <p className="representation-warning">導出した成分が描画上限（絶対値100万）を超えたため図を保留しています。成分入力から変更できます。</p>}
+        {!plots.safe && <p className="representation-warning">表示座標を安全に数値化できないか、描画上限（絶対値100万）を超えたため図を保留しています。成分入力から変更できます。</p>}
         {scene.showGeometry && !plots.derivedAvailable && (scene.mode === 'gram-schmidt' || result) && <p className="inner-note">射影・残差の図は数値計算を保留しています。元の入力は編集できます。</p>}
         <div className="inner-legend">{plots.vectors.map((vector, i) => <span key={vector.id} style={{ color: plots.colors[i] }}>{vector.id.startsWith('inner-input-') ? '● ' : '◇ '}<Vector name={vector.name} /></span>)}</div>
       </section>
       <div className="inner-product-sidebar">
         {scene.dimension > 0 && <section className="vector-editor-card inner-product-editor" aria-labelledby="inner-editor-title">
-          <p className="panel-kicker">Edit vectors</p><h2 id="inner-editor-title">列ベクトルの成分</h2>
+          <p className="panel-kicker">Edit vectors</p><h2 id="inner-editor-title">{scene.kind === 'polynomial' ? '多項式の係数' : '列ベクトルの成分'}</h2>
           <fieldset disabled={preview !== null}><legend className="visually-hidden">内積Labの数ベクトル成分</legend>
             {scene.inputs.length === 0 && <p>入力は空です。ベクトルを追加できます。</p>}
             <div className="inner-inputs">{scene.inputs.map((input, i) => <div className="inner-input-item" key={input.id}><div className="inner-input-column">
-              <span style={{ color: innerInputColor(input.id) }}><Vector name={`a${input.id}`} /></span><span>=</span><span className="linear-map-vector-input">
-                {input.components.map((component, axis) => <NumberInput key={axis} value={component} label={`a${input.id}の第${axis + 1}成分`} reportInvalid={reportInvalid}
+              <span style={{ color: innerInputColor(input.id) }}><InnerPolynomialCoordinates polynomial={scene.kind === 'polynomial'} name={`a${input.id}`} /></span><span>=</span><span className="linear-map-vector-input">
+                {input.components.map((component, axis) => <NumberInput key={axis} value={component} label={scene.kind === 'polynomial' ? `f${input.id}の係数b${axis}` : `a${input.id}の第${axis + 1}成分`} reportInvalid={reportInvalid}
                   onValue={value => setScene(s => editInnerProductInput(s, input.id, s.inputs.find(v => v.id === input.id)!.components.map((x, j) => j === axis ? value : x)))} />)}
               </span></div><div className="inner-input-actions"><span>{i + 1}番目</span>
                 <button type="button" aria-label={`a${input.id}を前へ`} disabled={i === 0 || invalid.size > 0} onClick={() => changeInputs(moveInnerProductInput(scene, input.id, -1))}>↑</button>
                 <button type="button" aria-label={`a${input.id}を後へ`} disabled={i === scene.inputs.length - 1 || invalid.size > 0} onClick={() => changeInputs(moveInnerProductInput(scene, input.id, 1))}>↓</button>
                 <button type="button" aria-label={`a${input.id}を削除`} onClick={() => changeInputs(removeInnerProductInput(scene, input.id))}>削除</button>
-              </div></div>)}</div>
+              </div>{scene.kind === 'polynomial' && <Formula><Vector name={`a${input.id}`} /> = <FunctionName name={`f${input.id}`} /> = <Polynomial coefficients={displayScene.inputs.find(v => v.id === input.id)!.components} /></Formula>}</div>)}</div>
             <button className="inner-add-input" type="button" disabled={scene.inputs.length >= 8 || invalid.size > 0} onClick={() => changeInputs(addInnerProductInput(scene))}>ベクトルを追加（{scene.inputs.length}/8）</button>
             <div className="inner-pair-select">{(['u', 'v'] as const).map((name, side) => <label key={name}><Vector name={name} /> =
               <select aria-label={`${name}として使う入力`} value={(scene.pair ?? pairDraft)[side] ?? ''} onChange={event => choosePair(side, event.target.value === '' ? null : Number(event.target.value))}>
@@ -180,6 +200,7 @@ function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimen
             ref={node => { tabRefs.current[index] = node; }} onClick={() => setTab(id)} onKeyDown={event => keyTab(event, index)}>{label}</button>)}</div>
           {INNER_PRODUCT_TABS.map(([id, label]) => <section key={id} className="basis-result-card inspector-panel" role="tabpanel" id={`inner-panel-${id}`}
             aria-labelledby={`inner-tab-${id}`} hidden={tab !== id} tabIndex={0}><h2>{label}</h2>
+            {scene.kind === 'polynomial' && <InnerMetricExplanation metric={metric} details={id === 'pair'} />}
             {id === 'pair' ? <InnerProductPanel result={result} pair={scene.pair} /> : id === 'steps' ? <>{scene.mode !== 'gram-schmidt' && <p className="inner-note">グラフを段階表示するにはグラム・シュミットモードを選んでください。</p>}<GramSchmidtStepPanel analysis={gs} stage={stage} /></> : <GramSchmidtBasisPanel analysis={gs} />}</section>)}
         </div>
       </div>

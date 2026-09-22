@@ -1,16 +1,24 @@
-import type { PairAnalysis } from '../../domain';
+import type { PairAnalysis, InnerProductMetric } from '../../domain';
+import { innerDisplayCoordinates } from './innerProductCoordinates';
 import { toSvgPoint, type PlaneViewport } from '../../visualization/planeGeometry';
 
 /** pとrを原点からの2辺とする補助図。移動経路の矢印ではない。 */
-export function InnerProductOverlay({ result, viewport }: { readonly result: PairAnalysis; readonly viewport: PlaneViewport }) {
+export function InnerProductOverlay({ result, viewport, metric }: { readonly result: PairAnalysis; readonly viewport: PlaneViewport; readonly metric?: InnerProductMetric }) {
   const projection = result.projection;
   if (result.status === 'numerical-failure' || projection?.vector.numeric.status !== 'ready' || projection.residual.numeric.status !== 'ready') return null;
-  return <ProjectionGeometry u={result.u} v={result.v} p={projection.vector.numeric.value} r={projection.residual.numeric.value} viewport={viewport} />;
+  return <ProjectionGeometry u={result.u} v={result.v} p={projection.vector.numeric.value} r={projection.residual.numeric.value} viewport={viewport} metric={metric} />;
 }
 
 /** 直交分解が確認済みの2辺だけに使用する。画面の見かけから直交判定しない。 */
-export function ProjectionGeometry({ u: direction, v: input, p: projection, r: residual, viewport }: {
-  readonly u: readonly number[]; readonly v: readonly number[]; readonly p: readonly number[]; readonly r: readonly number[]; readonly viewport: PlaneViewport;
+export function ProjectionGeometry({ u, v, p, r, viewport, metric }: {
+  readonly u: readonly number[]; readonly v: readonly number[]; readonly p: readonly number[]; readonly r: readonly number[]; readonly viewport: PlaneViewport; readonly metric?: InnerProductMetric;
+}) {
+  const transformed = [u, v, p, r].map(values => metric ? innerDisplayCoordinates(metric, values) : values);
+  if (transformed.some(value => value === null)) return null;
+  return <DisplayProjectionGeometry direction={transformed[0]!} input={transformed[1]!} projection={transformed[2]!} residual={transformed[3]!} viewport={viewport} />;
+}
+function DisplayProjectionGeometry({ direction, input, projection, residual, viewport }: {
+  readonly direction: readonly number[]; readonly input: readonly number[]; readonly projection: readonly number[]; readonly residual: readonly number[]; readonly viewport: PlaneViewport;
 }) {
   const point = (values: readonly number[]) => toSvgPoint(values as readonly [number, number], viewport);
   const p = point(projection), r = point(residual), v = point(input), o = point([0, 0]), u = point(direction);
