@@ -4,12 +4,11 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const design = read('docs/INNER_PRODUCT_LAB_DESIGN.md');
 const roadmap = read('ROADMAP.md');
-describe('フェーズ14詳細設計（D-131承認・14.8資料整備）', () => {
-  it('14.7・14.8の確認待ちと未着手の14.9を区別する', () => {
+describe('フェーズ14詳細設計（D-132・D-133承認・14.9棚卸し）', () => {
+  it('14.1〜14.8の承認と14.9の最終確認待ちを区別する', () => {
     const phase = roadmap.split('## 15. フェーズ14')[1].split('## 16. 文書更新')[0];
-    expect(phase).toContain('D-125承認済み');
-    expect(phase).toContain('D-127承認済み');
-    expect(phase).toContain('D-132確認待ち');
+    expect(phase).toContain('14.1〜14.8・D-125〜D-133承認済み');
+    expect(phase).toContain('D-134最終確認待ち');
     for (let i = 1; i <= 9; i++) expect(phase).toContain(`### 14.${i} `);
     expect(phase.match(/\*\*確認ゲート:\*\*/g)).toHaveLength(9);
     const contractUnit = phase.split('### 14.1 ')[1].split('### 14.2 ')[0];
@@ -31,14 +30,16 @@ describe('フェーズ14詳細設計（D-131承認・14.8資料整備）', () =>
     expect(polynomialUnit.match(/- \[x\]/g)).toHaveLength(3);
     expect(polynomialUnit).toContain('- [x] **確認ゲート:** D-131');
     const shareUnit = phase.split('### 14.7 ')[1].split('### 14.8 ')[0];
-    expect(shareUnit.match(/- \[x\]/g)).toHaveLength(3);
-    expect(shareUnit).toContain('- [ ] **確認ゲート:** D-132');
+    expect(shareUnit.match(/- \[x\]/g)).toHaveLength(4);
+    expect(shareUnit).toContain('- [x] **確認ゲート:** D-132');
     const teachingUnit = phase.split('### 14.8 ')[1].split('### 14.9 ')[0];
-    expect(teachingUnit.match(/- \[x\]/g)).toHaveLength(2);
-    expect(teachingUnit).toContain('- [ ] **確認ゲート:** D-133');
-    expect(phase.split('### 14.9 ')[1]).not.toContain('- [x]');
+    expect(teachingUnit.match(/- \[x\]/g)).toHaveLength(3);
+    expect(teachingUnit).toContain('- [x] **確認ゲート:** D-133');
+    const inventory = phase.split('### 14.9 ')[1];
+    expect(inventory.match(/- \[x\]/g)).toHaveLength(2);
+    expect(inventory).toContain('- [ ] **確認ゲート:** D-134');
     expect(design).toContain('フェーズ13は完了');
-    expect(design).toContain('実装は未着手');
+    expect(design).toContain('D-134最終確認待ち');
     expect(read('docs/DECISIONS.md')).toContain('### D-125');
     expect(read('src/app/App.tsx')).toContain('InnerProductLab');
   });
@@ -48,7 +49,7 @@ describe('フェーズ14詳細設計（D-131承認・14.8資料整備）', () =>
       '周囲の空間Vの正規直交基底と言えるのはr=nの場合だけ',
       '零ベクトルとの角度を90度とは表示しない', '小さい非零',
       '正規化前の直交化を有理数', '原点への吸着のみ',
-      '表示段階は教材状態として保存', '2048文字', '既存88例', '14.3', '「高」推奨']) {
+      '表示段階は教材状態として保存', '2048文字', '既存88例', '14.3']) {
       expect(design).toContain(phrase);
     }
     expect(design).toContain('ケイリー・ハミルトン・次数落としは再導入しない');

@@ -1,6 +1,6 @@
 # 共有URLの互換方針
 
-最終更新: 2026-09-22
+最終更新: 2026-09-23
 
 ## 目的
 
@@ -39,6 +39,7 @@
 | `basis-dimension` v2 | 現行 | 維持 | 正式承認待ち | 0〜3次元、1D定数多項式・比較基底 |
 | `linear-map` v2 | 現行 | 維持 | 正式承認待ち | 全16次元組、0D空行列・空入力省略 |
 | `representation-matrix` v1 | 現行 | 維持 | 正式承認待ち | 1〜3次元、両側空間種別、M、両基底・順序、入力、モード・方向、3Dカメラ |
+| `inner-product` v1 | 現行 | 維持 | 正式承認待ち | 入力ID・順序・内積・pair・モード・GS段階・補助図・3Dカメラ、0Dはmodeを含む4項目 |
 | 未知の将来版 | しない | 拒否 | 対象外 | 既定例へフォールバックし理由を表示 |
 | `diagonalization` v1 | 現行 | 維持 | 正式承認待ち | 7場面、行列・入力・基底列順・空間表示・左右3Dカメラ、0D最小形式 |
 | `eigenspace` v1 | 現行 | 維持 | 正式承認待ち | 現在のkind・dim・matrix・input・showEigenspace・camera。0Dはv・lab・dimのみ |
@@ -54,7 +55,7 @@
 - `tests/fixtures/share-url-linear-map-v1.json`は、`2→3`の行列、入力`u,w`、スカラー、終域3Dカメラを含む線形写像Lab v1 URLと期待状態を固定する。
 - `tests/sharing/shareCompatibility.test.ts`は旧固定URLの数学状態を現行版へ正規化して照合し、現行版での決定的な再生成を確認する。旧URLと新版URLの文字列一致は要求しない。
 - `tests/fixtures/share-url-low-dimensions.json`は現行版の低次元8例を固定する。`tests/sharing/lowDimensionalSharing.test.ts`で復元と同一URL再生成、13追加教材例の数学・描画・QR・読み上げ要約を検証する。既存28例と計41例になる。
-- `tests/integration/multiLabRegression.test.ts`は、各固定URLが対象Labだけを共有InitialStateにすること、Reset基準からの決定的再生成、6件のQR生成、旧3Labの28例＋低次元13例＋第四Lab11例＋第五Lab18例＋第六Lab18例（計88代表例）を横断して確認する。
+- `tests/integration/multiLabRegression.test.ts`は、各固定URLが対象Labだけを共有InitialStateにすること、Reset基準からの決定的再生成、7件のQR生成、旧3Labの28例＋低次元13例＋第四Lab11例＋第五Lab18例＋第六Lab18例＋第七Lab18例（計106代表例）を横断して確認する。
 - 将来いずれかのLabを更新するときは、別Labを含む既存fixtureを変更または削除しない。旧版の復元テストを残し、新版fixtureと旧版からの移行テストを追加する。
 - 互換fixtureのURLはコード整形、表示名変更、既定値変更を理由に更新しない。fixture自体が誤っていた場合だけ、理由を意思決定記録へ残して修正する。
 
@@ -66,7 +67,7 @@
 
 構造検証はソルバーを実行しない。対象LabでGS解析を一度行い、共有段階がavailableStagesに完全一致することを確認する。無効段階を黙って先頭へ置き換えず、警告と既定例へ退避する。再現可能な数値保留のinput／holdは受理する。順序・内積・段階列挙や数値基準が変わる場合は版変更の要否を記録する。派生p/r/q・G/Cを保存しない。
 
-`tests/fixtures/share-url-inner-product-v1.json`と`tests/sharing/innerProductSharing.test.ts`で、独立期待値・既存6Labへの非干渉・現在場面だけのReset・完全URL2048文字境界・共通QRを検証する。既存88授業例は変更せず、内積の代表教材資料は14.8で追加する。
+`tests/fixtures/share-url-inner-product-v1.json`と`tests/sharing/innerProductSharing.test.ts`で、独立期待値・既存6Labへの非干渉・現在場面だけのReset・完全URL2048文字境界・共通QRを検証する。既存88授業例は変更せず、内積の18代表例は14.8で[授業資料](./INNER_PRODUCT_TEACHING_GUIDE.md)へ追加済み。D-132・D-133は利用者承認済み。
 
 ### diagonalization v1の再現条件
 

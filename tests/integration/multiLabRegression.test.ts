@@ -42,10 +42,20 @@ import { EIGEN_TEACHING_SCENARIOS } from '../../src/teaching/eigenScenarios';
 import { createEigenInitialization, createEigenShareState } from '../../src/labs/eigenspace/eigenSharing';
 import { currentEigenSlot, resetEigenWorkspace, updateEigenSlot } from '../../src/labs/eigenspace/eigenWorkspace';
 import { setEigenInput } from '../../src/labs/eigenspace/eigenScene';
+import innerProductFixture from '../fixtures/share-url-inner-product-v1.json';
+import { INNER_PRODUCT_TEACHING_SCENARIOS } from '../../src/teaching/innerProductScenarios';
+import { createInnerProductInitialization, createInnerProductShareState } from '../../src/labs/inner-product/innerProductSharing';
+import { activeInnerSlot, resetInnerProductWorkspace, updateActiveInnerSlot } from '../../src/labs/inner-product/innerProductWorkspace';
+import { editInnerProductInput, moveInnerProductInput } from '../../src/labs/inner-product/innerProductScene';
 
 const PRODUCTION_BASE_URL = 'https://d-kitamura.github.io/linear-algebra-visual-lab/';
 
 const fixtures = [
+  {
+    lab: 'inner-product',
+    url: innerProductFixture.url,
+    state: validateSharedState(innerProductFixture.expectedState),
+  },
   {
     lab: 'diagonalization',
     url: diagonalizationFixture.url,
@@ -78,7 +88,7 @@ const fixtures = [
   },
 ] as const;
 
-describe('フェーズ9.7〜13.8 複数Lab統合回帰', () => {
+describe('フェーズ9.7〜14.9 複数Lab統合回帰', () => {
   it('低次元の13共有例は対象Lab・次元だけを置換し、他のInitialStateを維持する', () => {
     const defaults = {
       vector: createAppInitialization(PRODUCTION_BASE_URL),
@@ -126,6 +136,13 @@ describe('フェーズ9.7〜13.8 複数Lab統合回帰', () => {
       const representation = createRepresentationInitialization(fixture.url);
       const eigen = createEigenInitialization(fixture.url);
       const diagonalization = createDiagonalizationInitialization(fixture.url);
+      const inner = createInnerProductInitialization(fixture.url);
+      if (fixture.lab !== 'inner-product') {
+        expect(inner).toEqual(createInnerProductInitialization(PRODUCTION_BASE_URL));
+      } else {
+        expect(inner.errorMessage).toBeNull();
+        expect(createInnerProductShareState(activeInnerSlot(inner.initialWorkspace))).toEqual(fixture.state);
+      }
       if (fixture.lab !== 'diagonalization') {
         expect(diagonalization).toEqual(createDiagonalizationInitialization(PRODUCTION_BASE_URL));
       } else {
@@ -162,6 +179,16 @@ describe('フェーズ9.7〜13.8 複数Lab統合回帰', () => {
         resetState = createLinearMapShareState(
           initialization.initialStates[initialization.activeShapeId],
         );
+      } else if (fixture.state.lab === 'inner-product') {
+        const initial = createInnerProductInitialization(fixture.url).initialWorkspace;
+        // 第七LabもUIと同じResetを通す。内積・順序・pair・段階・視点を一緒に戻す。
+        const edited = updateActiveInnerSlot(initial, slot => ({
+          scene: { ...moveInnerProductInput(editInnerProductInput(slot.scene, 3, [2, 3, 4]), 3, 1),
+            metric: 'coefficient', mode: 'pair', pair: [1, 1], showGeometry: false },
+          view: { plane: null, line: null, camera: null },
+        }));
+        expect(createInnerProductShareState(activeInnerSlot(edited))).not.toEqual(fixture.state);
+        resetState = createInnerProductShareState(activeInnerSlot(resetInnerProductWorkspace(edited, initial)));
       } else if (fixture.state.lab === 'diagonalization') {
         const initial = createDiagonalizationInitialization(fixture.url).initialWorkspace;
         // 第六Labの列順と両視点も変更し、実際のReset経路から固定URLを再現する。
@@ -192,15 +219,15 @@ describe('フェーズ9.7〜13.8 複数Lab統合回帰', () => {
     });
   }
 
-  it('6つの固定共有URLをローカルでQRコードへ変換できる', async () => {
-    expect(fixtures).toHaveLength(6);
+  it('7つの固定共有URLをローカルでQRコードへ変換できる', async () => {
+    expect(fixtures).toHaveLength(7);
     for (const fixture of fixtures) {
       const qrCode = await createShareQrCodeDataUrl(fixture.url);
       expect(qrCode).toMatch(/^data:image\/png;base64,/u);
     }
   });
 
-  it('既存70例と第六Lab18例の計88例を維持し、他Labへ状態を漏らさない', () => {
+  it('既存88例と第七Lab18例の計106例を維持し、他Labへ状態を漏らさない', () => {
     const vectorSpaceScenarios = [
       ...TWO_DIMENSIONAL_TEACHING_SCENARIOS,
       ...LINEAR_COMBINATION_TEACHING_SCENARIOS,
@@ -231,7 +258,10 @@ describe('フェーズ9.7〜13.8 複数Lab統合回帰', () => {
     const allSixLabs = [...allFiveLabs, ...DIAGONALIZATION_TEACHING_SCENARIOS];
     expect(allSixLabs).toHaveLength(88);
     expect(new Set(allSixLabs.map((scenario) => `${scenario.state.lab}:${scenario.id}`)).size).toBe(88);
-    // 代表例はMarkdownから開く。URLの他Labへの漏出を6つの初期化APIで検証する。
+    const allSevenLabs = [...allSixLabs, ...INNER_PRODUCT_TEACHING_SCENARIOS];
+    expect(allSevenLabs).toHaveLength(106);
+    expect(new Set(allSevenLabs.map(scenario => `${scenario.state.lab}:${scenario.id}`)).size).toBe(106);
+    // 代表例はMarkdownから開く。URLの他Labへの漏出を7つの初期化APIで検証する。
     const initializers = {
       'vector-space': createAppInitialization,
       'basis-dimension': createBasisDimensionInitialization,
@@ -239,8 +269,9 @@ describe('フェーズ9.7〜13.8 複数Lab統合回帰', () => {
       'representation-matrix': createRepresentationInitialization,
       'eigenspace': createEigenInitialization,
       'diagonalization': createDiagonalizationInitialization,
+      'inner-product': createInnerProductInitialization,
     };
-    for (const scenario of allSixLabs) {
+    for (const scenario of allSevenLabs) {
       const url = buildShareUrl(PRODUCTION_BASE_URL, scenario.state);
       expect(readShareStateFromUrl(url)).toEqual({ status: 'success', state: validateSharedState(scenario.state) });
       for (const [lab, initialize] of Object.entries(initializers)) {
