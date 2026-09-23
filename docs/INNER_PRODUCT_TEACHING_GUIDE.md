@@ -161,4 +161,4 @@
 
 ## 検証の正本
 
-入力・独立期待値は[innerProductScenarios.ts](../src/teaching/innerProductScenarios.ts)、計算・URL・Reset・数値境界の検算は[innerProductScenarios.test.ts](../tests/teaching/innerProductScenarios.test.ts)、操作名・接続の静的検査は[innerProductAccessibility.test.ts](../tests/ui/innerProductAccessibility.test.ts)です。共有D-132と資料・操作D-133は2026-09-23に利用者承認済みです。7Lab統合棚卸しの最終確認はD-134で管理します。
+入力・独立期待値は[innerProductScenarios.ts](../src/teaching/innerProductScenarios.ts)、計算・URL・Reset・数値境界の検算は[innerProductScenarios.test.ts](../tests/teaching/innerProductScenarios.test.ts)、操作名・接続の静的検査は[innerProductAccessibility.test.ts](../tests/ui/innerProductAccessibility.test.ts)です。共有D-132と資料・操作D-133は2026-09-23に利用者承認済みです。7Lab統合棚卸しのD-134も利用者承認済みで、フェーズ14は完了しました。

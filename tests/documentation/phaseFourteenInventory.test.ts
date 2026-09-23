@@ -36,6 +36,6 @@ describe('14.9 棚卸しと配布文書の現在地', () => {
     expect(spec.split('### 8.3 URL 要件')[1].split('## 9.')[0]).toContain('2048文字');
     const overview = spec.split('## 1.')[0];
     expect(overview).not.toContain('共有14.7予定');
-    expect(overview).toContain('D-134最終確認待ち');
+    expect(overview).toContain('D-134承認済み');
   });
 });
