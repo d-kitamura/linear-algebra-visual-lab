@@ -48,18 +48,19 @@
 .inner-product-lab .vector-drag-handle { pointer-events: all; }
 .inner-product-lab[data-inner-mode='gram-schmidt'] .vector-arrow:not(.is-always-opaque) { opacity: .3; }
 .inner-mode-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.inner-mode-switch button, .inner-stage-controls button, .inner-add-input, .inner-input-actions button { min-height: 38px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper, #fffdf7); color: var(--ink); cursor: pointer; }
+.inner-mode-switch button, .inner-stage-controls button, .inner-add-input, .inner-input-actions button { min-height: 44px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper, #fffdf7); color: var(--ink); cursor: pointer; }
+.inner-product-lab :is(button, input, select, summary):focus-visible { outline: 3px solid #2f6690; outline-offset: 3px; }
 .inner-mode-switch button { padding: 10px 16px; }
 .inner-mode-switch button[aria-pressed='true'] { background: #2f6690; color: white; }
 .inner-product-lab button:disabled { opacity: .45; cursor: default; }
 .inner-stage-controls { min-width: 0; border: 1px solid var(--line); border-radius: 12px; margin: 16px 0 0; padding: 10px; font-size: .8rem; }
 .inner-stage-controls > div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
-.inner-stage-controls label { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.inner-stage-controls label { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
 .inner-stage-controls select { min-width: 0; max-width: 100%; }
 .inner-stage-controls button { padding: 6px 16px; }
 .inner-input-item { min-width: 0; }
 .inner-input-actions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 8px; font-size: .7rem; }
-.inner-input-actions button { padding: 4px 7px; }
+.inner-input-actions button { padding: 4px 7px; min-width: 44px; }
 .inner-add-input { padding: 8px 12px; margin-top: 16px; }
 .inner-step-projection { border-top: 1px solid var(--line); margin-top: 14px; }
 .inner-step-projection p, .inner-basis-item p { font-size: .8rem; }

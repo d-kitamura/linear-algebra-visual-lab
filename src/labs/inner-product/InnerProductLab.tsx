@@ -190,7 +190,7 @@ function InnerProductSceneView({ active, slot, setScene, setView, onReset, dimen
       <div className="inner-product-sidebar">
         {scene.dimension > 0 && <section className="vector-editor-card inner-product-editor" aria-labelledby="inner-editor-title">
           <p className="panel-kicker">Edit vectors</p><h2 id="inner-editor-title">{scene.kind === 'polynomial' ? '多項式の係数' : '列ベクトルの成分'}</h2>
-          <fieldset disabled={preview !== null}><legend className="visually-hidden">内積Labの数ベクトル成分</legend>
+          <fieldset disabled={preview !== null}><legend className="visually-hidden">{scene.kind === 'polynomial' ? '内積Labの多項式の標準単項式係数' : '内積Labの数ベクトル成分'}</legend>
             {scene.inputs.length === 0 && <p>入力は空です。ベクトルを追加できます。</p>}
             <div className="inner-inputs">{scene.inputs.map((input, i) => <div className="inner-input-item" key={input.id}><div className="inner-input-column">
               <span style={{ color: innerInputColor(input.id) }}><InnerPolynomialCoordinates polynomial={scene.kind === 'polynomial'} name={`a${input.id}`} /></span><span>=</span><span className="linear-map-vector-input">

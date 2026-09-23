@@ -72,7 +72,7 @@ describe('14.1 内積・GSの具体契約', () => {
   it('D-131承認とD-132確認待ち、共有の構造・意味検証境界を揃える', () => {
     expect(contract).toContain('D-125・D-126・D-127は利用者承認済み');
     expect(contract).toContain('D-132確認待ち');
-    expect(contract).toContain('次の14.8は教材資料');
+    expect(contract).toContain('## 16. 14.8授業資料');
     expect(contract).toContain('## 14. 14.6多項式と内積対応座標');
     expect(contract).toContain('## 13. 14.5数0D・1D・3D接続');
     expect(contract).toContain('## 12. 14.4数2Dグラム・シュミット接続');

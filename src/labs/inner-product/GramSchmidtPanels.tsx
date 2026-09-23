@@ -18,9 +18,10 @@ export function GramSchmidtControls({ analysis, stage, disabled, onStage }: {
       <label>段階<select aria-label="直交化の段階" value={stageId(stage)} onChange={event => {
         const next = analysis.availableStages.find(item => stageId(item) === event.target.value); if (next) onStage(next);
       }}>{!stage && <option value="">段階なし</option>}{analysis.availableStages.filter(item => item.inputId === stage?.inputId).map(item => <option key={stageId(item)} value={stageId(item)}>{stageLabel(item)}</option>)}</select></label></div>
-    <div><button type="button" disabled={index <= 0} onClick={() => onStage(analysis.availableStages[index - 1])}>前へ</button>
-      <span>{index < 0 ? '0 / 0' : `${index + 1} / ${analysis.availableStages.length}`}</span>
-      <button type="button" disabled={index < 0 || index >= analysis.availableStages.length - 1} onClick={() => onStage(analysis.availableStages[index + 1])}>次へ</button></div>
+    <div><button type="button" aria-label="直交化の前の段階へ" disabled={index <= 0} onClick={() => onStage(analysis.availableStages[index - 1])}>前へ</button>
+      <span><span aria-hidden="true">{index < 0 ? '0 / 0' : `${index + 1} / ${analysis.availableStages.length}`}</span>
+        <span className="visually-hidden">{index < 0 ? '直交化の段階はありません' : `全${analysis.availableStages.length}段階中の${index + 1}段階目：入力a${stage!.inputId}、${stageLabel(stage!)}`}</span></span>
+      <button type="button" aria-label="直交化の次の段階へ" disabled={index < 0 || index >= analysis.availableStages.length - 1} onClick={() => onStage(analysis.availableStages[index + 1])}>次へ</button></div>
   </fieldset>;
 }
 

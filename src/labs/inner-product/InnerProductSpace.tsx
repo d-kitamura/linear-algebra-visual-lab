@@ -44,6 +44,8 @@ export default function InnerProductSpace({ scene, committedGs, committedResult,
     vectorDragDescription="元の入力ベクトルの矢先をドラッグすると画面内で移動します。原点に近づくと表示幅の3%以内で吸着します。導出ベクトルは編集しません。背景のドラッグで視点を回転できます。"
     linearCombinationVisible={false} linearCombinationTarget={null} linearCombinationCoefficients={null}
     onLinearCombinationTargetPlacement={NOOP} onLinearCombinationVisibility={NOOP} showLinearCombinationControl={false} showHeading={false} showHelpText={false}
-    assistiveDescription="成分入力と解析タブで、内積、射影、残差、正規直交化の各段階を確認できます。"
+    assistiveDescription={scene.kind === 'polynomial'
+      ? '多項式の関数グラフではなく、選択した内積を反映した座標です。元の標準単項式係数は入力欄、多項式・内積・射影・残差・正規直交化の各段階は解析タブで確認できます。'
+      : '成分入力と解析タブで、内積、射影、残差、正規直交化の各段階を確認できます。'}
     unavailableFallbackDescription="成分入力、解析タブ、Resetはそのまま利用できます。" />;
 }
